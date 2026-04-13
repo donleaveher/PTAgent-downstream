@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MCP 控制台 — 概览</title>
+  <link rel="stylesheet" href="/ui-static/shell.css" />
+  <link rel="stylesheet" href="/mcp-admin/static/mcp-admin.css" />
+</head>
+<body data-page="index">
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">控制台</div>
+      <div class="section">PTAgent</div>
+      <a href="/ptagent-admin/">总览</a>
+      <a href="/ptagent-admin/agents">Agents</a>
+      <a href="/ptagent-admin/flow">编排</a>
+      <a href="/ptagent-admin/llm">LLM</a>
+      <div class="section">MCP Broker</div>
+      <a class="active" href="/mcp-admin/">概览</a>
+      <a href="/mcp-admin/tools">工具与参数</a>
+      <a href="/mcp-admin/fields">字段约定</a>
+      <a href="/mcp-admin/debug">调试</a>
+    </aside>
+    <main class="main">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap">
+        <div>
+          <h1>MCP 控制台</h1>
+          <p class="lead">Broker 连接与配置概览</p>
+        </div>
+        <div id="statusPill"></div>
+      </div>
+      <section>
+        <h2>概览</h2>
+        <div class="toolbar">
+          <button type="button" id="btnRefresh">刷新</button>
+        </div>
+        <div class="grid" id="overviewGrid"></div>
+        <p class="hint" id="overviewHint"></p>
+      </section>
+    </main>
+  </div>
+  <script src="/mcp-admin/static/mcp-admin.js" defer></script>
+</body>
+</html>

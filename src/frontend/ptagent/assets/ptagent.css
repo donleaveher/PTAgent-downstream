@@ -1,0 +1,95 @@
+:root {
+  --bg: #0c0f14;
+  --card: #151b26;
+  --text: #e8edf4;
+  --muted: #8b98a8;
+  --accent: #6eb5f9;
+  --border: #2a3442;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, "PingFang SC", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  padding: 1.25rem 1.5rem 2rem;
+  line-height: 1.5;
+}
+header { margin-bottom: 1.5rem; }
+h1 { margin: 0 0 0.35rem; font-size: 1.35rem; }
+h2 { font-size: 1.05rem; margin: 1.25rem 0 0.65rem; }
+.sub, .hint { color: var(--muted); font-size: 0.88rem; }
+.crumb { margin-bottom: 0.5rem; font-size: 0.9rem; }
+.crumb a { color: var(--accent); text-decoration: none; }
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.card {
+  display: block;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+  text-decoration: none;
+  color: inherit;
+}
+.card h2 { margin: 0 0 0.5rem; font-size: 1rem; color: var(--accent); }
+.card p { margin: 0; color: var(--muted); font-size: 0.88rem; }
+.card:hover { border-color: #3d4d62; }
+.toolbar { margin: 0.5rem 0 0.75rem; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+button {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.88rem;
+}
+button:hover { border-color: var(--accent); }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+.tbl th, .tbl td {
+  border: 1px solid var(--border);
+  padding: 0.45rem 0.6rem;
+  text-align: left;
+}
+.tbl th { background: #121822; color: var(--muted); font-weight: 600; }
+.row-active { outline: 2px solid var(--accent); }
+dialog {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  max-width: min(560px, 96vw);
+}
+dialog label { display: block; margin: 0.5rem 0; font-size: 0.88rem; }
+dialog input, dialog textarea {
+  width: 100%;
+  margin-top: 0.25rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 0.35rem 0.5rem;
+}
+.dlg-actions { margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: flex-end; }
+.debug { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+.out {
+  background: #0a0d12;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem;
+  max-height: 360px;
+  overflow: auto;
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+}

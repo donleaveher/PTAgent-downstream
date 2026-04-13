@@ -1,0 +1,3 @@
+# 本地词表体积大，不提交；需要时在仓库根目录重新下载或解压
+data/wordlists/*.txt
+data/wordlists/*.gz

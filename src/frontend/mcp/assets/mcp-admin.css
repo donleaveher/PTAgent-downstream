@@ -1,0 +1,180 @@
+:root {
+  /* 与 /ui-static/shell.css（PTAgent 管理台）浅色主题对齐 */
+  --bg: #f0f2f7;
+  --surface: #ffffff;
+  --border: #e2e6ef;
+  --text: #1a1d26;
+  --muted: #5c6478;
+  --accent: #3461e0;
+  --accent-dim: #2a4fc4;
+  --ok: #059669;
+  --warn: #d97706;
+  --err: #dc2626;
+  --mono: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+  --sans: "DM Sans", "Segoe UI", system-ui, "PingFang SC", sans-serif;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+a { color: var(--accent); }
+header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+header h1 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+header .sub {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.mcp-nav {
+  width: 100%;
+  display: flex;
+  gap: 0.65rem 1rem;
+  flex-wrap: wrap;
+  padding-top: 0.5rem;
+  margin-top: 0.35rem;
+  border-top: 1px solid var(--border);
+}
+.mcp-nav a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.88rem;
+}
+.mcp-nav a:hover { color: var(--accent); }
+.mcp-nav a.active {
+  color: var(--accent);
+  font-weight: 600;
+}
+.wrap { max-width: 1200px; margin: 0 auto; padding: 1.25rem 1.5rem 2rem; }
+section { margin-bottom: 1.75rem; }
+section h2 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 0.75rem;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.75rem;
+}
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.9rem 1rem;
+  font-size: 0.9rem;
+}
+.card .label { color: var(--muted); font-size: 0.75rem; margin-bottom: 0.25rem; }
+.card .val { word-break: break-all; font-family: var(--mono); font-size: 0.82rem; }
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.pill.ok { background: rgba(52, 211, 153, 0.15); color: var(--ok); }
+.pill.bad { background: rgba(248, 113, 113, 0.15); color: var(--err); }
+.toolbar {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  padding: 0.45rem 0.9rem;
+  border-radius: 8px;
+  font-size: 0.88rem;
+}
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent-dim);
+  color: #fff;
+}
+button:hover:not(:disabled) { filter: brightness(1.08); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+th, td {
+  text-align: left;
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid var(--border);
+}
+th { color: var(--muted); font-weight: 600; font-size: 0.78rem; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(52, 97, 224, 0.06); }
+.desc { color: var(--muted); max-width: 360px; }
+pre {
+  margin: 0;
+  padding: 0.75rem;
+  background: #f8f9fc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  overflow: auto;
+  max-height: 220px;
+}
+pre.tall { max-height: 420px; }
+textarea, select {
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  padding: 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  color: var(--text);
+}
+textarea { min-height: 100px; resize: vertical; }
+select { max-width: 420px; }
+.row { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-start; }
+.row > * { flex: 1; min-width: 200px; }
+.err-msg { color: var(--err); font-size: 0.85rem; margin-top: 0.35rem; }
+.hint { font-size: 0.8rem; color: var(--muted); margin-top: 0.35rem; }
+details summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-size: 0.82rem;
+}
+tr.group-row td {
+  background: rgba(52, 97, 224, 0.1);
+  font-size: 0.82rem;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+#conventionsPre { max-height: 480px; }

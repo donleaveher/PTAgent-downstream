@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MCP 控制台 — 调试</title>
+  <link rel="stylesheet" href="/ui-static/shell.css" />
+  <link rel="stylesheet" href="/mcp-admin/static/mcp-admin.css" />
+</head>
+<body data-page="debug">
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">控制台</div>
+      <div class="section">PTAgent</div>
+      <a href="/ptagent-admin/">总览</a>
+      <a href="/ptagent-admin/agents">Agents</a>
+      <a href="/ptagent-admin/flow">编排</a>
+      <a href="/ptagent-admin/llm">LLM</a>
+      <div class="section">MCP Broker</div>
+      <a href="/mcp-admin/">概览</a>
+      <a href="/mcp-admin/tools">工具与参数</a>
+      <a href="/mcp-admin/fields">字段约定</a>
+      <a class="active" href="/mcp-admin/debug">调试</a>
+    </aside>
+    <main class="main">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap">
+        <div>
+          <h1>调试</h1>
+          <p class="lead">原始 API 响应与连接状态</p>
+        </div>
+        <div id="statusPill"></div>
+      </div>
+
+      <section>
+        <h2>概览（与首页相同数据源）</h2>
+        <div class="toolbar">
+          <button type="button" id="btnRefresh">刷新</button>
+        </div>
+        <div class="grid" id="overviewGrid"></div>
+        <p class="hint" id="overviewHint"></p>
+      </section>
+
+      <section>
+        <h2>原始 JSON</h2>
+        <div class="toolbar">
+          <button type="button" id="btnFetchAllDebug">一次性拉取以下四项</button>
+          <button type="button" id="btnFetchOverviewJson">GET /api/overview</button>
+          <button type="button" id="btnFetchToolsJson">GET /api/tools</button>
+          <button type="button" id="btnFetchCatalogJson">GET /api/tool-catalog</button>
+          <button type="button" id="btnFetchConventionsJson">GET /api/conventions</button>
+        </div>
+        <p class="hint">以下为各端点返回体，便于排查 Broker / 配置 / 目录合并问题。</p>
+        <div class="label" style="color:var(--muted);font-size:0.78rem;margin:0.5rem 0 0.35rem;">/api/overview</div>
+        <pre id="debugOverviewJson" class="tall">（点击按钮加载）</pre>
+        <div class="label" style="color:var(--muted);font-size:0.78rem;margin:0.75rem 0 0.35rem;">/api/tools</div>
+        <pre id="debugToolsJson" class="tall">（点击按钮加载）</pre>
+        <div class="label" style="color:var(--muted);font-size:0.78rem;margin:0.75rem 0 0.35rem;">/api/tool-catalog</div>
+        <pre id="debugCatalogJson" class="tall">（点击按钮加载）</pre>
+        <div class="label" style="color:var(--muted);font-size:0.78rem;margin:0.75rem 0 0.35rem;">/api/conventions</div>
+        <pre id="debugConventionsJson" class="tall">（点击按钮加载）</pre>
+      </section>
+    </main>
+  </div>
+  <script src="/mcp-admin/static/mcp-admin.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,104 @@
+from __future__ import annotations
+
+from enum import Enum
+from functools import lru_cache
+from typing import Optional
+
+from pydantic import BaseModel, Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from .mcp import MCPSettings
+
+
+class AppEnv(str, Enum):
+    DEV = "dev"
+    STAGING = "staging"
+    PROD = "prod"
+
+
+class JWTSettings(BaseModel):
+    """JWT 相关配置。"""
+
+    secret_key: str = Field(..., description="JWT 签名密钥")
+    algorithm: str = Field("HS256", description="JWT 签名算法")
+    issuer: str = Field("ProtAgent", description="JWT 发行方 iss，默认 ProtAgent")
+    leeway_seconds: int = Field(60, description="时间误差容忍（秒）")
+
+
+class AppSettings(BaseSettings):
+    """应用全局配置，通过环境变量/`.env` 统一管理。"""
+
+    model_config = SettingsConfigDict(
+        env_prefix="PTAGENT_",
+        env_nested_delimiter="__",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    env: AppEnv = Field(AppEnv.DEV, description="当前运行环境")
+
+    api_version: str = Field("v1", description="对外 API 版本，对应 header 中的 apiVersion")
+
+    jwt: JWTSettings
+    mcp: MCPSettings = Field(default_factory=MCPSettings)
+
+    # ===== LLM 相关配置（统一在此维护 URL 和鉴权） =====
+
+    # OpenAI / 兼容 OpenAI 协议的服务（如企业代理）
+    openai_api_base: Optional[str] = Field(
+        default=None,
+        description="OpenAI API Base URL，例如：https://api.openai.com/v1 或企业内部代理地址。",
+    )
+    openai_api_key: Optional[str] = Field(
+        default=None,
+        description="OpenAI API Key。若为空则退回使用环境变量 OPENAI_API_KEY。",
+    )
+
+    # Qwen（阿里百炼，兼容 OpenAI 协议）
+    qwen_api_base: Optional[str] = Field(
+        default=None,
+        description="Qwen 兼容 OpenAI 协议的 base URL，例如：https://dashscope.aliyuncs.com/compatible-mode/v1。",
+    )
+    qwen_api_key: Optional[str] = Field(
+        default=None,
+        description="Qwen / 百炼 API Key。",
+    )
+
+    # DeepSeek（兼容 OpenAI 协议）
+    deepseek_api_base: Optional[str] = Field(
+        default=None,
+        description="DeepSeek API base URL，例如：https://api.deepseek.com。",
+    )
+    deepseek_api_key: Optional[str] = Field(
+        default=None,
+        description="DeepSeek API Key。",
+    )
+
+    # HKUST GPT 代理（兼容 OpenAI 协议）
+    hkust_gpt_api_base: Optional[str] = Field(
+        default=None,
+        description="HKUST GPT 代理的 base URL，例如：https://gpt-api.hkust-gz.edu.cn/v1。",
+    )
+    hkust_gpt_api_key: Optional[str] = Field(
+        default=None,
+        description="HKUST GPT 代理的 API Key（Bearer Token）。",
+    )
+
+    # GLM / 智谱
+    glm_api_base: Optional[str] = Field(
+        default=None,
+        description="GLM / 智谱 API base URL（如使用官方 SDK 可留空）。",
+    )
+    glm_api_key: Optional[str] = Field(
+        default=None,
+        description="GLM / 智谱 API Key。",
+    )
+
+
+@lru_cache(maxsize=1)
+def get_settings() -> AppSettings:
+    """获取全局唯一的 AppSettings 实例。"""
+
+    return AppSettings()  # type: ignore[arg-type]
+

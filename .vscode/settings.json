@@ -1,0 +1,7 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv-ProtAgent/bin/python",
+  "python.testing.cwd": "${workspaceFolder}",
+  "python.testing.pytestEnabled": true,
+  "python.testing.unittestEnabled": false,
+  "python.analysis.extraPaths": ["${workspaceFolder}/src"]
+}

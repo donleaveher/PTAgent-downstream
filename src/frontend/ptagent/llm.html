@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PTAgent — LLM 设置</title>
+  <link rel="stylesheet" href="/ui-static/shell.css" />
+</head>
+<body>
+  <div class="layout ptagent-layout">
+    <aside class="sidebar">
+      <div class="brand">PTAgent</div>
+      <a href="/ptagent-admin/">总览</a>
+      <a href="/ptagent-admin/agents">Agents</a>
+      <a href="/ptagent-admin/flow">工作流设计</a>
+      <a class="active" href="/ptagent-admin/llm">LLM 设置</a>
+      <div class="section">外部</div>
+      <a href="/mcp-admin/" target="_blank" rel="noopener">MCP 控制台 ↗</a>
+    </aside>
+    <div class="layout-main-column">
+    <button type="button" class="sidebar-toggle" id="btnSidebarToggle" title="收起/展开左侧导航">☰</button>
+    <main class="main">
+      <h1>LLM 设置</h1>
+      <p class="lead">全局 <strong>API Base</strong> 与 <strong>API Key</strong> 适用于下表全部模型（OpenAI 兼容）。保存至 <code>data/llm_overrides.json</code>，优先级高于环境变量。</p>
+      <p class="muted" id="pathNote"></p>
+
+      <div class="panel llm-panel">
+        <h2>连接（全局）</h2>
+        <div class="llm-conn-grid">
+          <p class="llm-field">
+            <label for="fBase">API Base</label>
+            <input type="text" id="fBase" class="llm-input-wide" placeholder="https://api.openai.com/v1（可空）" />
+          </p>
+          <p class="llm-field">
+            <label for="fKey">API Key</label>
+            <input type="text" id="fKey" class="llm-input-wide" autocomplete="off" placeholder="粘贴完整 Key；下方表格会同步显示" />
+          </p>
+        </div>
+        <p class="muted" id="keyHint"></p>
+        <div class="toolbar">
+          <button type="button" class="btn btn-primary" id="btnSave">保存</button>
+          <button type="button" class="btn" id="btnClearKey">清除已保存的密钥覆盖</button>
+          <button type="button" class="btn" id="btnReload">重新加载</button>
+        </div>
+
+        <h2 class="llm-h2-sub">模型与连通性</h2>
+        <p class="muted small">下表每行使用上方同一组 Base / Key；修改上方输入后行内会同步，保存后生效。</p>
+        <p><label>探测句 <input type="text" id="tMsg" value="ping" class="llm-probe-msg" /></label></p>
+        <div class="toolbar">
+          <button type="button" class="btn btn-primary" id="btnPingAll">测试全部模型</button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="data-table llm-models-table">
+            <thead>
+              <tr>
+                <th>模型 id</th>
+                <th>说明</th>
+                <th>API Base</th>
+                <th>API Key</th>
+                <th>连通</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="modelRows"></tbody>
+          </table>
+        </div>
+
+        <h2 class="llm-h2-sub">自定义模型单测</h2>
+        <p>
+          <label>模型 id <input type="text" id="tModel" placeholder="gpt-4o-mini" /></label>
+          <button type="button" class="btn btn-primary" id="btnTest">测试</button>
+        </p>
+        <pre class="out" id="testOut"></pre>
+      </div>
+    </main>
+    </div>
+  </div>
+  <script src="/ui-static/sidebar-toggle.js" defer></script>
+  <script src="/ptagent-admin/static/llm.js" defer></script>
+</body>
+</html>

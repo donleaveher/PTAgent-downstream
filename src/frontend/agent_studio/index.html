@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agent Studio — 多 Agent 编排</title>
+  <link rel="stylesheet" href="/agent-studio/static/agent-studio.css" />
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Agent Studio</h1>
+      <div class="sub">多 Agent、MCP 按类别授权、RAG / Prompt 定制与 LangGraph 编排</div>
+      <nav class="as-nav">
+        <a href="/ptagent-admin/">PTAgent 管理</a>
+        <a href="/agent-studio/">概览</a>
+        <a href="/mcp-admin/">MCP 控制台</a>
+        <a href="/mcp-admin/tools">MCP 工具列表</a>
+      </nav>
+    </div>
+    <div id="statusPill"></div>
+  </header>
+  <div class="wrap">
+    <section>
+      <h2>按类别的工具视图</h2>
+      <p class="hint">每个 <code>AgentSpec</code> 通过 <code>mcp_categories</code> 限制可调用的工具；此处数据来自当前 Broker 的 <code>tools/list</code>（与注册时的 <code>category</code> 一致）。</p>
+      <div class="toolbar">
+        <button type="button" id="btnRefresh">刷新</button>
+      </div>
+      <div class="grid" id="categoryGrid"></div>
+      <p class="hint" id="overviewHint"></p>
+    </section>
+    <section>
+      <h2>最小接入示例</h2>
+      <pre class="code">from pkg.agent import (
+    AgentSpec,
+    RunContext,
+    categories,
+    build_linear_mcp_team,
+)
+
+# 仅允许 tool_category 为 basic 的工具
+a = AgentSpec(
+    key="analyst",
+    name="分析",
+    mcp_categories=categories("basic"),
+    system_prompt="你是分析助手，必要时调用工具。",
+)
+
+graph = build_linear_mcp_team([a])
+result = graph.invoke({
+    "context": RunContext(run_id="demo"),
+    "data": {"task": "用户问题…"},
+    "logs": [],
+})</pre>
+      <p class="hint">协作：线性团队里上一节点输出写入 <code>data["working_note"]</code>，下一节点自动作为 handoff 使用。自定义分支请使用 <code>build_mcp_workflow_graph</code> + <code>next_map</code>。</p>
+    </section>
+  </div>
+  <script src="/agent-studio/static/agent-studio.js" defer></script>
+</body>
+</html>

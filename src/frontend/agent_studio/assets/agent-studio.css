@@ -1,0 +1,113 @@
+/* Agent Studio — 与 MCP 控制台风格协调的轻量样式 */
+:root {
+  --bg: #0f1419;
+  --card: #1a2332;
+  --text: #e7edf5;
+  --muted: #8b9cb3;
+  --accent: #5b9fd4;
+  --border: #2a3a50;
+  --ok: #3ecf8e;
+  --err: #f07178;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, "PingFang SC", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+h1 { margin: 0 0 0.25rem; font-size: 1.35rem; font-weight: 600; }
+.sub { color: var(--muted); font-size: 0.9rem; }
+
+nav.as-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+nav.as-nav a {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+nav.as-nav a:hover { text-decoration: underline; }
+
+#statusPill {
+  font-size: 0.8rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+#statusPill.ok { color: var(--ok); border-color: rgba(62, 207, 142, 0.35); }
+#statusPill.err { color: var(--err); border-color: rgba(240, 113, 120, 0.35); }
+
+.wrap { padding: 1.25rem 1.5rem 2rem; max-width: 960px; }
+
+section { margin-bottom: 1.75rem; }
+h2 { font-size: 1.05rem; margin: 0 0 0.75rem; font-weight: 600; }
+
+.toolbar { margin-bottom: 0.75rem; }
+button {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4rem 0.85rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+button:hover { border-color: var(--accent); }
+
+pre.code {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  overflow-x: auto;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.grid {
+  display: grid;
+  gap: 0.65rem;
+}
+.cat-block {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+}
+.cat-block h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  color: var(--accent);
+}
+.cat-block ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+p.hint, .hint {
+  color: var(--muted);
+  font-size: 0.88rem;
+  margin-top: 0.75rem;
+}
+
+a.ext { color: var(--accent); }

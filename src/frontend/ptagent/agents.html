@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PTAgent — Agents</title>
+  <link rel="stylesheet" href="/ui-static/shell.css" />
+</head>
+<body>
+  <div class="layout ptagent-layout">
+    <aside class="sidebar">
+      <div class="brand">PTAgent</div>
+      <a href="/ptagent-admin/">总览</a>
+      <a class="active" href="/ptagent-admin/agents">Agents</a>
+      <a href="/ptagent-admin/flow">工作流设计</a>
+      <a href="/ptagent-admin/llm">LLM 设置</a>
+      <div class="section">外部</div>
+      <a href="/mcp-admin/" target="_blank" rel="noopener">MCP 控制台 ↗</a>
+    </aside>
+    <div class="layout-main-column">
+    <button type="button" class="sidebar-toggle" id="btnSidebarToggle" title="收起/展开左侧导航">☰</button>
+    <main class="main">
+      <h1>Agents</h1>
+      <p class="lead">工具权限由当前 Broker 动态列出；保存时写入白名单（精确到工具名）。</p>
+      <div class="toolbar">
+        <button type="button" class="btn btn-primary" id="btnNew">新建</button>
+        <button type="button" class="btn" id="btnReload">刷新</button>
+      </div>
+      <div class="card-grid" id="cardRoot"></div>
+
+      <div class="panel" id="editor" style="display:none">
+        <h2 id="edTitle">编辑</h2>
+        <p><label>key <input type="text" id="fKey" /></label></p>
+        <p><label>名称 <input type="text" id="fName" /></label></p>
+        <p><label><input type="checkbox" id="fRestrict" /> 限制可调用的 MCP 工具（不勾选 = 不限制）</label></p>
+        <div id="toolPick" class="muted" style="display:none"></div>
+        <p><label>system prompt</label><br /><textarea id="fPrompt"></textarea></p>
+        <p><label>rag_profile_id（可选）</label><br /><input type="text" id="fRag" placeholder="预留" /></p>
+        <p><label>LLM 模型 <input type="text" id="fModel" placeholder="gpt-4o-mini" style="max-width:280px" /></label></p>
+        <p><label>温度 <input type="number" id="fTemp" step="0.1" min="0" max="2" style="max-width:120px" /></label></p>
+        <div class="toolbar">
+          <button type="button" class="btn btn-primary" id="btnSave">保存</button>
+          <button type="button" class="btn" id="btnCancel">取消</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>运行</h2>
+        <p class="muted">调用 <code>POST /ptagent-admin/api/run</code>，请求真实 LLM。</p>
+        <p><label>任务 <input type="text" id="runTask" style="width:100%;max-width:480px" value="请简要回复。" /></label></p>
+        <p>
+          <label>覆盖模型（可空=用 Agent 已保存的模型） <input type="text" id="runModel" placeholder="默认用 Spec" style="max-width:220px" /></label>
+          <label>覆盖温度 <input type="number" id="runTemp" step="0.1" min="0" max="2" placeholder="默认" style="max-width:100px" /></label>
+        </p>
+        <div class="toolbar">
+          <button type="button" class="btn btn-primary" id="btnRun" disabled>运行所选 Agent</button>
+          <button type="button" class="btn" id="btnVal" disabled>校验工具</button>
+        </div>
+        <pre class="out" id="runOut"></pre>
+      </div>
+    </main>
+    </div>
+  </div>
+  <script src="/ui-static/sidebar-toggle.js" defer></script>
+  <script src="/ptagent-admin/static/agents.js" defer></script>
+</body>
+</html>

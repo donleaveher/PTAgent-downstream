@@ -1,0 +1,39 @@
+# 核心框架与编排
+langgraph>=0.2.0
+langchain-core>=0.3.0
+
+# 向量检索 / RAG（后续可根据选型调整）
+faiss-cpu>=1.8.0.post1
+qdrant-client>=1.11.0
+
+# LLM 接入（示例：OpenAI / Azure / 本地模型）
+openai>=1.30.0
+
+# Web / 接口（预留）
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+
+# 配置与工具
+python-dotenv>=1.0.1
+pydantic>=2.7.0
+PyYAML>=6.0.2
+websockets>=12.0
+
+# MCP（FastMCP；实现位于 src/pkg/mcp/mcp_framework）
+fastmcp>=2.0
+
+# 数据科学 & 质谱处理（后续可细化）
+numpy>=1.26.0
+pandas>=2.2.0
+scipy>=1.13.0
+
+# 测试
+pytest>=8.2.0
+
+# 安全 / JWT
+PyJWT>=2.9.0
+pydantic-settings>=2.7.0
+
+# HTTP 客户端（用于部分 LLM Provider，如 GLM）
+requests>=2.31.0
+
