@@ -4,18 +4,21 @@
 
 ## 快速开始（后端 API）
 
-1. **配置环境变量**：复制 `.env.example` 为 `.env`，至少填写 `PTAGENT_JWT__SECRET_KEY`、`PTAGENT_MCP__ENDPOINT`（与 MCP Broker 地址一致，例如 `http://127.0.0.1:8765/mcp`）。
+1. **配置环境变量**：复制 `.env.example` 为 `.env`，至少填写 `PTAGENT_JWT__SECRET_KEY`、`PTAGENT_MCP_SETTINGS__ENDPOINT`（与 MCP Broker 一致，见 `.env.example` 中端口表）。
 2. **安装依赖**：`./scripts/setup.sh`（需要已安装 [uv](https://github.com/astral-sh/uv)），然后 `source .venv/bin/activate`。
-3. **启动后端**：`./scripts/run-backend.sh`（默认端口 `8000`，可用 `PORT=9000 ./scripts/run-backend.sh` 修改）。
+3. **仅启动本仓库 API 后端**：`./scripts/run-backend.sh`（默认 `8000`）。
 
-启动后：
+**浏览器 UI** 在 monorepo 的 `PTAgent-frontend` 中，请用其 **`scripts/run-edge.sh`**（默认反代到本后端）。不要期望在本进程直接打开 `/` 或 `/mcp-admin` 的 HTML（已由前后端解耦移除）。
 
-- OpenAPI / Swagger：`http://localhost:8000/docs`
-- MCP 管理页：`http://localhost:8000/mcp-admin/`
+本进程启动后：
 
-若 `.env` 中 `PTAGENT_MCP__AUTO_START_SUBPROCESS=true`（默认），后端会在启动时尝试按 `PTAGENT_MCP__ENDPOINT` 拉起 MCP Broker 子进程。若关闭自动拉起，需另开终端执行 `./scripts/run-mcp-broker.sh`，并保证端口与 `PTAGENT_MCP__ENDPOINT` 一致。
+- OpenAPI / Swagger：`http://localhost:8000/docs`（本机可直连，或通过边缘同路径反代）
+
+若 `.env` 中 `PTAGENT_MCP_SETTINGS__AUTO_START_SUBPROCESS=true`（默认），后端会在启动时尝试按 `PTAGENT_MCP_SETTINGS__ENDPOINT` 拉起 MCP Broker 子进程。若关闭自动拉起，需另开终端执行 `./scripts/run-mcp-broker.sh`，并保证端口与 `PTAGENT_MCP_SETTINGS__ENDPOINT` 一致。
 
 更多脚本说明见 [`scripts/README.md`](scripts/README.md)。
+
+**架构:** [`../../doc/server/ARCHITECTURE.md`](../../doc/server/ARCHITECTURE.md) · **Agent:** [`../../doc/server/AGENT_DEVELOPMENT.md`](../../doc/server/AGENT_DEVELOPMENT.md) · **指南:** [`../../doc/server/PROJECT_GUIDE.md`](../../doc/server/PROJECT_GUIDE.md) · 总目录 [**`doc/README.md`**](../../doc/README.md)。UI 由 **`PTAgent-frontend` 边缘** 提供。
 
 ## 目标能力（高层）
 

@@ -1,8 +1,9 @@
 """
-pkg 包：对外可复用的核心库接口。
+pkg 包：**可复用**核心库（与 HTTP 路由、具体产品页面解耦）。
 
 约定：
-- 外部/上层代码优先通过 pkg.* 引用核心能力，而不是直接引用内部实现细节。
+- ``router`` / ``application`` 通过 ``pkg.*`` 调用领域与基础设施能力。
+- 勿在 ``pkg`` 中放入仅某条 Admin API、某页面专用的编排；见仓库根目录 ``docs/ARCHITECTURE.md``。
 """
 
 from .global_objects import GlobalObjects, close_global_objects, get_global_objects

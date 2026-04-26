@@ -1,3 +1,65 @@
-# 本地词表体积大，不提交；需要时在仓库根目录重新下载或解压
-data/wordlists/*.txt
-data/wordlists/*.gz
+# Byte-compiled / optimized
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+.venv/
+.venv-*/
+venv/
+env/
+ENV/
+
+# User-uploaded spectra (experiment entry)
+data/uploads/
+
+# Environment & secrets（保留 .env.example 供模板提交）
+.env
+.env.*
+!.env.example
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# Type checkers / linters
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.ruff_cache/
+
+# Packaging / build
+build/
+dist/
+*.egg-info/
+*.egg
+pip-wheel-metadata/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 统一 SQLite 库（运行时生成；勿提交含敏感配置的卷）
+data/ptagent.db
+data/ptagent_registry.db
+
+# Logs & temp
+*.log
+*.tmp
+*.swp
+*~
+
+# Editor（若团队需要共享 .vscode 配置，请勿取消下面两行注释）
+# .vscode/
+# !.vscode/extensions.json

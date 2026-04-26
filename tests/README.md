@@ -4,9 +4,9 @@
 
 ## 布局（分组示例）
 
-- **`mcp/basic/`** — 与 `src/mcp_tools/basic` 对应，如 [`test_peptide.py`](mcp/basic/test_peptide.py)
+- 根目录若干 `test_*.py` — 与 `pkg`、`config` 等主仓模块对应。
 
-仓库根 **`pytest.ini`** 已设置 `pythonpath = src`，IDE（VS Code / PyCharm）在测试文件上 **Run Test** 时一般可直接发现 `mcp_tools` / `pkg`，无需再手写 `PYTHONPATH`。
+仓库根 **`pytest.ini`** 已设置 `pythonpath = src`。
 
 ## TODO 列表
 
@@ -21,4 +21,3 @@
   - [ ] 为检索策略编写简单的契约测试（例如：能检索到预期文档）。
 - [ ] **业务流程集成测试（后续）**
   - [ ] 基于一个简单的 demo 数据集，验证端到端流程是否跑通（从输入数据到报告草稿）。
-

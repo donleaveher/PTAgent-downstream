@@ -85,8 +85,8 @@ def extract_request_meta_from_headers(
     request_id = _get_header(headers, "requestId")
     timestamp_raw = _get_header(headers, "timestamp")
     api_version = _get_header(headers, "apiVersion") or settings.api_version
-    mcp_version = _get_header(headers, "mcpVersion") or settings.mcp.version
-    mcp_mode = _get_header(headers, "mcpMode") or settings.mcp.mode
+    mcp_version = _get_header(headers, "mcpVersion") or settings.mcp_settings.version
+    mcp_mode = _get_header(headers, "mcpMode") or settings.mcp_settings.mode
     auth_header = _get_header(headers, "Authorization")
 
     if not request_id:

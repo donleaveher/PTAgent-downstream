@@ -7,7 +7,8 @@ from typing import Optional
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from .mcp import MCPSettings
+from .database_settings import DatabaseSettings
+from .mcp_settings import MCPSettings
 
 
 class AppEnv(str, Enum):
@@ -41,7 +42,11 @@ class AppSettings(BaseSettings):
     api_version: str = Field("v1", description="对外 API 版本，对应 header 中的 apiVersion")
 
     jwt: JWTSettings
-    mcp: MCPSettings = Field(default_factory=MCPSettings)
+    mcp_settings: MCPSettings = Field(default_factory=MCPSettings)
+    database: DatabaseSettings = Field(
+        default_factory=DatabaseSettings,
+        description="统一 SQLite（Agent、Team、LLM 覆盖与模型扩展）；默认 data/ptagent.db",
+    )
 
     # ===== LLM 相关配置（统一在此维护 URL 和鉴权） =====
 

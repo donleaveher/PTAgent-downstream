@@ -15,10 +15,11 @@ from .openai_runtime import (
     get_openai_settings_for_ui,
     test_openai_chat,
 )
-from .overrides_store import load_overrides, overrides_path, save_overrides
+from .overrides_store import database_path, load_overrides, overrides_path, save_overrides
 
 __all__ = [
     "build_openai_client",
+    "database_path",
     "get_effective_openai_params",
     "get_openai_settings_for_ui",
     "load_overrides",

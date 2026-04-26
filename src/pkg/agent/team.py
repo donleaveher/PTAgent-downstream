@@ -17,7 +17,7 @@ from ._internal.workflow_dynamic_agents import EndWorkflowAgent, McpToolWorkflow
 from .contracts import AgentSpec, RAGRetriever
 from .core import BaseAgent
 from .ports import LlmToolChatClient, ToolGateway
-from .registry import TeamSpec
+from .team_spec import TeamSpec
 from .workflow import WorkflowConfig, WorkflowNodeConfig, build_workflow_graph
 
 

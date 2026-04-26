@@ -32,6 +32,9 @@ class AgentSpec:
     #: 本 Agent 使用的聊天模型名（OpenAI 兼容）
     llm_model: str = "gpt-4o-mini"
     llm_temperature: float = 0.2
+    #: ``structured``：最终助手回复解析为 JSON 并按 ``meta["output_json_schema"]``（JSON Schema）校验；``freeform``：开放式对话与工具调用。
+    interaction_mode: str = "freeform"
+    #: 扩展字段；结构化模式下可使用 ``output_json_schema``（``dict``）描述最终 JSON 输出的 JSON Schema。
     meta: dict[str, object] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -43,6 +46,10 @@ class AgentSpec:
             object.__setattr__(self, "mcp_categories", frozenset(self.mcp_categories))
         if self.mcp_tool_allowlist is not None and not isinstance(self.mcp_tool_allowlist, frozenset):
             object.__setattr__(self, "mcp_tool_allowlist", frozenset(self.mcp_tool_allowlist))
+        im = str(self.interaction_mode or "freeform").strip() or "freeform"
+        if im not in ("freeform", "structured"):
+            raise ValueError("interaction_mode 须为 freeform 或 structured")
+        object.__setattr__(self, "interaction_mode", im)
 
     @property
     def display_name(self) -> str:

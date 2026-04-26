@@ -2,9 +2,17 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any, Dict, Mapping
 
+from jsonschema.exceptions import ValidationError
+
 from ..contracts import AgentSpec, RAGRetriever, null_rag
+from ..structured_output import (
+    extract_json_from_assistant_text,
+    structured_output_instruction_suffix,
+    validate_against_json_schema,
+)
 from ..core import BaseAgent, RunContext
 from ..ports import LlmToolChatClient, ToolGateway
 
@@ -60,8 +68,16 @@ class ToolLlmAgent(BaseAgent):
         def execute_tool(name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
             return self._tools.call_tool(name, arguments)
 
+        system_prompt = (self._spec.system_prompt or "").strip()
+        schema_obj: dict[str, Any] | None = None
+        if self._spec.interaction_mode == "structured":
+            raw_meta = self._spec.meta.get("output_json_schema")
+            if isinstance(raw_meta, dict):
+                schema_obj = raw_meta
+                system_prompt = (system_prompt + structured_output_instruction_suffix(schema_obj)).strip()
+
         text = self._llm.complete_with_tools(
-            system_prompt=self._spec.system_prompt,
+            system_prompt=system_prompt,
             user_content=user_block,
             rag_chunks=chunks,
             tools=tool_list,
@@ -72,10 +88,29 @@ class ToolLlmAgent(BaseAgent):
         )
 
         out_key = f"{self._spec.key}_output"
-        merged = {
+        structured_valid: bool | None = None
+        structured_error: str | None = None
+        final_text = text
+
+        if self._spec.interaction_mode == "structured" and schema_obj is not None:
+            try:
+                parsed = extract_json_from_assistant_text(text)
+                validate_against_json_schema(parsed, schema_obj)
+                structured_valid = True
+                final_text = json.dumps(parsed, ensure_ascii=False)
+            except (ValueError, ValidationError) as exc:
+                structured_valid = False
+                structured_error = str(exc)
+                final_text = text
+
+        merged: Dict[str, Any] = {
             **data,
-            out_key: text,
-            "working_note": text,
+            out_key: final_text,
+            "working_note": final_text,
             "last_agent": self._spec.key,
         }
+        if structured_valid is not None:
+            merged["structured_valid"] = structured_valid
+        if structured_error:
+            merged["structured_validation_error"] = structured_error
         return {"data": merged}

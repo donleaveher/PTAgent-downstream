@@ -1,5 +1,5 @@
 """
 model.http：面向 HTTP 的 Pydantic 请求/响应模型（与 ``response`` 包中的通用包装区分）。
 
-当前暂无独立模块；后续可按资源拆分子模块。
+- ``mcp_admin`` — MCP 管理台 API 请求体（与 ``router/mcp_admin`` 对应）
 """

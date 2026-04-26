@@ -14,9 +14,9 @@
 
 ## MCP 配置
 
-- 模型定义见 **`mcp.py`**（`MCPSettings`）：endpoint、mode、version、子进程相关等。
-- 环境变量前缀为 **`PTAGENT_MCP__`**（示例见仓库根目录 `.env.example`）。
-- 业务代码若只需 MCP 一段，可 `from config import get_mcp_settings`（等价于 `get_settings().mcp`）。
+- 模型定义见 **`mcp_settings.py`**（`MCPSettings`）：endpoint、mode、version、子进程相关等。
+- 环境变量前缀为 **`PTAGENT_MCP_SETTINGS__`**（示例见仓库根目录 `.env.example`）。
+- 业务代码若只需 MCP 一段，可 `from config import get_mcp_settings`（等价于 `get_settings().mcp_settings`）。
 
 ## TODO 列表
 

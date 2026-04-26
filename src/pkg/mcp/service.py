@@ -8,9 +8,9 @@ import time
 from pathlib import Path
 from typing import Any, Optional
 
-from pkg.mcp.mcp_framework import MCPBroker
-from pkg.mcp.mcp_framework.config import BrokerConfig
-from pkg.mcp.mcp_framework.endpoints import resolve_listen_address, split_mcp_endpoints
+from pkg.mcp.core import MCPBroker
+from pkg.mcp.core.config import BrokerConfig
+from pkg.mcp.core.endpoints import resolve_listen_address, split_mcp_endpoints
 
 
 class MCPService:
@@ -62,7 +62,7 @@ class MCPService:
 
         host, port = resolve_listen_address(http_url)
         code = (
-            "from pkg.mcp.mcp_framework import MCPBroker; "
+            "from pkg.mcp.core import MCPBroker; "
             f"MCPBroker().run(host={host!r}, port={port})"
         )
         env = os.environ.copy()
@@ -107,7 +107,7 @@ def _is_expected_mcp_process(pid: int) -> bool:
     if not data:
         return False
     joined = data.decode("utf-8", errors="ignore").replace("\x00", " ")
-    return "pkg.mcp.mcp_framework" in joined and "MCPBroker" in joined
+    return "pkg.mcp.core" in joined and "MCPBroker" in joined
 
 
 __all__ = ["MCPService"]

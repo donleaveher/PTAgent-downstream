@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from typing import Any, Dict, List, Optional
 
 from fastmcp.client import Client
 from mcp.types import CallToolResult
 
-from pkg.mcp.mcp_framework.endpoints import split_mcp_endpoints
+from pkg.mcp.core.endpoints import split_mcp_endpoints
 
 from .errors import MCPError
 from .types import ToolInfo
@@ -27,6 +28,37 @@ def _meta_category_group(item: Any) -> tuple[str, str]:
         str(pt.get("toolCategory") or "").strip(),
         str(pt.get("toolGroup") or "").strip(),
     )
+
+
+def _success_content_text(raw: CallToolResult) -> str:
+    """成功调用时，从 content 块拼接文本（部分 Broker 不填 structuredContent）。"""
+    parts: List[str] = []
+    for block in raw.content or []:
+        text = getattr(block, "text", None)
+        if text is not None:
+            parts.append(str(text))
+    return "\n".join(parts).strip()
+
+
+def _normalize_success_result(raw: CallToolResult) -> Dict[str, Any]:
+    """统一为 dict：优先 structuredContent，否则解析 content 文本为 JSON，再否则包装为 rawText。"""
+    sc = raw.structuredContent
+    if isinstance(sc, dict):
+        return dict(sc)
+    if isinstance(sc, list):
+        return {"items": sc}
+    if sc is not None and not isinstance(sc, (dict, list)):
+        return {"value": sc}
+    txt = _success_content_text(raw)
+    if not txt:
+        return {"empty": True, "hint": "工具返回成功但无文本与 structuredContent"}
+    try:
+        parsed = json.loads(txt)
+        if isinstance(parsed, dict):
+            return parsed
+        return {"result": parsed}
+    except json.JSONDecodeError:
+        return {"rawText": txt}
 
 
 def _call_tool_error_text(raw: CallToolResult) -> str:
@@ -113,10 +145,7 @@ class MCPClient:
             if detail:
                 msg = f"{msg}: {detail}"
             raise MCPError(msg)
-        sc = raw.structuredContent
-        if isinstance(sc, dict):
-            return sc
-        raise MCPError("工具结果缺少 structuredContent")
+        return _normalize_success_result(raw)
 
 
 __all__ = ["MCPClient"]

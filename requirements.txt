@@ -16,10 +16,11 @@ uvicorn[standard]>=0.30.0
 # 配置与工具
 python-dotenv>=1.0.1
 pydantic>=2.7.0
+jsonschema>=4.23.0
 PyYAML>=6.0.2
 websockets>=12.0
 
-# MCP（FastMCP；实现位于 src/pkg/mcp/mcp_framework）
+# MCP（FastMCP；实现位于 src/pkg/mcp/core）
 fastmcp>=2.0
 
 # 数据科学 & 质谱处理（后续可细化）
@@ -37,3 +38,5 @@ pydantic-settings>=2.7.0
 # HTTP 客户端（用于部分 LLM Provider，如 GLM）
 requests>=2.31.0
 
+# DeepXiv：论文搜索与渐进式阅读（general.deepxiv MCP Provider）
+deepxiv-sdk>=0.2.4

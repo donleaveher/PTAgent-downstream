@@ -10,6 +10,7 @@ LLM 子包：多 Provider 注册表 + OpenAI 兼容运行时（进程内统一�
 from .base import LLMClient
 from .facade import (
     build_openai_client,
+    database_path,
     get_effective_openai_params,
     get_openai_settings_for_ui,
     load_overrides,
@@ -26,6 +27,7 @@ __all__ = [
     "ModelSpec",
     "ModelRegistry",
     "build_openai_client",
+    "database_path",
     "get_effective_openai_params",
     "get_openai_settings_for_ui",
     "load_overrides",

@@ -12,10 +12,8 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 
 from config import get_mcp_settings
-from frontend.paths import SHARED
 from middleware import register_middlewares
 from pkg.global_objects import close_global_objects
 from pkg.mcp import MCPService
@@ -37,14 +35,18 @@ def _ensure_mcp_process() -> None:
 
 def create_backend_app() -> FastAPI:
     """
-    创建后端主应用。
+    创建后端主应用：仅 **JSON/API** 与流式等；不在此进程内承载浏览器静态资源。
 
-    挂载 MCP 管理台、PTAgent 管理端、Agent Studio 兼容路由等；后续可在此追加认证、任务等 API。
+    本机/开发时由 ``PTAgent-frontend`` 的 ``edge/app.py`` 提供 ``/``、``/mcp-admin`` 等页并反代本服务。
     """
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
         _ensure_mcp_process()
+        print(
+            "[PTAgent] API: /ptagent-admin/api/…  /mcp-admin/api/…  文档: /docs",
+            flush=True,
+        )
         try:
             yield
         finally:
@@ -61,9 +63,6 @@ def create_backend_app() -> FastAPI:
 
     # HTTP 路由
     register_routes(app)
-
-    if SHARED.is_dir():
-        app.mount("/ui-static", StaticFiles(directory=str(SHARED)), name="ui_static")
 
     return app
 
