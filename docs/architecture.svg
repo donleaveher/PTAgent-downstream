@@ -1,0 +1,160 @@
+<svg viewBox="0 0 1000 700" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="at ad">
+<title id="at">PTAgent 新架构总览</title>
+<desc id="ad">下游知识层：输入三件套（实验背景文本/标注肽段集/蛋白集合）→ 通用知识图谱富集与证据分级 → 在实验工作区构建可变的本次实验 KG → deep-search 认知态跃迁 → 冻结到独立实验数据库形成只读版本化快照 → 分层报告。公共知识引用通用 KG，实验差异、假说、证据等级和裁决保留在实验作用域。上游鉴定给定、无感知；差异 case/control 为核心。</desc>
+<style>
+text{font-family:'Helvetica Neue',Arial,'PingFang SC','Hiragino Sans GB',sans-serif}
+.title{font-size:17px;font-weight:600;fill:#1c1c1a}
+.sub{font-size:11px;fill:#5f5e5a}
+.stage{font-size:11px;font-weight:600;fill:#7a766c;letter-spacing:.3px}
+.h{font-size:12.5px;font-weight:600;fill:#1c1c1a}
+.t{font-size:11.5px;font-weight:500;fill:#1c1c1a}
+.ts{font-size:9.5px;fill:#5f5e5a}
+.tag{font-size:11px;font-weight:700;fill:#1c1c1a}
+.gray>rect{fill:#f1efe8;stroke:#a8a49a;stroke-width:1.4}
+.blue>rect{fill:#e6f1fb;stroke:#3b82c4;stroke-width:1.4}
+.teal>rect{fill:#e1f5ee;stroke:#1d9e75;stroke-width:1.6}
+.amber>rect{fill:#faeeda;stroke:#ba7517;stroke-width:1.6}
+.coral>rect{fill:#faece7;stroke:#d85a30;stroke-width:1.6}
+.purple>rect{fill:#eeedfe;stroke:#534ab7;stroke-width:1.4}
+.box>rect{fill:#fbfbf9;stroke:#cfcabd;stroke-width:1.3}
+</style>
+<defs>
+<marker id="arr" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#8a8f95"/></marker>
+<marker id="arrp" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#534ab7"/></marker>
+</defs>
+<rect x="0" y="0" width="1000" height="700" fill="#ffffff"/>
+
+<text class="title" x="36" y="34">PTAgent · 新架构总览</text>
+<text class="sub" x="36" y="54">下游知识层　输入 → 通用KG → 本次实验KG工作区 → deep-search → 实验数据库归档 → 报告　·　上游鉴定给定</text>
+
+<!-- stage labels -->
+<text class="stage" x="40" y="78">① 输入三件套</text>
+<text class="stage" x="212" y="78">② 任务一 · 通用KG富集 + 证据分级</text>
+<text class="stage" x="636" y="78">③ 任务二 · 本次KG</text>
+<text class="stage" x="828" y="78">④ 冻结归档 + 报告</text>
+
+<!-- ====== INPUT ====== -->
+<g class="gray"><rect x="36" y="92" width="152" height="48" rx="9"/>
+<text class="t" x="112" y="112" text-anchor="middle">实验背景文本</text>
+<text class="ts" x="112" y="128" text-anchor="middle">疾病·通路·物种·分组</text></g>
+<g class="gray"><rect x="36" y="148" width="152" height="48" rx="9"/>
+<text class="t" x="112" y="168" text-anchor="middle">标注肽段集（带 label）</text>
+<text class="ts" x="112" y="184" text-anchor="middle">置信度·谱图·Meta</text></g>
+<g class="gray"><rect x="36" y="204" width="152" height="48" rx="9"/>
+<text class="t" x="112" y="224" text-anchor="middle">蛋白集合</text>
+<text class="ts" x="112" y="240" text-anchor="middle">→ 肽段 · Meta</text></g>
+<text class="ts" x="40" y="272">上游 谱图→肽→蛋白 鉴定</text>
+<text class="ts" x="40" y="286">＝ 给定 / 对本层无感知</text>
+
+<line x1="188" y1="172" x2="208" y2="172" stroke="#8a8f95" stroke-width="2" marker-end="url(#arr)"/>
+
+<!-- ====== TASK 1 container ====== -->
+<g class="box"><rect x="210" y="88" width="402" height="248" rx="12"/></g>
+<text class="h" x="411" y="108" text-anchor="middle">任务一 · 通用知识图谱富集 + 证据分级</text>
+
+<!-- DB sources -->
+<g class="blue"><rect x="222" y="120" width="158" height="48" rx="9"/>
+<text class="t" x="301" y="140" text-anchor="middle">UniProt（MCP 工具）</text>
+<text class="ts" x="301" y="156" text-anchor="middle">结构域·组织表达·物种</text></g>
+<g class="blue"><rect x="222" y="176" width="158" height="48" rx="9"/>
+<text class="t" x="301" y="196" text-anchor="middle">CTD</text>
+<text class="ts" x="301" y="212" text-anchor="middle">蛋白-疾病 · curated/marker</text></g>
+<g class="blue"><rect x="222" y="232" width="158" height="48" rx="9"/>
+<text class="t" x="301" y="252" text-anchor="middle">AlphaFold + Foldseek</text>
+<text class="ts" x="301" y="268" text-anchor="middle">结构 KNN 近邻</text></g>
+
+<!-- evidence outputs -->
+<g class="teal"><rect x="424" y="122" width="176" height="56" rx="9"/>
+<text class="tag" x="438" y="142">结论</text>
+<text class="ts" x="438" y="158">直接注释 / 直接命中</text>
+<text class="ts" x="438" y="171">＝ 确切证据</text></g>
+<g class="amber"><rect x="424" y="200" width="176" height="62" rx="9"/>
+<text class="tag" x="438" y="220">假说</text>
+<text class="ts" x="438" y="236">结构近邻 借 CTD 疾病关联</text>
+<text class="ts" x="438" y="249">结构类比 · 跨物种桥</text></g>
+
+<line x1="380" y1="142" x2="422" y2="148" stroke="#8a8f95" stroke-width="1.6" marker-end="url(#arr)"/>
+<line x1="380" y1="198" x2="422" y2="162" stroke="#8a8f95" stroke-width="1.6" marker-end="url(#arr)"/>
+<line x1="380" y1="256" x2="422" y2="228" stroke="#8a8f95" stroke-width="1.6" marker-end="url(#arr)"/>
+
+<text class="ts" x="222" y="300">KNN = 结构相似（非序列/非网络）· AF 物种无关 → 大鼠→人 天然桥接</text>
+<text class="ts" x="222" y="316">全部蛋白基础注释 · 差异蛋白做 KNN/假说/deep-search；Meta 全程可溯源</text>
+<text class="ts" x="222" y="329">免疫：当前 UniProt GO + CTD + deep-search · 专用数据源扩展通道保留</text>
+
+<line x1="612" y1="172" x2="630" y2="172" stroke="#8a8f95" stroke-width="2" marker-end="url(#arr)"/>
+
+<!-- ====== TASK 2 ====== -->
+<g class="purple"><rect x="632" y="116" width="170" height="122" rx="11"/>
+<text class="h" x="717" y="137" text-anchor="middle">任务二 · 本次实验 KG</text>
+<text class="ts" x="646" y="158">输入 + 补的 Meta 整合</text>
+<text class="ts" x="646" y="174">节点 Protein / Peptide / Group</text>
+<text class="ts" x="646" y="190">边 关联（带 evidence_level）</text>
+<text class="ts" x="646" y="206">　 + 组间差异（log2FC / q）</text>
+<text class="ts" x="646" y="226">实例化 · 这次的「故事」</text></g>
+
+<!-- deep-search loop -->
+<g class="amber"><rect x="632" y="256" width="170" height="80" rx="11"/>
+<text class="h" x="717" y="276" text-anchor="middle">deep-search · 认知态跃迁</text>
+<text class="ts" x="646" y="296">假说 +直接证据 → 结论</text>
+<text class="ts" x="646" y="312">假说 +反证 → 伪理（留档）</text>
+<text class="ts" x="646" y="328">假说 +无证据 → 仍假说</text></g>
+<line x1="700" y1="256" x2="700" y2="240" stroke="#534ab7" stroke-width="1.6" stroke-dasharray="5 3" marker-end="url(#arrp)"/>
+<text class="ts" x="706" y="252" fill="#534ab7">回写 evidence_level</text>
+
+<line x1="802" y1="178" x2="826" y2="178" stroke="#8a8f95" stroke-width="2" marker-end="url(#arr)"/>
+<line x1="802" y1="296" x2="828" y2="296" stroke="#8a8f95" stroke-width="1.6" stroke-dasharray="5 3" marker-end="url(#arr)"/>
+
+<!-- ====== REPORT ====== -->
+<g class="teal"><rect x="828" y="138" width="146" height="178" rx="11"/>
+<text class="h" x="901" y="160" text-anchor="middle">冻结快照与报告</text>
+<text class="ts" x="840" y="184">实验DB：只读、版本化</text>
+<text class="ts" x="840" y="202">报告绑定 snapshot_version</text>
+<g class="teal"><rect x="840" y="216" width="122" height="22" rx="6"/><text class="ts" x="850" y="231">结论级 · 确证</text></g>
+<g class="amber"><rect x="840" y="244" width="122" height="22" rx="6"/><text class="ts" x="850" y="259">假说级 · 待验</text></g>
+<g class="coral"><rect x="840" y="272" width="122" height="22" rx="6"/><text class="ts" x="850" y="287">伪理级 · 被证伪</text></g>
+</g>
+
+<!-- ====== STORAGE ====== -->
+<g class="box"><rect x="36" y="360" width="938" height="316" rx="12"/></g>
+<text class="h" x="50" y="383">存储底座</text>
+<text class="ts" x="118" y="383">　MySQL 是事实唯一来源 · Neo4j 负责关系遍历 · 图节点以 mysql_ref 回指 · 重数据不进图</text>
+
+<g class="gray"><rect x="50" y="396" width="446" height="166" rx="10"/>
+<text class="h" x="66" y="418">MySQL · 数据平面（关系 / 明细）</text>
+<text class="ts" x="66" y="444">· 输入三件套：肽 / 蛋白 / Meta / label / 背景文本</text>
+<text class="ts" x="66" y="466">· 公共库下载缓存（CTD / UniProt / AlphaFold）</text>
+<text class="ts" x="66" y="488">· Meta + evidence_level（结论 / 假说 / 伪理）</text>
+<text class="ts" x="66" y="510">· deep-search 证据与裁决（支持 / 无 / 反对）</text>
+<text class="ts" x="66" y="538" fill="#7a766c">师兄已提供 · 由 SQLite 升级到 MySQL</text></g>
+
+<g class="purple"><rect x="512" y="396" width="448" height="166" rx="10"/>
+<text class="h" x="528" y="418">Neo4j · 知识图谱层（经 GraphStore 接入）</text>
+<g class="purple"><rect x="526" y="430" width="208" height="118" rx="8"/>
+<text class="t" x="630" y="450" text-anchor="middle">通用 KG（复用 · 字典）</text>
+<text class="ts" x="540" y="472">蛋白-疾病 / 蛋白属性 / 蛋白-物种</text>
+<text class="ts" x="540" y="490">源：UniProt · CTD 建</text>
+<text class="ts" x="540" y="508">AlphaFold 作结构 KNN 底座</text>
+<text class="ts" x="540" y="530" fill="#7a766c">跨实验 · 可复用知识底座</text></g>
+<g class="purple"><rect x="742" y="430" width="206" height="118" rx="8"/>
+<text class="t" x="845" y="450" text-anchor="middle">本次实验 KG（工作区 · 可变）</text>
+<text class="ts" x="756" y="472">输入 + Meta 整合的关联图</text>
+<text class="ts" x="756" y="490">差异蛋白 × 关联 × 证据级</text>
+<text class="ts" x="756" y="508">deep-search 裁决回写于此</text>
+<text class="ts" x="756" y="530" fill="#7a766c">公共知识引用 · 实验判断独立</text></g>
+<line x1="734" y1="489" x2="740" y2="489" stroke="#534ab7" stroke-width="1.6" marker-end="url(#arrp)"/>
+</g>
+
+<!-- ====== EXPERIMENT ARCHIVE ====== -->
+<line x1="845" y1="548" x2="845" y2="576" stroke="#534ab7" stroke-width="1.6" marker-end="url(#arrp)"/>
+<text class="ts" x="850" y="568" fill="#534ab7">验证完成后冻结</text>
+<g class="teal"><rect x="50" y="578" width="910" height="78" rx="10"/>
+<text class="h" x="66" y="600">实验数据库 · 冻结归档层（与通用知识库逻辑隔离）</text>
+<text class="ts" x="66" y="620">统一保存 experiment_id + snapshot_version：最终 KG、证据状态历史、通用 KG 版本、分析参数、校验值、报告引用</text>
+<text class="ts" x="66" y="640">FINAL 快照只读；新证据/重分析创建新版本而不覆盖旧版；服务报告交付、审计复现和跨实验比较</text></g>
+
+<!-- persistence arrows -->
+<line x1="411" y1="336" x2="411" y2="394" stroke="#a8a49a" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#arr)"/>
+<text class="ts" x="416" y="352" fill="#a8a49a">Meta+证据 ↓</text>
+<line x1="717" y1="336" x2="717" y2="394" stroke="#a8a49a" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#arr)"/>
+<text class="ts" x="722" y="352" fill="#a8a49a">本次 KG ↓</text>
+</svg>

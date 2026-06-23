@@ -1,0 +1,74 @@
+<svg viewBox="0 0 680 540" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="t2 d2">
+<title id="t2">PTAgent 数据链路架构</title>
+<desc id="d2">质谱原始文件经 ingest 成 DataObject，execute_dag 跑 Casanovo 产 mztab，materializer 解包进 Neo4j 关系图谱；图谱与 MCP_IO/RAG 增强通路一起供下游解释与报告 Agent 消费。</desc>
+<style>
+text{font-family:'Helvetica Neue',Arial,sans-serif}
+.t{font-size:14px;font-weight:500;fill:#1c1c1a}
+.ts{font-size:11px;fill:#5f5f59}
+.c-gray&gt;rect{fill:#ecebe6;stroke:#a8a49a;stroke-width:1.5}
+.c-blue&gt;rect{fill:#e6f1fb;stroke:#3b82c4;stroke-width:1.5}
+.c-purple&gt;rect{fill:#efe9fb;stroke:#7c5cc4;stroke-width:1.5}
+.c-teal&gt;rect{fill:#e2f3ef;stroke:#2fa58c;stroke-width:1.5}
+.c-green&gt;rect{fill:#e7f3e8;stroke:#4a9d5b;stroke-width:1.5}
+</style>
+<defs>
+<marker id="ar2" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#9aa0a6"/></marker>
+</defs>
+<rect x="0" y="0" width="680" height="540" fill="#ffffff"/>
+
+<g class="c-gray"><rect x="26" y="12" width="13" height="13" rx="3"/></g>
+<text class="ts" x="44" y="22">数据源/存储</text>
+<g class="c-blue"><rect x="165" y="12" width="13" height="13" rx="3"/></g>
+<text class="ts" x="183" y="22">鉴定通路</text>
+<g class="c-purple"><rect x="300" y="12" width="13" height="13" rx="3"/></g>
+<text class="ts" x="318" y="22">图谱 Neo4j</text>
+<g class="c-teal"><rect x="430" y="12" width="13" height="13" rx="3"/></g>
+<text class="ts" x="448" y="22">增强通路</text>
+<g class="c-green"><rect x="560" y="12" width="13" height="13" rx="3"/></g>
+<text class="ts" x="578" y="22">下游 Agent</text>
+
+<g class="c-gray"><rect x="40" y="44" width="290" height="50" rx="9"/>
+<text class="t" x="185" y="65" text-anchor="middle">质谱仪 → 原始文件</text>
+<text class="ts" x="185" y="82" text-anchor="middle">.raw · .mgf · .mzML</text></g>
+<line x1="185" y1="94" x2="185" y2="106" stroke="#9aa0a6" stroke-width="2" marker-end="url(#ar2)"/>
+
+<g class="c-gray"><rect x="40" y="108" width="290" height="50" rx="9"/>
+<text class="t" x="185" y="129" text-anchor="middle">ingest → DataObject + Run</text>
+<text class="ts" x="185" y="146" text-anchor="middle">SQLite 数据平面</text></g>
+<line x1="185" y1="158" x2="185" y2="170" stroke="#9aa0a6" stroke-width="2" marker-end="url(#ar2)"/>
+
+<g class="c-blue"><rect x="40" y="172" width="290" height="50" rx="9"/>
+<text class="t" x="185" y="193" text-anchor="middle">execute_dag → Casanovo</text>
+<text class="ts" x="185" y="210" text-anchor="middle">FILE_PIPELINE · 产 .mztab</text></g>
+<line x1="185" y1="222" x2="185" y2="234" stroke="#9aa0a6" stroke-width="2" marker-end="url(#ar2)"/>
+
+<g class="c-blue"><rect x="40" y="236" width="290" height="50" rx="9"/>
+<text class="t" x="185" y="257" text-anchor="middle">materializer</text>
+<text class="ts" x="185" y="274" text-anchor="middle">loader → build_rows(join) → merge_trunk</text></g>
+<line x1="185" y1="286" x2="185" y2="298" stroke="#9aa0a6" stroke-width="2" marker-end="url(#ar2)"/>
+
+<g class="c-purple"><rect x="40" y="300" width="290" height="62" rx="9"/>
+<text class="t" x="185" y="320" text-anchor="middle">关系图谱 (Neo4j)</text>
+<text class="ts" x="185" y="337" text-anchor="middle">Sample→Spectrum→PSM→Peptide</text>
+<text class="ts" x="185" y="353" text-anchor="middle">(Protein / Group 仅 DB 搜索)</text></g>
+
+<g class="c-teal"><rect x="392" y="172" width="248" height="74" rx="9"/>
+<text class="t" x="516" y="196" text-anchor="middle">增强通路 (MCP_IO / RAG)</text>
+<text class="ts" x="516" y="215" text-anchor="middle">MCP broker · UniProt · KEGG</text>
+<text class="ts" x="516" y="231" text-anchor="middle">DeepXiv · 本地 RAG 知识库</text></g>
+
+<text class="ts" x="120" y="392" text-anchor="middle">查询图谱 (Cypher)</text>
+<text class="ts" x="470" y="300" text-anchor="middle">注释 / 证据</text>
+
+<line x1="185" y1="362" x2="185" y2="424" stroke="#9aa0a6" stroke-width="2" marker-end="url(#ar2)"/>
+<path d="M330 345 L455 345 L455 424" fill="none" stroke="#9aa0a6" stroke-width="2" marker-end="url(#ar2)"/>
+<line x1="516" y1="246" x2="516" y2="424" stroke="#9aa0a6" stroke-width="2" marker-end="url(#ar2)"/>
+
+<g class="c-green"><rect x="40" y="426" width="290" height="56" rx="9"/>
+<text class="t" x="185" y="449" text-anchor="middle">报告与合规审计 Agent</text>
+<text class="ts" x="185" y="467" text-anchor="middle">指标即查询 · 溯源审计</text></g>
+
+<g class="c-green"><rect x="392" y="426" width="248" height="56" rx="9"/>
+<text class="t" x="516" y="449" text-anchor="middle">解释与注释 Agent</text>
+<text class="ts" x="516" y="467" text-anchor="middle">查图谱 + 挂注释/RAG</text></g>
+</svg>

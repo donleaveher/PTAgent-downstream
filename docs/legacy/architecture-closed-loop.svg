@@ -1,0 +1,72 @@
+<svg viewBox="0 0 720 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="ta da">
+<title id="ta">闭环全流程</title>
+<desc id="da">谱图经 de novo 得肽段、查库得蛋白构成关系图谱，gds.knn 找序列相似近邻，对相似序列构建假说，再用在线 deep-search 找证据，最后生成报告交付，形成谱图进报告出的闭环；知识全程在线不入图。</desc>
+<style>
+text{font-family:'Helvetica Neue',Arial,sans-serif}
+.t{font-size:14px;font-weight:500;fill:#1c1c1a}
+.ts{font-size:11px;fill:#5f5f59}
+.c-gray&gt;rect{fill:#ecebe6;stroke:#a8a49a;stroke-width:1.5}
+.c-blue&gt;rect{fill:#e6f1fb;stroke:#3b82c4;stroke-width:1.5}
+.c-purple&gt;rect{fill:#efe9fb;stroke:#7c5cc4;stroke-width:1.5}
+.c-teal&gt;rect{fill:#e2f3ef;stroke:#2fa58c;stroke-width:1.5}
+.c-amber&gt;rect{fill:#fbf0dd;stroke:#c79023;stroke-width:1.5}
+.c-green&gt;rect{fill:#e7f3e8;stroke:#4a9d5b;stroke-width:1.5}
+</style>
+<defs>
+<marker id="ara" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#9aa0a6"/></marker>
+</defs>
+<rect x="0" y="0" width="720" height="360" fill="#ffffff"/>
+
+<text class="t" x="40" y="26">闭环全流程：谱图 → 肽 → 蛋白 → KNN 相似 → 假说 → deep-search → 报告</text>
+
+<text class="ts" x="190" y="46" text-anchor="middle">Casanovo</text>
+<text class="ts" x="360" y="46" text-anchor="middle">肽序列</text>
+<text class="ts" x="527" y="46" text-anchor="middle">肽→蛋白</text>
+
+<g class="c-gray"><rect x="40" y="50" width="130" height="56" rx="10"/>
+<text class="t" x="105" y="74" text-anchor="middle">谱图</text>
+<text class="ts" x="105" y="92" text-anchor="middle">输入·生物人员提供</text></g>
+<g class="c-blue"><rect x="210" y="50" width="130" height="56" rx="10"/>
+<text class="t" x="275" y="74" text-anchor="middle">de novo 肽段</text>
+<text class="ts" x="275" y="92" text-anchor="middle">Casanovo 分析</text></g>
+<g class="c-blue"><rect x="380" y="50" width="130" height="56" rx="10"/>
+<text class="t" x="445" y="74" text-anchor="middle">查库 → 蛋白</text>
+<text class="ts" x="445" y="92" text-anchor="middle">蛋白归属</text></g>
+<g class="c-purple"><rect x="545" y="50" width="140" height="56" rx="10"/>
+<text class="t" x="615" y="74" text-anchor="middle">关系图谱</text>
+<text class="ts" x="615" y="92" text-anchor="middle">Neo4j · 肽-蛋白</text></g>
+
+<line x1="170" y1="78" x2="208" y2="78" stroke="#9aa0a6" stroke-width="2" marker-end="url(#ara)"/>
+<line x1="340" y1="78" x2="378" y2="78" stroke="#9aa0a6" stroke-width="2" marker-end="url(#ara)"/>
+<line x1="510" y1="78" x2="543" y2="78" stroke="#9aa0a6" stroke-width="2" marker-end="url(#ara)"/>
+
+<line x1="615" y1="106" x2="615" y2="248" stroke="#9aa0a6" stroke-width="2" marker-end="url(#ara)"/>
+<text class="ts" x="623" y="182">gds.knn</text>
+
+<text class="ts" x="115" y="172">闭环</text>
+<text class="ts" x="115" y="188">交付报告</text>
+<text class="ts" x="400" y="182" text-anchor="middle">图谱 = 关系图谱（实测） · 知识全程在线、不入图</text>
+
+<text class="ts" x="527" y="242" text-anchor="middle">相似序列</text>
+<text class="ts" x="360" y="242" text-anchor="middle">去验证</text>
+<text class="ts" x="190" y="242" text-anchor="middle">证据综合</text>
+
+<g class="c-purple"><rect x="545" y="250" width="140" height="56" rx="10"/>
+<text class="t" x="615" y="274" text-anchor="middle">KNN 相似</text>
+<text class="ts" x="615" y="292" text-anchor="middle">序列相似近邻</text></g>
+<g class="c-teal"><rect x="380" y="250" width="130" height="56" rx="10"/>
+<text class="t" x="445" y="274" text-anchor="middle">构建假说</text>
+<text class="ts" x="445" y="292" text-anchor="middle">相似序列/蛋白</text></g>
+<g class="c-amber"><rect x="210" y="250" width="130" height="56" rx="10"/>
+<text class="t" x="275" y="274" text-anchor="middle">deep-search</text>
+<text class="ts" x="275" y="292" text-anchor="middle">在线找证据·不入库</text></g>
+<g class="c-green"><rect x="40" y="250" width="130" height="56" rx="10"/>
+<text class="t" x="105" y="274" text-anchor="middle">Report</text>
+<text class="ts" x="105" y="292" text-anchor="middle">输出·交付</text></g>
+
+<line x1="543" y1="278" x2="512" y2="278" stroke="#9aa0a6" stroke-width="2" marker-end="url(#ara)"/>
+<line x1="378" y1="278" x2="342" y2="278" stroke="#9aa0a6" stroke-width="2" marker-end="url(#ara)"/>
+<line x1="208" y1="278" x2="172" y2="278" stroke="#9aa0a6" stroke-width="2" marker-end="url(#ara)"/>
+
+<line x1="105" y1="248" x2="105" y2="108" stroke="#9aa0a6" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#ara)"/>
+</svg>

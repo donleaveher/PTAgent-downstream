@@ -156,8 +156,8 @@ def register_scheduler_factory(factory: Any) -> None:
 def _get_compiler(session_id: str) -> Any:
     """【占位】后续替换为: return _compiler_factory(session_id)"""
     from application.dag_engine.compiler import DAGCompiler
-    from pkg.data_plane import get_store
-    store = get_store()
+    from pkg.data_plane import get_data_plane_store
+    store = get_data_plane_store()
     return DAGCompiler(store=store, session_id=session_id)
 
 

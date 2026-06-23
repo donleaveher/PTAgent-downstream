@@ -7,8 +7,12 @@ from typing import Optional
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from .database_settings import DatabaseSettings
+from .annotation_settings import AnnotationSettings
+from .ctd_settings import CtdSettings
+from .database_settings import DatabaseSettings, ExperimentDatabaseSettings
+from .graph_settings import GraphSettings
 from .mcp_settings import MCPSettings
+from .structure_settings import StructureSettings
 
 
 class AppEnv(str, Enum):
@@ -46,6 +50,26 @@ class AppSettings(BaseSettings):
     database: DatabaseSettings = Field(
         default_factory=DatabaseSettings,
         description="统一 SQLite（Agent、Team、LLM 覆盖与模型扩展）；默认 data/ptagent.db",
+    )
+    experiment_database: ExperimentDatabaseSettings = Field(
+        default_factory=ExperimentDatabaseSettings,
+        description="MySQL 实验事实库；环境变量前缀 PTAGENT_EXPERIMENT_DATABASE__",
+    )
+    annotation: AnnotationSettings = Field(
+        default_factory=AnnotationSettings,
+        description="下游蛋白基础注释；环境变量前缀 PTAGENT_ANNOTATION__",
+    )
+    ctd: CtdSettings = Field(
+        default_factory=CtdSettings,
+        description="CTD 基因-疾病直接证据；环境变量前缀 PTAGENT_CTD__",
+    )
+    structure: StructureSettings = Field(
+        default_factory=StructureSettings,
+        description="Foldseek 结构近邻检索；环境变量前缀 PTAGENT_STRUCTURE__",
+    )
+    graph: GraphSettings = Field(
+        default_factory=GraphSettings,
+        description="Neo4j 关系图谱连接；环境变量前缀 PTAGENT_GRAPH__",
     )
 
     # ===== LLM 相关配置（统一在此维护 URL 和鉴权） =====
@@ -106,4 +130,3 @@ def get_settings() -> AppSettings:
     """获取全局唯一的 AppSettings 实例。"""
 
     return AppSettings()  # type: ignore[arg-type]
-

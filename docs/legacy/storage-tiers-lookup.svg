@@ -1,0 +1,49 @@
+<svg viewBox="0 0 720 500" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="t9 d9">
+<title id="t9">谱图峰的三层存储与取峰回指链</title>
+<desc id="d9">峰数据存在磁盘文件里（重）；SQLite 数据平面只存文件元数据和 storage_path 路径（轻）；Neo4j 关系图谱的 Spectrum 节点只存 data_object_id 指针和少量轻属性、不存峰。取峰时 Neo4j 的 data_object_id 查 SQLite 拿 storage_path，再打开文件解析读出峰。</desc>
+<style>
+text{font-family:'Helvetica Neue',Arial,sans-serif}
+.t{font-size:14px;font-weight:500;fill:#1c1c1a}
+.ts{font-size:11px;fill:#5f5f59}
+.c-purple&gt;rect{fill:#efe9fb;stroke:#7c5cc4;stroke-width:1.5}
+.c-teal&gt;rect{fill:#e2f3ef;stroke:#2fa58c;stroke-width:1.5}
+.c-amber&gt;rect{fill:#fbf0dd;stroke:#c79023;stroke-width:1.5}
+</style>
+<defs>
+<marker id="ar9" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#9aa0a6"/></marker>
+</defs>
+<rect x="0" y="0" width="720" height="500" fill="#ffffff"/>
+
+<text class="t" x="40" y="28">谱图峰的三层存储 + 取峰回指链（C2：峰不入图）</text>
+
+<g class="c-purple"><rect x="40" y="50" width="470" height="92" rx="10"/>
+<text class="t" x="58" y="76">Spectrum 节点（Neo4j 关系图谱）</text>
+<text class="ts" x="58" y="100">spectrum_id · precursor_mz · charge · retention_time · scan_index</text>
+<text class="ts" x="58" y="124">data_object_id = dobj_mgf01   ← 指针（图里不存峰）</text></g>
+<text class="ts" x="528" y="90">Neo4j 关系图谱</text>
+<text class="ts" x="528" y="106">轻：结构 + 指针</text>
+
+<line x1="275" y1="142" x2="275" y2="186" stroke="#9aa0a6" stroke-width="2" marker-end="url(#ar9)"/>
+<text class="ts" x="287" y="168">① 用 data_object_id 查</text>
+
+<g class="c-teal"><rect x="40" y="188" width="470" height="92" rx="10"/>
+<text class="t" x="58" y="214">dp_data_object 一行（SQLite 数据平面）</text>
+<text class="ts" x="58" y="238">object_id = dobj_mgf01 · data_type = MGF · file_size · file_hash</text>
+<text class="ts" x="58" y="262">storage_path = /data/…/sample.mgf   ← 文件路径</text></g>
+<text class="ts" x="528" y="228">SQLite 数据平面</text>
+<text class="ts" x="528" y="244">轻：登记 + 路径</text>
+
+<line x1="275" y1="280" x2="275" y2="324" stroke="#9aa0a6" stroke-width="2" marker-end="url(#ar9)"/>
+<text class="ts" x="287" y="306">② 用 storage_path 打开</text>
+
+<g class="c-amber"><rect x="40" y="326" width="470" height="118" rx="10"/>
+<text class="t" x="58" y="352">sample.mgf（磁盘文件）</text>
+<text class="ts" x="58" y="375">BEGIN IONS · PEPMASS=598.26 · CHARGE=3+</text>
+<text class="ts" x="58" y="397">598.2  1450.0    712.4  3300.0    …（几百个 m/z + 强度峰）</text>
+<text class="ts" x="58" y="419">END IONS                          ↑ 真正的峰在这里（重）</text>
+<text class="ts" x="58" y="437">③ 取峰时：parse_mgf_spectra 读出 m/z + 强度</text></g>
+<text class="ts" x="528" y="378">磁盘文件</text>
+<text class="ts" x="528" y="394">重：真正的峰</text>
+
+<text class="ts" x="40" y="476">回指链：Neo4j data_object_id → SQLite storage_path → 打开文件读峰。SQLite 不存峰，峰始终在文件里。</text>
+</svg>

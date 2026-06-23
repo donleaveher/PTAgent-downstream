@@ -1,0 +1,105 @@
+<svg width="680" height="956" viewBox="0 0 680 956" role="img" xmlns="http://www.w3.org/2000/svg">
+<style>
+svg { --t3: #6B6B66; }
+text { font-family: "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif; fill: #141413; }
+.t { font-size: 14px; font-weight: 500; }
+.ts { font-size: 12px; }
+rect { stroke-width: 1; }
+rect.c-gray, .c-gray rect { fill: #ECEAE1; stroke: #C4C2B8; }
+.c-gray text { fill: #141413; }
+rect.c-blue, .c-blue rect { fill: #E6F1FB; stroke: #9DC3EC; }
+.c-blue text { fill: #08355F; }
+rect.c-teal, .c-teal rect { fill: #E1F5EE; stroke: #7FD3B5; }
+.c-teal text { fill: #06453A; }
+@media (prefers-color-scheme: dark) {
+  text { fill: #ECECE8; }
+  .c-gray text, .c-blue text, .c-teal text { fill: #141413; }
+}
+</style>
+<title>PTAgent 闭环 10 步整合（每步内部细节，从上往下）</title>
+<desc>从输入、Casanovo、压扁、主干、查库归属、注释富集、混合检索、假说、在线查到报告，每行一步展开内部小流程，蓝处理、teal进图、灰不进图。</desc>
+<defs><marker id="m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--t3)"/></marker></defs>
+
+<rect x="30" y="16" width="12" height="12" rx="3" class="c-blue"/><text x="48" y="22" dominant-baseline="central" class="ts">处理</text>
+<rect x="100" y="16" width="12" height="12" rx="3" class="c-teal"/><text x="118" y="22" dominant-baseline="central" class="ts">进图</text>
+<rect x="170" y="16" width="12" height="12" rx="3" class="c-gray"/><text x="188" y="22" dominant-baseline="central" class="ts">不进图（文件/在线）</text>
+<text x="470" y="22" dominant-baseline="central" class="ts">左列 = 步骤 ①→⑩</text>
+
+<g class="c-gray"><rect x="30" y="75" width="84" height="50" rx="8"/><text x="72" y="92" text-anchor="middle" dominant-baseline="central" class="t">①</text><text x="72" y="110" text-anchor="middle" dominant-baseline="central" class="ts">输入</text></g>
+<g class="c-gray"><rect x="124" y="75" width="160" height="50" rx="8"/><text x="204" y="92" text-anchor="middle" dominant-baseline="central" class="t">.mgf 文件</text><text x="204" y="110" text-anchor="middle" dominant-baseline="central" class="ts">谱图峰</text></g>
+<path d="M284,100 L304,100" fill="none" stroke="var(--t3)" stroke-width="1.3" marker-end="url(#m)"/>
+<g class="c-blue"><rect x="306" y="75" width="160" height="50" rx="8"/><text x="386" y="92" text-anchor="middle" dominant-baseline="central" class="t">ingest</text><text x="386" y="110" text-anchor="middle" dominant-baseline="central" class="ts">落盘 + 登记</text></g>
+<path d="M466,100 L486,100" fill="none" stroke="var(--t3)" stroke-width="1.3" marker-end="url(#m)"/>
+<g class="c-gray"><rect x="488" y="75" width="160" height="50" rx="8"/><text x="568" y="92" text-anchor="middle" dominant-baseline="central" class="t">DataObject</text><text x="568" y="110" text-anchor="middle" dominant-baseline="central" class="ts">SQLite 指针</text></g>
+
+<g class="c-gray"><rect x="30" y="163" width="84" height="50" rx="8"/><text x="72" y="180" text-anchor="middle" dominant-baseline="central" class="t">②</text><text x="72" y="198" text-anchor="middle" dominant-baseline="central" class="ts">Casanovo</text></g>
+<g class="c-gray"><rect x="124" y="163" width="160" height="50" rx="8"/><text x="204" y="180" text-anchor="middle" dominant-baseline="central" class="t">MS2 谱图 ×N</text><text x="204" y="198" text-anchor="middle" dominant-baseline="central" class="ts">碎裂谱</text></g>
+<path d="M284,188 L304,188" fill="none" stroke="var(--t3)" stroke-width="1.3" marker-end="url(#m)"/>
+<g class="c-blue"><rect x="306" y="163" width="160" height="50" rx="8"/><text x="386" y="180" text-anchor="middle" dominant-baseline="central" class="t">Casanovo</text><text x="386" y="198" text-anchor="middle" dominant-baseline="central" class="ts">逐谱推理</text></g>
+<path d="M466,188 L486,188" fill="none" stroke="var(--t3)" stroke-width="1.3" marker-end="url(#m)"/>
+<g class="c-gray"><rect x="488" y="163" width="160" height="50" rx="8"/><text x="568" y="180" text-anchor="middle" dominant-baseline="central" class="t">mzTab</text><text x="568" y="198" text-anchor="middle" dominant-baseline="central" class="ts">seq + aa_scores</text></g>
+
+<g class="c-gray"><rect x="30" y="251" width="84" height="50" rx="8"/><text x="72" y="268" text-anchor="middle" dominant-baseline="central" class="t">③</text><text x="72" y="286" text-anchor="middle" dominant-baseline="central" class="ts">压扁</text></g>
+<g class="c-gray"><rect x="124" y="251" width="160" height="50" rx="8"/><text x="204" y="268" text-anchor="middle" dominant-baseline="central" class="t">MGF + mzTab</text><text x="204" y="286" text-anchor="middle" dominant-baseline="central" class="ts">两文件</text></g>
+<path d="M284,276 L304,276" fill="none" stroke="var(--t3)" stroke-width="1.3" marker-end="url(#m)"/>
+<g class="c-blue"><rect x="306" y="251" width="160" height="50" rx="8"/><text x="386" y="268" text-anchor="middle" dominant-baseline="central" class="t">按 index join</text><text x="386" y="286" text-anchor="middle" dominant-baseline="central" class="ts">loaders</text></g>
+<path d="M466,276 L486,276" fill="none" stroke="var(--t3)" stroke-width="1.3" marker-end="url(#m)"/>
+<g class="c-gray"><rect x="488" y="251" width="160" height="50" rx="8"/><text x="568" y="268" text-anchor="middle" dominant-baseline="central" class="t">TrunkRow</text><text x="568" y="286" text-anchor="middle" dominant-baseline="central" class="ts">扁平行</text></g>
+
+<g class="c-gray"><rect x="30" y="339" width="84" height="50" rx="8"/><text x="72" y="356" text-anchor="middle" dominant-baseline="central" class="t">④</text><text x="72" y="374" text-anchor="middle" dominant-baseline="central" class="ts">主干</text></g>
+<g class="c-gray"><rect x="124" y="339" width="114" height="50" rx="8"/><text x="181" y="364" text-anchor="middle" dominant-baseline="central" class="t">TrunkRow</text></g>
+<path d="M238,364 L258,364" fill="none" stroke="var(--t3)" stroke-width="1.3" marker-end="url(#m)"/>
+<g class="c-blue"><rect x="260" y="339" width="114" height="50" rx="8"/><text x="317" y="356" text-anchor="middle" dominant-baseline="central" class="t">MERGE</text><text x="317" y="374" text-anchor="middle" dominant-baseline="central" class="ts">去重·幂等</text></g>
+<path d="M374,364 L394,364" fill="none" stroke="var(--t3)" stroke-width="1.3" marker-end="url(#m)"/>
+<g class="c-teal"><rect x="396" y="339" width="114" height="50" rx="8"/><text x="453" y="356" text-anchor="middle" dominant-baseline="central" class="t">主干节点+边</text><text x="453" y="374" text-anchor="middle" dominant-baseline="central" class="ts">S·Sp·PSM·Pep</text></g>
+<path d="M510,364 L530,364" fill="none" stroke="var(--t3)" stroke-width="1.3" marker-end="url(#m)"/>
+<g class="c-gray"><rect x="532" y="339" width="116" height="50" rx="8"/><text x="590" y="356" text-anchor="middle" dominant-baseline="central" class="t">盖章</text><text x="590" y="374" text-anchor="middle" dominant-baseline="central" class="ts">materialized</text></g>
+
+<g class="c-gray"><rect x="30" y="427" width="84" height="50" rx="8"/><text x="72" y="444" text-anchor="middle" dominant-baseline="central" class="t">⑤</text><text x="72" y="462" text-anchor="middle" dominant-baseline="central" class="ts">查库归属</text></g>
+<g class="c-gray"><rect x="124" y="427" width="114" height="50" rx="8"/><text x="181" y="452" text-anchor="middle" dominant-baseline="central" class="t">未查库肽</text></g>
+<path d="M238,452 L258,452" fill="none" stroke="var(--t3)" stroke-width="1.3" marker-end="url(#m)"/>
+<g class="c-blue"><rect x="260" y="427" width="114" height="50" rx="8"/><text x="317" y="444" text-anchor="middle" dominant-baseline="central" class="t">FASTA 查</text><text x="317" y="462" text-anchor="middle" dominant-baseline="central" class="ts">I/L·子串</text></g>
+<path d="M374,452 L394,452" fill="none" stroke="var(--t3)" stroke-width="1.3" marker-end="url(#m)"/>
+<g class="c-teal"><rect x="396" y="427" width="114" height="50" rx="8"/><text x="453" y="444" text-anchor="middle" dominant-baseline="central" class="t">命中边/novel</text><text x="453" y="462" text-anchor="middle" dominant-baseline="central" class="ts">db_hit</text></g>
+<path d="M510,452 L530,452" fill="none" stroke="var(--t3)" stroke-width="1.3" marker-end="url(#m)"/>
+<g class="c-teal"><rect x="532" y="427" width="116" height="50" rx="8"/><text x="590" y="444" text-anchor="middle" dominant-baseline="central" class="t">推断</text><text x="590" y="462" text-anchor="middle" dominant-baseline="central" class="ts">分组·razor</text></g>
+
+<g class="c-gray"><rect x="30" y="515" width="84" height="50" rx="8"/><text x="72" y="532" text-anchor="middle" dominant-baseline="central" class="t">⑥</text><text x="72" y="550" text-anchor="middle" dominant-baseline="central" class="ts">注释富集</text></g>
+<g class="c-gray"><rect x="124" y="515" width="160" height="50" rx="8"/><text x="204" y="540" text-anchor="middle" dominant-baseline="central" class="t">未富集 accession</text></g>
+<path d="M284,540 L304,540" fill="none" stroke="var(--t3)" stroke-width="1.3" marker-end="url(#m)"/>
+<g class="c-blue"><rect x="306" y="515" width="160" height="50" rx="8"/><text x="386" y="532" text-anchor="middle" dominant-baseline="central" class="t">fetch</text><text x="386" y="550" text-anchor="middle" dominant-baseline="central" class="ts">TSV 缓存·批量</text></g>
+<path d="M466,540 L486,540" fill="none" stroke="var(--t3)" stroke-width="1.3" marker-end="url(#m)"/>
+<g class="c-teal"><rect x="488" y="515" width="160" height="50" rx="8"/><text x="568" y="532" text-anchor="middle" dominant-baseline="central" class="t">Protein 属性</text><text x="568" y="550" text-anchor="middle" dominant-baseline="central" class="ts">go·ec·interpro+版本</text></g>
+
+<g class="c-gray"><rect x="30" y="603" width="84" height="50" rx="8"/><text x="72" y="620" text-anchor="middle" dominant-baseline="central" class="t">⑦</text><text x="72" y="638" text-anchor="middle" dominant-baseline="central" class="ts">混合检索</text></g>
+<g class="c-gray"><rect x="124" y="603" width="114" height="50" rx="8"/><text x="181" y="620" text-anchor="middle" dominant-baseline="central" class="t">4 路召回</text><text x="181" y="638" text-anchor="middle" dominant-baseline="central" class="ts">稠+稀+属+网</text></g>
+<path d="M238,628 L258,628" fill="none" stroke="var(--t3)" stroke-width="1.3" marker-end="url(#m)"/>
+<g class="c-blue"><rect x="260" y="603" width="114" height="50" rx="8"/><text x="317" y="620" text-anchor="middle" dominant-baseline="central" class="t">RRF 融合</text><text x="317" y="638" text-anchor="middle" dominant-baseline="central" class="ts">候选 N</text></g>
+<path d="M374,628 L394,628" fill="none" stroke="var(--t3)" stroke-width="1.3" marker-end="url(#m)"/>
+<g class="c-blue"><rect x="396" y="603" width="114" height="50" rx="8"/><text x="453" y="628" text-anchor="middle" dominant-baseline="central" class="t">rerank 精排</text></g>
+<path d="M510,628 L530,628" fill="none" stroke="var(--t3)" stroke-width="1.3" marker-end="url(#m)"/>
+<g class="c-teal"><rect x="532" y="603" width="116" height="50" rx="8"/><text x="590" y="620" text-anchor="middle" dominant-baseline="central" class="t">SIMILAR_TO</text><text x="590" y="638" text-anchor="middle" dominant-baseline="central" class="ts">{score}</text></g>
+
+<g class="c-gray"><rect x="30" y="691" width="84" height="50" rx="8"/><text x="72" y="708" text-anchor="middle" dominant-baseline="central" class="t">⑧</text><text x="72" y="726" text-anchor="middle" dominant-baseline="central" class="ts">假说</text></g>
+<g class="c-blue"><rect x="124" y="691" width="114" height="50" rx="8"/><text x="181" y="708" text-anchor="middle" dominant-baseline="central" class="t">邻居</text><text x="181" y="726" text-anchor="middle" dominant-baseline="central" class="ts">带 score</text></g>
+<path d="M238,716 L258,716" fill="none" stroke="var(--t3)" stroke-width="1.3" marker-end="url(#m)"/>
+<g class="c-blue"><rect x="260" y="691" width="114" height="50" rx="8"/><text x="317" y="708" text-anchor="middle" dominant-baseline="central" class="t">母蛋白属性</text><text x="317" y="726" text-anchor="middle" dominant-baseline="central" class="ts">by accession</text></g>
+<path d="M374,716 L394,716" fill="none" stroke="var(--t3)" stroke-width="1.3" marker-end="url(#m)"/>
+<g class="c-blue"><rect x="396" y="691" width="114" height="50" rx="8"/><text x="453" y="708" text-anchor="middle" dominant-baseline="central" class="t">取共识</text><text x="453" y="726" text-anchor="middle" dominant-baseline="central" class="ts">sim×cons</text></g>
+<path d="M510,716 L530,716" fill="none" stroke="var(--t3)" stroke-width="1.3" marker-end="url(#m)"/>
+<g class="c-gray"><rect x="532" y="691" width="116" height="50" rx="8"/><text x="590" y="708" text-anchor="middle" dominant-baseline="central" class="t">Hypothesis</text><text x="590" y="726" text-anchor="middle" dominant-baseline="central" class="ts">不入图</text></g>
+
+<g class="c-gray"><rect x="30" y="779" width="84" height="50" rx="8"/><text x="72" y="796" text-anchor="middle" dominant-baseline="central" class="t">⑨</text><text x="72" y="814" text-anchor="middle" dominant-baseline="central" class="ts">在线查</text></g>
+<g class="c-gray"><rect x="124" y="779" width="160" height="50" rx="8"/><text x="204" y="804" text-anchor="middle" dominant-baseline="central" class="t">假说</text></g>
+<path d="M284,804 L304,804" fill="none" stroke="var(--t3)" stroke-width="1.3" marker-end="url(#m)"/>
+<g class="c-blue"><rect x="306" y="779" width="160" height="50" rx="8"/><text x="386" y="796" text-anchor="middle" dominant-baseline="central" class="t">搜·读·抽</text><text x="386" y="814" text-anchor="middle" dominant-baseline="central" class="ts">在线 · 循环</text></g>
+<path d="M466,804 L486,804" fill="none" stroke="var(--t3)" stroke-width="1.3" marker-end="url(#m)"/>
+<g class="c-gray"><rect x="488" y="779" width="160" height="50" rx="8"/><text x="568" y="796" text-anchor="middle" dominant-baseline="central" class="t">证据</text><text x="568" y="814" text-anchor="middle" dominant-baseline="central" class="ts">不入库</text></g>
+
+<g class="c-gray"><rect x="30" y="867" width="84" height="50" rx="8"/><text x="72" y="884" text-anchor="middle" dominant-baseline="central" class="t">⑩</text><text x="72" y="902" text-anchor="middle" dominant-baseline="central" class="ts">报告</text></g>
+<g class="c-gray"><rect x="124" y="867" width="160" height="50" rx="8"/><text x="204" y="884" text-anchor="middle" dominant-baseline="central" class="t">假说+证据</text><text x="204" y="902" text-anchor="middle" dominant-baseline="central" class="ts">+ 图统计</text></g>
+<path d="M284,892 L304,892" fill="none" stroke="var(--t3)" stroke-width="1.3" marker-end="url(#m)"/>
+<g class="c-blue"><rect x="306" y="867" width="160" height="50" rx="8"/><text x="386" y="884" text-anchor="middle" dominant-baseline="central" class="t">汇总</text><text x="386" y="902" text-anchor="middle" dominant-baseline="central" class="ts">Markdown</text></g>
+<path d="M466,892 L486,892" fill="none" stroke="var(--t3)" stroke-width="1.3" marker-end="url(#m)"/>
+<g class="c-gray"><rect x="488" y="867" width="160" height="50" rx="8"/><text x="568" y="884" text-anchor="middle" dominant-baseline="central" class="t">交付报告</text><text x="568" y="902" text-anchor="middle" dominant-baseline="central" class="ts">闭环</text></g>
+</svg>

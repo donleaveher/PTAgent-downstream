@@ -1,0 +1,67 @@
+<svg viewBox="0 0 680 600" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="t3 d3">
+<title id="t3">关系图谱 schema</title>
+<desc id="d3">主干 Sample-PRODUCED-Spectrum-HAS_PSM-PSM-IDENTIFIES-Peptide 对 de novo 与数据库搜索都成立；Peptide-BELONGS_TO-Protein-IN_GROUP-ProteinGroup 蛋白层只在数据库搜索范式挂载，由 GDS 连通分量推断。</desc>
+<style>
+text{font-family:'Helvetica Neue',Arial,sans-serif}
+.t{font-size:14px;font-weight:500;fill:#1c1c1a}
+.ts{font-size:11px;fill:#5f5f59}
+.c-gray&gt;rect{fill:#ecebe6;stroke:#a8a49a;stroke-width:1.5}
+.c-teal&gt;rect{fill:#e2f3ef;stroke:#2fa58c;stroke-width:1.5}
+.c-amber&gt;rect{fill:#fbf0dd;stroke:#c79023;stroke-width:1.5}
+</style>
+<defs>
+<marker id="ar3" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#9aa0a6"/></marker>
+</defs>
+<rect x="0" y="0" width="680" height="600" fill="#ffffff"/>
+
+<g class="c-teal"><rect x="176" y="8" width="13" height="13" rx="3"/></g>
+<text class="ts" x="194" y="19">主干（de novo + DB）</text>
+<g class="c-amber"><rect x="392" y="8" width="13" height="13" rx="3"/></g>
+<text class="ts" x="410" y="19">蛋白层（仅 DB 搜索）</text>
+
+<g class="c-teal"><rect x="40" y="44" width="180" height="48" rx="10"/>
+<text class="t" x="130" y="73" text-anchor="middle">Sample</text></g>
+<text class="ts" x="250" y="72">sample_id (id) · name · condition</text>
+<line x1="130" y1="94" x2="130" y2="122" stroke="#9aa0a6" stroke-width="2" marker-end="url(#ar3)"/>
+<text class="ts" x="144" y="112">:PRODUCED</text>
+
+<g class="c-teal"><rect x="40" y="124" width="180" height="48" rx="10"/>
+<text class="t" x="130" y="153" text-anchor="middle">Spectrum</text></g>
+<text class="ts" x="250" y="144">spectrum_id (id) · precursor_mz · charge</text>
+<text class="ts" x="250" y="160">retention_time · scan_index · data_object_id</text>
+<line x1="130" y1="174" x2="130" y2="202" stroke="#9aa0a6" stroke-width="2" marker-end="url(#ar3)"/>
+<text class="ts" x="144" y="192">:HAS_PSM</text>
+
+<g class="c-teal"><rect x="40" y="204" width="180" height="48" rx="10"/>
+<text class="t" x="130" y="233" text-anchor="middle">PSM</text></g>
+<text class="ts" x="250" y="224">psm_id (id) · score · q_value · aa_scores</text>
+<text class="ts" x="250" y="240">search_engine · is_decoy · run_id · data_object_id</text>
+<line x1="130" y1="254" x2="130" y2="282" stroke="#9aa0a6" stroke-width="2" marker-end="url(#ar3)"/>
+<text class="ts" x="144" y="272">:IDENTIFIES</text>
+
+<g class="c-teal"><rect x="40" y="284" width="180" height="48" rx="10"/>
+<text class="t" x="130" y="313" text-anchor="middle">Peptide</text></g>
+<text class="ts" x="250" y="304">peptidoform (id) · stripped_sequence · length</text>
+<text class="ts" x="250" y="320">is_unique ← GDS 推断</text>
+
+<line x1="240" y1="358" x2="640" y2="358" stroke="#c79023" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text class="ts" x="240" y="352">蛋白层 · 仅数据库搜索范式（de novo 到 Peptide 即止）</text>
+
+<line x1="130" y1="334" x2="130" y2="382" stroke="#9aa0a6" stroke-width="2" marker-end="url(#ar3)"/>
+<text class="ts" x="144" y="374">:BELONGS_TO {is_razor}</text>
+
+<g class="c-amber"><rect x="40" y="384" width="180" height="48" rx="10"/>
+<text class="t" x="130" y="413" text-anchor="middle">Protein</text></g>
+<text class="ts" x="250" y="404">accession (id) · description</text>
+<text class="ts" x="250" y="420">componentId ← GDS 推断</text>
+<line x1="130" y1="434" x2="130" y2="462" stroke="#9aa0a6" stroke-width="2" marker-end="url(#ar3)"/>
+<text class="ts" x="144" y="452">:IN_GROUP</text>
+
+<g class="c-amber"><rect x="40" y="464" width="180" height="48" rx="10"/>
+<text class="t" x="130" y="493" text-anchor="middle">ProteinGroup</text></g>
+<text class="ts" x="250" y="492">group_id (id)</text>
+
+<g class="c-gray"><rect x="40" y="524" width="600" height="56" rx="10"/>
+<text class="t" x="60" y="547">GDS 蛋白推断（无手写逻辑）</text>
+<text class="ts" x="60" y="567">弱连通分量 → ProteinGroup · componentId ；肽段度数 → is_unique / is_razor。de novo 不跑此层。</text></g>
+</svg>

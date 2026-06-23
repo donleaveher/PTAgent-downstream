@@ -108,6 +108,25 @@ class DataPlaneStore:
                     return None
                 return dict(row)
 
+    def update_data_object_meta(self, object_id: str, patch: dict[str, Any]) -> None:
+        """合并更新某 DataObject 的 meta_json（读出→merge→写回）；object 不存在则忽略。
+
+        供图谱 materializer 盖 ``{"materialized": true, ...}`` 之类的标记用。
+        """
+        with self._lock:
+            with self._connect() as conn:
+                row = conn.execute(
+                    "SELECT meta_json FROM dp_data_object WHERE object_id=?", (object_id,)
+                ).fetchone()
+                if not row:
+                    return
+                meta = json.loads(row["meta_json"] or "{}")
+                meta.update(patch)
+                conn.execute(
+                    "UPDATE dp_data_object SET meta_json=? WHERE object_id=?",
+                    (json.dumps(meta, ensure_ascii=False), object_id),
+                )
+
     def storage_path(self, object_id: str) -> Path | None:
         row = self.get_data_object(object_id)
         if not row:

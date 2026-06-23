@@ -1,0 +1,103 @@
+<svg viewBox="0 0 900 640" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="et ed">
+<title id="et">证据三态模型</title>
+<desc id="ed">单个鉴定蛋白 P 的证据分级与认知态跃迁。A 面：UniProt 直接注释与 CTD 直接命中给出结论级 Meta；CTD 未命中时用 AlphaFold/Foldseek 结构 KNN 找近邻，借近邻的 CTD 疾病关联得到假说级 Meta（结构类比、跨物种）。B 面：deep-search 状态机，假说遇直接证据升级为结论，遇反证证伪为伪理（留档），无证据则保持假说。</desc>
+<style>
+text{font-family:'Helvetica Neue',Arial,'PingFang SC','Hiragino Sans GB',sans-serif}
+.title{font-size:17px;font-weight:600;fill:#1c1c1a}
+.sub{font-size:11px;fill:#5f5e5a}
+.h{font-size:12.5px;font-weight:600;fill:#1c1c1a}
+.t{font-size:11.5px;font-weight:500;fill:#1c1c1a}
+.ts{font-size:9.5px;fill:#5f5e5a}
+.tag{font-size:12px;font-weight:700;fill:#1c1c1a}
+.lab{font-size:9.5px;font-weight:600;fill:#7a766c}
+.gray>rect{fill:#f1efe8;stroke:#a8a49a;stroke-width:1.4}
+.blue>rect{fill:#e6f1fb;stroke:#3b82c4;stroke-width:1.4}
+.teal>rect{fill:#e1f5ee;stroke:#1d9e75;stroke-width:1.8}
+.amber>rect{fill:#faeeda;stroke:#ba7517;stroke-width:1.8}
+.coral>rect{fill:#faece7;stroke:#d85a30;stroke-width:1.8}
+.box>rect{fill:#fbfbf9;stroke:#cfcabd;stroke-width:1.3}
+</style>
+<defs>
+<marker id="m" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#8a8f95"/></marker>
+</defs>
+<rect x="0" y="0" width="900" height="640" fill="#ffffff"/>
+
+<text class="title" x="36" y="34">证据三态模型 · 单蛋白证据分级与认知态跃迁</text>
+<text class="sub" x="36" y="54">每条附加 Meta 带：value + evidence_level（结论/假说/伪理）+ source + 推导依据（假说: 哪些结构近邻）</text>
+
+<!-- legend pills -->
+<g class="teal"><rect x="36" y="68" width="184" height="26" rx="13"/><text class="ts" x="50" y="85">结论 · 有确切证据</text></g>
+<g class="amber"><rect x="232" y="68" width="220" height="26" rx="13"/><text class="ts" x="246" y="85">假说 · 逻辑推导，待验证</text></g>
+<g class="coral"><rect x="464" y="68" width="252" height="26" rx="13"/><text class="ts" x="478" y="85">伪理 · 被证伪的假说（留档）</text></g>
+
+<!-- ===== PANEL A ===== -->
+<g class="box"><rect x="36" y="110" width="828" height="232" rx="12"/></g>
+<text class="h" x="52" y="132">A · 单蛋白证据分级（初始态）</text>
+
+<g class="gray"><rect x="52" y="190" width="150" height="56" rx="10"/>
+<text class="t" x="127" y="214" text-anchor="middle">鉴定蛋白 P</text>
+<text class="ts" x="127" y="231" text-anchor="middle">已鉴定 · 已标注</text></g>
+
+<!-- sources -->
+<g class="blue"><rect x="300" y="146" width="232" height="50" rx="9"/>
+<text class="t" x="416" y="166" text-anchor="middle">UniProt（MCP 工具）</text>
+<text class="ts" x="416" y="183" text-anchor="middle">结构域 · 组织表达 · 物种</text></g>
+<g class="blue"><rect x="300" y="206" width="232" height="50" rx="9"/>
+<text class="t" x="416" y="226" text-anchor="middle">CTD 查 蛋白-疾病</text>
+<text class="ts" x="416" y="243" text-anchor="middle">curated / marker 直接证据</text></g>
+<g class="blue"><rect x="300" y="266" width="232" height="56" rx="9"/>
+<text class="t" x="416" y="286" text-anchor="middle">未命中 → AlphaFold 结构 KNN</text>
+<text class="ts" x="416" y="303" text-anchor="middle">Foldseek 取 top-k 结构近邻（物种无关）</text>
+<text class="ts" x="416" y="316" text-anchor="middle">近邻在 CTD 有疾病关联 → 借过来</text></g>
+
+<!-- outcomes -->
+<g class="teal"><rect x="630" y="170" width="150" height="56" rx="10"/>
+<text class="tag" x="705" y="194" text-anchor="middle">结论</text>
+<text class="ts" x="705" y="212" text-anchor="middle">确切证据</text></g>
+<g class="amber"><rect x="630" y="270" width="150" height="56" rx="10"/>
+<text class="tag" x="705" y="294" text-anchor="middle">假说</text>
+<text class="ts" x="705" y="312" text-anchor="middle">结构类比 · 跨物种</text></g>
+
+<!-- P -> sources -->
+<line x1="202" y1="206" x2="298" y2="171" stroke="#8a8f95" stroke-width="1.6" marker-end="url(#m)"/>
+<line x1="202" y1="218" x2="298" y2="231" stroke="#8a8f95" stroke-width="1.6" marker-end="url(#m)"/>
+<line x1="202" y1="230" x2="298" y2="291" stroke="#8a8f95" stroke-width="1.6" marker-end="url(#m)"/>
+<!-- sources -> outcomes -->
+<line x1="532" y1="171" x2="628" y2="188" stroke="#8a8f95" stroke-width="1.6" marker-end="url(#m)"/>
+<text class="lab" x="548" y="170">直接注释</text>
+<line x1="532" y1="231" x2="628" y2="205" stroke="#8a8f95" stroke-width="1.6" marker-end="url(#m)"/>
+<text class="lab" x="548" y="226">直接命中</text>
+<line x1="532" y1="294" x2="628" y2="298" stroke="#8a8f95" stroke-width="1.6" marker-end="url(#m)"/>
+<text class="lab" x="548" y="290">借近邻关联</text>
+
+<!-- ===== PANEL B ===== -->
+<g class="box"><rect x="36" y="358" width="828" height="258" rx="12"/></g>
+<text class="h" x="52" y="380">B · deep-search 认知态跃迁（状态机）</text>
+<text class="ts" x="300" y="380">输入 = A 面产出的「假说」　·　负结果有价值：伪理留档、不丢</text>
+
+<g class="amber"><rect x="52" y="446" width="150" height="60" rx="10"/>
+<text class="tag" x="127" y="472" text-anchor="middle">假说</text>
+<text class="ts" x="127" y="490" text-anchor="middle">来自 A 面</text></g>
+
+<g class="gray"><rect x="300" y="446" width="200" height="60" rx="10"/>
+<text class="t" x="400" y="470" text-anchor="middle">deep-search 在线找证据</text>
+<text class="ts" x="400" y="488" text-anchor="middle">裁决：支持 / 无 / 反对 + 引用</text></g>
+
+<g class="teal"><rect x="620" y="396" width="200" height="46" rx="10"/>
+<text class="t" x="720" y="424" text-anchor="middle">结论（升级）</text></g>
+<g class="amber"><rect x="620" y="458" width="200" height="46" rx="10"/>
+<text class="t" x="720" y="486" text-anchor="middle">假说（保持）</text></g>
+<g class="coral"><rect x="620" y="520" width="200" height="46" rx="10"/>
+<text class="t" x="720" y="548" text-anchor="middle">伪理（留档）</text></g>
+
+<line x1="202" y1="476" x2="298" y2="476" stroke="#8a8f95" stroke-width="2" marker-end="url(#m)"/>
+<line x1="500" y1="466" x2="618" y2="424" stroke="#8a8f95" stroke-width="1.8" marker-end="url(#m)"/>
+<text class="lab" x="512" y="436">+ 直接证据</text>
+<line x1="500" y1="476" x2="618" y2="481" stroke="#8a8f95" stroke-width="1.8" marker-end="url(#m)"/>
+<text class="lab" x="512" y="468">+ 无证据</text>
+<line x1="500" y1="488" x2="618" y2="540" stroke="#8a8f95" stroke-width="1.8" marker-end="url(#m)"/>
+<text class="lab" x="512" y="528">+ 反证</text>
+
+<!-- writeback note -->
+<text class="ts" x="620" y="588">↩ 裁决回写本次实验 KG 的 evidence_level</text>
+</svg>

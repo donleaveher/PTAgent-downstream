@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>PTAgent 关系图谱 · 与 PhD 确认清单</title>
+<style>
+  :root{
+    --bg:#faf9f6; --surface:#ffffff; --text:#1c1c1a; --muted:#5f5e5a;
+    --border:#e7e4dc; --code-bg:#f3f1ea;
+    --teal:#0F6E56; --teal-l:#1D9E75; --teal-bg:#E1F5EE;
+    --amber:#854F0B; --amber-l:#BA7517; --amber-bg:#FAEEDA;
+    --purple:#3C3489; --purple-l:#534AB7; --purple-bg:#EEEDFE;
+    --coral:#993C1D; --coral-l:#D85A30; --coral-bg:#FAECE7;
+    --gray:#5F5E5A; --gray-bg:#F1EFE8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    line-height:1.7;font-size:15px}
+  code{background:var(--code-bg);padding:.1em .4em;border-radius:4px;font-size:.88em;
+    font-family:"SF Mono",Menlo,Consolas,monospace}
+  .wrap{max-width:980px;margin:0 auto;padding:24px}
+  header.top{background:linear-gradient(180deg,#fff,var(--bg));border-bottom:1px solid var(--border)}
+  header.top .inner{max-width:980px;margin:0 auto;padding:26px 24px}
+  header.top h1{margin:0 0 6px;font-size:26px;letter-spacing:-.3px}
+  header.top p{margin:0;color:var(--muted)}
+  .tag{display:inline-block;font-size:12px;color:var(--teal);background:var(--teal-bg);
+    border:1px solid #bfe6d7;border-radius:999px;padding:1px 10px;margin-right:6px}
+  h2{font-size:20px;margin:32px 0 10px;padding-bottom:7px;border-bottom:2px solid var(--border)}
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.5px;background:var(--surface)}
+  th,td{border:1px solid var(--border);padding:8px 11px;text-align:left;vertical-align:top}
+  th{background:var(--gray-bg);font-weight:600}
+  .callout{border:1px solid var(--border);border-left:4px solid var(--teal-l);
+    background:var(--surface);border-radius:8px;padding:12px 16px;margin:14px 0}
+  .callout.warn{border-left-color:var(--coral-l)}
+  .callout.key{border-left-color:var(--purple-l);background:#fbfaff}
+  .pill{display:inline-block;font-size:11.5px;padding:1px 9px;border-radius:999px;border:1px solid;font-weight:600}
+  .pill.lock{color:var(--coral);background:var(--coral-bg);border-color:#f0c3b2}
+  .pill.check{color:var(--amber);background:var(--amber-bg);border-color:#f0d9a8}
+  .pill.dflt{color:var(--teal);background:var(--teal-bg);border-color:#bfe6d7}
+  .muted{color:var(--muted)}
+  .q{background:var(--surface);border:1px solid var(--border);border-radius:11px;
+    padding:14px 16px;margin:14px 0}
+  .qh{font-size:16px;font-weight:600;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .qid{font-family:"SF Mono",Menlo,monospace;font-size:13px;color:#fff;background:var(--purple-l);
+    border-radius:6px;padding:1px 7px}
+  .q p{margin:8px 0 0}
+  .q .lab{color:var(--purple);font-weight:600}
+  .q .now{color:var(--teal);font-weight:600}
+  .decide{margin-top:10px;padding-top:9px;border-top:1px dashed var(--border)}
+  .decide .lab{color:var(--coral)}
+  .blank{display:inline-block;min-width:60%;border-bottom:1px solid #c9c5ba;height:1.2em}
+  ul{margin:6px 0 0;padding-left:20px}
+  footer{max-width:980px;margin:0 auto;padding:22px 24px;color:var(--muted);font-size:13px;border-top:1px solid var(--border)}
+  @media print{.q{break-inside:avoid}body{background:#fff}}
+</style>
+</head>
+<body>
+<header class="top"><div class="inner">
+  <span class="tag">确认清单</span><span class="tag">v1 · 2026-06-16</span>
+  <h1>关系图谱 · 与 PhD 要敲定的细节</h1>
+  <p>逐条过，把结论填进每项的「PhD 结论」。优先级：
+     <span class="pill lock">先锁</span> 决定整体走向 ·
+     <span class="pill check">需确认</span> loader/数据级 ·
+     <span class="pill dflt">确认默认</span> 已有默认、确认即可。</p>
+</div></header>
+
+<div class="wrap">
+
+<div class="callout key"><b>为什么要先锁 A 组：</b>A 组(范式级)决定<strong>蛋白层挂不挂、输入是什么格式</strong>——B/C/D 全部建立在它之上。<strong>A 没定，下面别动手。</strong>当前仓库唯一落地的解析器是 Casanovo(de novo)，默认就走 de novo 主干(到 Peptide 即止)。</div>
+
+<h2>速览：最关键的几条</h2>
+<table>
+  <tr><th>#</th><th>问题</th><th>不定会怎样</th></tr>
+  <tr><td>A1</td><td>走 de novo 还是数据库搜索</td><td>决定蛋白层(Protein/Group/GDS 推断)整层挂不挂</td></tr>
+  <tr><td>A4</td><td>上游分析工具是哪个</td><td>决定输入文件格式 → loader 怎么写</td></tr>
+  <tr><td>B1</td><td>Casanovo 实际吐 mzTab 还是 JSON</td><td>仓库内已钉 mzTab，但部署工具未证；错了 loader 全废</td></tr>
+  <tr><td>D2</td><td>报告受众 QC / 生物学解读</td><td>决定要不要做「解释与注释 Agent」这层</td></tr>
+  <tr><td>E1</td><td>Neo4j 是否装 GDS 插件</td><td>不装则蛋白推断(连通分量)跑不了</td></tr>
+</table>
+
+<h2>A. 范式级（最先锁）</h2>
+
+<div class="q">
+  <div class="qh"><span class="qid">A1</span> 走 de novo 还是数据库搜索？ <span class="pill lock">先锁</span></div>
+  <p><span class="lab">影响：</span>de novo(Casanovo) <strong>只到 Peptide、无蛋白归属</strong>；数据库搜索(MaxQuant 等)才有 Protein/ProteinGroup 层与 GDS 连通分量推断。这条直接决定<strong>整个蛋白层要不要建</strong>。</p>
+  <p><span class="now">我们的现状：</span>仓库唯一解析器是 Casanovo(de novo)，默认走主干 <code>Sample→Spectrum→PSM→Peptide</code>，蛋白层代码写好了但不挂。</p>
+  <div class="decide"><span class="lab">PhD 结论：</span> <span class="blank"></span></div>
+</div>
+
+<div class="q">
+  <div class="qh"><span class="qid">A2</span> 实验范式：DDA / DIA？ <span class="pill lock">先锁</span></div>
+  <p><span class="lab">影响：</span>DDA 窄窗一谱≈一肽；DIA 宽窗一谱混多肽 —— 决定 <code>Spectrum→Peptide</code> 主干边的基数(1:1 还是 1:n)。</p>
+  <p><span class="now">我们的现状：</span>当前 join 按「一谱一预测」(Casanovo/DDA 式)实现。</p>
+  <div class="decide"><span class="lab">PhD 结论：</span> <span class="blank"></span></div>
+</div>
+
+<div class="q">
+  <div class="qh"><span class="qid">A3</span> 定量策略：LFQ / TMT / SILAC / 不做定量？ <span class="pill lock">先锁</span></div>
+  <p><span class="lab">影响：</span>决定要不要 <code>Quantification</code> 节点、怎么挂(无标/同重标签/同位素)。de novo 通常无定量。</p>
+  <p><span class="now">我们的现状：</span>schema 暂无定量层，Casanovo 结果也无强度。</p>
+  <div class="decide"><span class="lab">PhD 结论：</span> <span class="blank"></span></div>
+</div>
+
+<div class="q">
+  <div class="qh"><span class="qid">A4</span> 上游分析工具具体是哪个？ <span class="pill lock">先锁</span></div>
+  <p><span class="lab">影响：</span>Casanovo / MaxQuant / FragPipe / DIA-NN —— <strong>直接决定输入文件格式</strong>，loader 按格式写。每换一个工具就要新写一个 loader。</p>
+  <p><span class="now">我们的现状：</span>只有 Casanovo loader(吃 mzTab)。</p>
+  <div class="decide"><span class="lab">PhD 结论：</span> <span class="blank"></span></div>
+</div>
+
+<h2>B. Casanovo / 数据格式（loader 直接依赖）</h2>
+
+<div class="q">
+  <div class="qh"><span class="qid">B1</span> Casanovo 部署工具实际吐标准 <code>.mztab</code> 还是被包成 JSON？ <span class="pill check">需确认</span></div>
+  <p><span class="lab">影响：</span>loader 完全按格式写；猜错则整条入图链路报错或静默失效。</p>
+  <p><span class="now">我们的现状：</span>仓库内已钉死 <strong>mzTab</strong>(解析器 + 测试 + 锚定 Casanovo <code>ms_io.MztabWriter</code>)；但<strong>部署的外部 MCP 工具是最终权威，代码证不了</strong>。请确认它跑出来的是不是标准 <code>.mztab</code>。</p>
+  <div class="decide"><span class="lab">PhD 结论：</span> <span class="blank"></span></div>
+</div>
+
+<div class="q">
+  <div class="qh"><span class="qid">B2</span> Casanovo 工具注册后的真实 <code>tool_name</code> 是什么？ <span class="pill check">需确认</span></div>
+  <p><span class="lab">影响：</span>materializer 按 <code>tool_name</code> 选 loader。注册表 key 必须等于真实工具名(可能带 <code>mcp.</code> 前缀或 <code>_sequence</code> 后缀)。</p>
+  <p><span class="now">我们的现状：</span>key 暂猜 <code>casanovo</code> / <code>casanovo_sequence</code>，并加了子串兜底。等工具接上跑一次 <code>get_run().tool_name</code> 校准。</p>
+  <div class="decide"><span class="lab">PhD 结论：</span> <span class="blank"></span></div>
+</div>
+
+<div class="q">
+  <div class="qh"><span class="qid">B3</span> mzTab 的 <code>index=N</code> 是否就是输入 mgf 的 0-based 顺序？ <span class="pill check">需确认</span></div>
+  <p><span class="lab">影响：</span>这是谱图 ⨝ 预测的 <strong>join 钥匙</strong>。两边 index 基准/顺序若不一致 → 张冠李戴。</p>
+  <p><span class="now">我们的现状：</span>按「mgf 第 i 张谱 ↔ mzTab <code>index=i</code>」实现(Casanovo 通常如此)。</p>
+  <div class="decide"><span class="lab">PhD 结论：</span> <span class="blank"></span></div>
+</div>
+
+<div class="q">
+  <div class="qh"><span class="qid">B4</span> 一个 run 是否可能有<strong>多个</strong>输入谱图 / 输出结果文件？ <span class="pill check">需确认</span></div>
+  <p><span class="lab">影响：</span>loader 现在按 data_type 选<strong>第一个</strong>匹配文件。若一次 run 多文件，要改成遍历配对。</p>
+  <p><span class="now">我们的现状：</span>按「单谱图 + 单 mztab」处理。</p>
+  <div class="decide"><span class="lab">PhD 结论：</span> <span class="blank"></span></div>
+</div>
+
+<div class="q">
+  <div class="qh"><span class="qid">B5</span> 保留时间 RT 是否需要进图？ <span class="pill check">需确认</span></div>
+  <p><span class="lab">影响：</span>RT 是重要的对齐/校验特征。要的话需<strong>扩展 mgf 解析器</strong>读 <code>RTINSECONDS</code>(现在不读，<code>Spectrum.retention_time=None</code>)。</p>
+  <div class="decide"><span class="lab">PhD 结论：</span> <span class="blank"></span></div>
+</div>
+
+<div class="q">
+  <div class="qh"><span class="qid">B6</span> de novo 无 FDR，要不要按 <code>score</code> 阈值过滤低质量预测？阈值多少？ <span class="pill check">需确认</span></div>
+  <p><span class="lab">影响：</span>数据库搜索用 q_value≤0.01 卡 FDR；Casanovo 没有 FDR/decoy，只有逐肽 <code>score</code>。是否设阈值、设多少由 PhD 定。</p>
+  <p><span class="now">我们的现状：</span>全量入图，<code>q_value=None</code>、<code>is_decoy=false</code>，不过滤。</p>
+  <div class="decide"><span class="lab">PhD 结论：</span> <span class="blank"></span></div>
+</div>
+
+<h2>C. 建模决策（已采用默认，确认/可调）</h2>
+
+<div class="q">
+  <div class="qh"><span class="qid">C1</span> Peptide 身份用 peptidoform(带修饰)，裸序列作属性？ <span class="pill dflt">确认默认</span></div>
+  <p><span class="now">默认：</span>节点 key = <code>peptidoform</code>(如 <code>MEEVEES[+79.966]PEK</code>)，<code>stripped_sequence</code> 作属性。理由：定量/修饰分析在 peptidoform 级。</p>
+  <div class="decide"><span class="lab">PhD 结论：</span> <span class="blank"></span></div>
+</div>
+
+<div class="q">
+  <div class="qh"><span class="qid">C2</span> 谱图峰(m/z+强度)不入图、只留文件指针？ <span class="pill dflt">确认默认</span></div>
+  <p><span class="now">默认：</span>不入图(几十万谱×上百峰会爆)，<code>Spectrum.data_object_id</code> 指回文件，按需回取。</p>
+  <div class="decide"><span class="lab">PhD 结论：</span> <span class="blank"></span></div>
+</div>
+
+<div class="q">
+  <div class="qh"><span class="qid">C3</span> 图库用 Neo4j + GDS，与 SQLite 并存？ <span class="pill dflt">确认默认</span></div>
+  <p><span class="now">默认：</span>结果/溯源在 SQLite，图结构+图算法在 Neo4j，靠 id 互指；两库无跨库事务，靠 MERGE 幂等。</p>
+  <div class="decide"><span class="lab">PhD 结论：</span> <span class="blank"></span></div>
+</div>
+
+<div class="q">
+  <div class="qh"><span class="qid">C4</span> <code>sample_id</code> / <code>condition</code> 怎么定义、从哪来？ <span class="pill check">需确认</span></div>
+  <p><span class="lab">影响：</span>Sample 节点的身份与分组(差异分析按 condition)。</p>
+  <p><span class="now">我们的现状：</span><code>sample_id</code> 暂从谱图文件名推(<code>sample:&lt;stem&gt;</code>)，<code>condition=""</code> 空。需要真实的样本元数据来源(样本表 / 命名约定 / 上传时带)。</p>
+  <div class="decide"><span class="lab">PhD 结论：</span> <span class="blank"></span></div>
+</div>
+
+<h2>D. 图的边界 &amp; 报告</h2>
+
+<div class="q">
+  <div class="qh"><span class="qid">D1</span> 一张图的边界：单实验一张图 / 多实验累积同一张？ <span class="pill lock">先锁</span></div>
+  <p><span class="lab">影响：</span>决定节点 id 的唯一性范围、跨实验比较怎么做、图会长多大。</p>
+  <p><span class="now">我们的现状：</span>节点 id 用「文件 oid + index」全局唯一，天然支持累积；但是否真要混多实验由 PhD 定。</p>
+  <div class="decide"><span class="lab">PhD 结论：</span> <span class="blank"></span></div>
+</div>
+
+<div class="q">
+  <div class="qh"><span class="qid">D2</span> 报告受众：QC 技术报告 / 生物学解读？ <span class="pill lock">先锁</span></div>
+  <p><span class="lab">影响：</span>决定要不要做「生物学解释与注释 Agent」(L2 解释层)。纯 QC 只需指标查询；生物学解读才需要挂注释/通路/RAG。</p>
+  <div class="decide"><span class="lab">PhD 结论：</span> <span class="blank"></span></div>
+</div>
+
+<h2>E. 部署 &amp; 下游增强</h2>
+
+<div class="q">
+  <div class="qh"><span class="qid">E1</span> Neo4j 实例是否装 GDS 插件？连接信息？ <span class="pill lock">先锁</span></div>
+  <p><span class="lab">影响：</span>蛋白推断(<code>gds.wcc</code> 连通分量)依赖 GDS 插件，光装 <code>neo4j</code> 驱动跑会报「未知过程」。另需确认 uri / 账号 / 是否社区版(分库受限)。</p>
+  <p><span class="now">我们的现状：</span>默认 <code>bolt://127.0.0.1:7687</code>，GDS <strong>未确认已装</strong>。</p>
+  <div class="decide"><span class="lab">PhD 结论：</span> <span class="blank"></span></div>
+</div>
+
+<div class="q">
+  <div class="qh"><span class="qid">E2</span> 生物学解释要接哪些在线库？ <span class="pill check">需确认</span></div>
+  <p><span class="lab">影响：</span>决定 MCP_IO 增强通路接哪些：UniProt(蛋白注释) / KEGG(通路) / DeepXiv(文献) / 其它。</p>
+  <div class="decide"><span class="lab">PhD 结论：</span> <span class="blank"></span></div>
+</div>
+
+<div class="q">
+  <div class="qh"><span class="qid">E3</span> RAG 本地知识库有哪些语料？ <span class="pill check">需确认</span></div>
+  <p><span class="lab">影响：</span>实验 SOP / 项目文档 / 数据库说明 —— 有没有现成可对接的文档集，决定 RAG 能不能开、喂什么。</p>
+  <div class="decide"><span class="lab">PhD 结论：</span> <span class="blank"></span></div>
+</div>
+
+<div class="callout warn"><b>过完这张表后：</b>A 组 + B1/B2 + E1 一锁，loader/materializer 就能从「能跑」推到「对接真实数据跑通」；D2 决定要不要展开下游解释层。建议按 A → B → E → C/D 的顺序谈。</div>
+
+</div>
+
+<footer>PTAgent 关系图谱 · 与 PhD 确认清单 · 生成于 2026-06-16 · 配套：relational-graph-design.html(设计稿) · materializer-dataflow.md(数据流) · architecture-*.svg(架构图)。</footer>
+</body>
+</html>

@@ -28,6 +28,10 @@ numpy>=1.26.0
 pandas>=2.2.0
 scipy>=1.13.0
 
+# 图数据库（关系图谱；src/pkg/graph 的 Neo4j 驱动）
+neo4j>=5.0
+PyMySQL>=1.1
+
 # 测试
 pytest>=8.2.0
 

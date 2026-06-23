@@ -9,7 +9,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # =============================================================================
@@ -67,6 +67,32 @@ class FilterConfig(BaseModel):
 
     用户在启动前一次性设定，执行阶段不再干预。
     """
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "enabled": True,
+                "confidence_threshold": 0.9,
+                "top_n": 100,
+                "top_n_percent": None,
+                "custom_rules": [
+                    {
+                        "field": "q_value",
+                        "operator": "lt",
+                        "value": 0.05,
+                        "label": "P-value < 0.05 (Benjamini-Hochberg)",
+                    },
+                    {
+                        "field": "coverage_percent",
+                        "operator": "gte",
+                        "value": 80.0,
+                        "label": "Coverage ≥ 80%",
+                    },
+                ],
+                "keep_rejected_metadata": True,
+            }
+        }
+    )
+
     enabled: bool = Field(default=True, description="是否启用过滤")
 
     # 按置信度 / 统计显著性的通用阈值
@@ -99,32 +125,6 @@ class FilterConfig(BaseModel):
         default=True,
         description="被过滤的结果是否保留元数据记录"
     )
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "enabled": True,
-                "confidence_threshold": 0.9,
-                "top_n": 100,
-                "top_n_percent": None,
-                "custom_rules": [
-                    {
-                        "field": "q_value",
-                        "operator": "lt",
-                        "value": 0.05,
-                        "label": "P-value < 0.05 (Benjamini-Hochberg)"
-                    },
-                    {
-                        "field": "coverage_percent",
-                        "operator": "gte",
-                        "value": 80.0,
-                        "label": "Coverage ≥ 80%"
-                    }
-                ],
-                "keep_rejected_metadata": True
-            }
-        }
-
 
 # =============================================================================
 # WorkflowPresets — 工作流模板
@@ -216,7 +216,7 @@ class ExperimentContext(BaseModel):
         description="引用的 DataObject ID 列表"
     )
     filter_config: FilterConfig = Field(
-        default_factory=FilterConfig(),
+        default_factory=FilterConfig,
         description="过滤策略（前置装填 HITL）"
     )
     workflow_preset: WorkflowPreset | None = Field(

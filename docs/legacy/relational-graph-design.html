@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PTAgent 关系图谱设计</title>
+<style>
+  :root{
+    --bg:#faf9f6; --surface:#ffffff; --text:#1c1c1a; --muted:#5f5e5a;
+    --border:#e7e4dc; --code-bg:#f3f1ea;
+    --teal:#0F6E56; --teal-l:#1D9E75; --teal-bg:#E1F5EE;
+    --amber:#854F0B; --amber-l:#BA7517; --amber-bg:#FAEEDA;
+    --purple:#3C3489; --purple-l:#534AB7; --purple-bg:#EEEDFE;
+    --coral:#993C1D; --coral-l:#D85A30; --coral-bg:#FAECE7;
+    --gray:#5F5E5A; --gray-bg:#F1EFE8;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    line-height:1.7;font-size:15px}
+  a{color:var(--teal);text-decoration:none}
+  a:hover{text-decoration:underline}
+  code{background:var(--code-bg);padding:.1em .4em;border-radius:4px;font-size:.88em;
+    font-family:"SF Mono",Menlo,Consolas,monospace}
+  pre{background:#1f1e1b;color:#eceae3;padding:16px 18px;border-radius:10px;overflow:auto;
+    font-size:13px;line-height:1.55;font-family:"SF Mono",Menlo,Consolas,monospace}
+  pre code{background:none;padding:0;color:inherit;font-size:inherit}
+  .wrap{max-width:1120px;margin:0 auto;display:flex;gap:36px;padding:0 24px}
+  /* header */
+  header.top{background:linear-gradient(180deg,#fff, var(--bg));border-bottom:1px solid var(--border)}
+  header.top .inner{max-width:1120px;margin:0 auto;padding:34px 24px 26px}
+  header.top h1{margin:0 0 6px;font-size:28px;letter-spacing:-.3px}
+  header.top p{margin:0;color:var(--muted)}
+  .tag{display:inline-block;font-size:12px;color:var(--teal);background:var(--teal-bg);
+    border:1px solid #bfe6d7;padding:2px 9px;border-radius:999px;margin-right:6px}
+  /* nav */
+  nav.toc{width:226px;flex:none;position:sticky;top:0;align-self:flex-start;
+    height:100vh;overflow:auto;padding:28px 0;font-size:13.5px}
+  nav.toc ol{list-style:none;margin:0;padding:0;counter-reset:s}
+  nav.toc li{counter-increment:s;margin:2px 0}
+  nav.toc a{display:block;color:var(--muted);padding:5px 10px;border-radius:7px;border-left:2px solid transparent}
+  nav.toc a:hover{background:var(--surface);color:var(--text);text-decoration:none}
+  nav.toc a::before{content:counter(s) ". ";color:#b7b4ab}
+  /* main */
+  main{flex:1;min-width:0;padding:30px 0 100px}
+  section{margin:0 0 46px;scroll-margin-top:18px}
+  h2{font-size:21px;margin:34px 0 12px;padding-bottom:7px;border-bottom:2px solid var(--border)}
+  h3{font-size:16px;margin:24px 0 8px;color:#33322f}
+  p{margin:10px 0}
+  .lead{font-size:16px;color:#33322f}
+  ul,ol{padding-left:22px}
+  li{margin:4px 0}
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.5px;background:var(--surface)}
+  th,td{border:1px solid var(--border);padding:8px 11px;text-align:left;vertical-align:top}
+  th{background:var(--gray-bg);font-weight:600}
+  figure{margin:18px 0;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px}
+  figure svg{display:block;width:100%;height:auto}
+  figcaption{color:var(--muted);font-size:13px;margin-top:8px;text-align:center}
+  .callout{border:1px solid var(--border);border-left:4px solid var(--teal-l);
+    background:var(--surface);border-radius:8px;padding:12px 16px;margin:14px 0}
+  .callout.warn{border-left-color:var(--coral-l)}
+  .callout.key{border-left-color:var(--purple-l);background:#fbfaff}
+  .callout b{color:var(--text)}
+  .pill{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;border:1px solid}
+  .pill.teal{color:var(--teal);background:var(--teal-bg);border-color:#bfe6d7}
+  .pill.amber{color:var(--amber);background:var(--amber-bg);border-color:#f0d9a8}
+  .pill.gray{color:var(--gray);background:var(--gray-bg);border-color:#d7d4ca}
+  .ok{color:var(--teal);font-weight:600}
+  .todo{color:var(--coral)}
+  .muted{color:var(--muted)}
+  footer{max-width:1120px;margin:0 auto;padding:24px;color:var(--muted);font-size:13px;border-top:1px solid var(--border)}
+  @media(max-width:820px){nav.toc{display:none}.wrap{padding:0 16px}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="inner">
+    <div><span class="tag">设计文档</span><span class="tag">v1 · 2026-06-15</span></div>
+    <h1>PTAgent 关系图谱设计</h1>
+    <p>质谱-蛋白质组学分析 Agent 的关系图谱(relational graph)内核设计 —— 从实验数据长出的图,而非外接知识库的知识图谱。</p>
+  </div>
+</header>
+
+<div class="wrap">
+<nav class="toc">
+  <ol>
+    <li><a href="#overview">概览与核心理念</a></li>
+    <li><a href="#rel-vs-kg">关系图谱 vs 知识图谱</a></li>
+    <li><a href="#layers">三层数据架构</a></li>
+    <li><a href="#schema">Schema:节点与边</a></li>
+    <li><a href="#glossary">质谱背景速查</a></li>
+    <li><a href="#flow">数据流:Materializer</a></li>
+    <li><a href="#inference">蛋白推断</a></li>
+    <li><a href="#cypher">Cypher 速览</a></li>
+    <li><a href="#open">待确认 & 落地现状</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<!-- 1 -->
+<section id="overview">
+  <h2>1. 概览与核心理念</h2>
+  <p class="lead">目标:把"原始质谱数据 → 生物学结论"的分析与报告,建在一张<strong>关系图谱</strong>上。这张图完全从<strong>本次实验的输出</strong>长出来——节点和边都是实验内部的实体与关系,不去对接 GO/KEGG/UniProt 做外部语义推理。</p>
+  <div class="callout key">
+    <b>核心理念:关系即数据,图结构本身就是分析。</b><br>
+    蛋白推断、覆盖度、样本质控这些报告指标,不是外挂逻辑,而是<strong>图操作的自然结果</strong>:蛋白组 = 连通分量,unique/razor = 边的度数,覆盖度 = 支撑肽段的区间并集。把数据建成正确的图,分析就退化成查询。
+  </div>
+  <p>这也决定了报告生成策略:数值与图结构由<strong>参数化图查询</strong>稳稳产出,LLM 只在最后做语言润色与异常解读,从根上压住幻觉。</p>
+</section>
+
+<!-- 2 -->
+<section id="rel-vs-kg">
+  <h2>2. 关系图谱 vs 知识图谱 —— 不是二选一,是三层</h2>
+  <p>常见的"关系还是知识"其实是个伪命题。成熟形态是分层的:关系图谱(L0)是地基、无条件要建;知识图谱(L2)只是可选的注释叠加层,且大概率<strong>不用自建</strong>——把蛋白列表喂给成熟工具(g:Profiler / clusterProfiler / STRING),把结果折回来当节点属性即可。</p>
+  <figure>
+    <svg viewBox="0 0 760 250" role="img" aria-label="三层架构">
+      <text x="20" y="26" font-size="14" font-weight="600" fill="#1c1c1a">三层架构:关系图谱是地基,知识图谱只是可选叠加层</text>
+      <!-- L2 -->
+      <rect x="20" y="42" width="720" height="56" rx="9" fill="#FAEEDA" stroke="#BA7517"/>
+      <text x="40" y="68" font-size="14" font-weight="600" fill="#633806">L2 · 知识图谱叠加层</text>
+      <text x="40" y="88" font-size="12.5" fill="#854F0B">外部生物注释 GO / KEGG / STRING —— 调成熟工具即可,别自建 · 可选,仅生物学报告需要</text>
+      <!-- arrow -->
+      <line x1="60" y1="128" x2="60" y2="106" stroke="#888780" stroke-width="2"/>
+      <polygon points="60,100 55,110 65,110" fill="#888780"/>
+      <text x="76" y="122" font-size="12" fill="#5f5e5a">上层依赖下层</text>
+      <!-- L1 -->
+      <rect x="20" y="130" width="720" height="56" rx="9" fill="#F1EFE8" stroke="#5F5E5A"/>
+      <text x="40" y="156" font-size="14" font-weight="600" fill="#2C2C2A">L1 · 派生指标层</text>
+      <text x="40" y="176" font-size="12.5" fill="#444441">图算法即指标:连通分量=蛋白组,度数=unique/razor,覆盖度=区间并集</text>
+      <!-- L0 -->
+      <rect x="20" y="194" width="720" height="48" rx="9" fill="#E1F5EE" stroke="#0F6E56"/>
+      <text x="40" y="216" font-size="14" font-weight="600" fill="#085041">L0 · 关系图谱(地基)<tspan fill="#0F6E56" font-weight="400">　现在就建</tspan></text>
+      <text x="40" y="234" font-size="12.5" fill="#0F6E56">本次实验的实体与关系:样本 · 谱图 · 肽段 · 蛋白组 · 定量</text>
+    </svg>
+    <figcaption>L0 必建;L2 等"报告受众"锁定后再决定挂不挂。</figcaption>
+  </figure>
+</section>
+
+<!-- 3 -->
+<section id="layers">
+  <h2>3. 三层数据架构 —— 图谱接在哪</h2>
+  <p>项目已有两层(都不是科学内容本身):<strong>数据平面(SQLite)</strong>记文件/运行血缘,<strong>编排模型(Pydantic)</strong>记流程状态。关系图谱是<strong>第三层</strong>,职责是把"黑盒文件"<strong>解包</strong>成可查询的科学实体,并用溯源指针回指数据平面。</p>
+  <figure>
+    <svg viewBox="0 0 760 250" role="img" aria-label="三层数据架构与溯源指针">
+      <!-- SQLite layer -->
+      <text x="20" y="22" font-size="13" font-weight="600" fill="#2C2C2A">① 数据平面(SQLite)· 文件/运行血缘</text>
+      <g font-size="12.5">
+        <rect x="20"  y="32" width="150" height="46" rx="8" fill="#F1EFE8" stroke="#5F5E5A"/><text x="95"  y="52" text-anchor="middle" fill="#2C2C2A">dp_session</text><text x="95" y="68" text-anchor="middle" fill="#5f5e5a">会话</text>
+        <rect x="196" y="32" width="178" height="46" rx="8" fill="#F1EFE8" stroke="#5F5E5A"/><text x="285" y="52" text-anchor="middle" fill="#2C2C2A">dp_pipeline_request</text><text x="285" y="68" text-anchor="middle" fill="#5f5e5a">管线请求</text>
+        <rect x="400" y="32" width="160" height="46" rx="8" fill="#F1EFE8" stroke="#5F5E5A"/><text x="480" y="52" text-anchor="middle" fill="#2C2C2A">dp_data_object</text><text x="480" y="68" text-anchor="middle" fill="#5f5e5a">文件(raw/mgf…)</text>
+        <rect x="586" y="32" width="154" height="46" rx="8" fill="#F1EFE8" stroke="#5F5E5A"/><text x="663" y="52" text-anchor="middle" fill="#2C2C2A">dp_run</text><text x="663" y="68" text-anchor="middle" fill="#5f5e5a">工具执行</text>
+      </g>
+      <!-- provenance dashed arrows -->
+      <g stroke="#D85A30" stroke-width="1.6" stroke-dasharray="5 4" fill="none">
+        <line x1="120" y1="172" x2="450" y2="80"/>
+        <line x1="300" y1="172" x2="480" y2="80"/>
+        <line x1="470" y1="172" x2="640" y2="80"/>
+      </g>
+      <text x="150" y="128" font-size="12" fill="#993C1D">data_object_id</text>
+      <text x="520" y="126" font-size="12" fill="#993C1D">run_id</text>
+      <!-- Neo4j layer -->
+      <text x="20" y="170" font-size="13" font-weight="600" fill="#085041">② 关系图谱(Neo4j)· 科学实体</text>
+      <g font-size="13">
+        <rect x="20"  y="180" width="120" height="44" rx="8" fill="#E1F5EE" stroke="#0F6E56"/><text x="80"  y="207" text-anchor="middle" fill="#085041">Sample</text>
+        <rect x="190" y="180" width="130" height="44" rx="8" fill="#E1F5EE" stroke="#0F6E56"/><text x="255" y="207" text-anchor="middle" fill="#085041">Spectrum</text>
+        <rect x="370" y="180" width="110" height="44" rx="8" fill="#E1F5EE" stroke="#0F6E56"/><text x="425" y="207" text-anchor="middle" fill="#085041">PSM</text>
+        <rect x="530" y="180" width="130" height="44" rx="8" fill="#E1F5EE" stroke="#0F6E56"/><text x="595" y="207" text-anchor="middle" fill="#085041">Peptide</text>
+      </g>
+      <g stroke="#1D9E75" stroke-width="2" fill="none">
+        <line x1="140" y1="202" x2="188" y2="202"/><polygon points="190,202 184,199 184,205" fill="#1D9E75"/>
+        <line x1="320" y1="202" x2="368" y2="202"/><polygon points="370,202 364,199 364,205" fill="#1D9E75"/>
+        <line x1="480" y1="202" x2="528" y2="202"/><polygon points="530,202 524,199 524,205" fill="#1D9E75"/>
+      </g>
+    </svg>
+    <figcaption>科学节点用 <code>data_object_id</code> / <code>run_id</code> 跨层回指 SQLite —— 图里任何数值都能溯源到原始文件。</figcaption>
+  </figure>
+  <div class="callout"><b>设计原则:</b>图谱不复制、不替代数据平面;它展开文件<em>内容</em>成实体,易变的物理路径锁在数据平面,图谱只认稳定的 <code>object_id</code> / <code>run_id</code>。</div>
+</section>
+
+<!-- 4 -->
+<section id="schema">
+  <h2>4. Schema:节点与边</h2>
+  <p>主干 <span class="pill teal">Sample → Spectrum → PSM → Peptide</span> 对两种范式都安全;蛋白层 <span class="pill amber">Protein / ProteinGroup / Quantification</span> 只在<strong>数据库搜索</strong>范式下挂载。<strong>de novo(Casanovo)到 Peptide 即止。</strong></p>
+  <figure>
+    <svg viewBox="0 0 760 250" role="img" aria-label="关系图谱 schema">
+      <!-- trunk -->
+      <g font-size="13">
+        <rect x="30"  y="50" width="120" height="54" rx="9" fill="#E1F5EE" stroke="#0F6E56"/><text x="90"  y="74" text-anchor="middle" fill="#085041">Sample</text><text x="90"  y="92" text-anchor="middle" font-size="11.5" fill="#0F6E56">raw·仪器·分组</text>
+        <rect x="210" y="50" width="130" height="54" rx="9" fill="#E1F5EE" stroke="#0F6E56"/><text x="275" y="74" text-anchor="middle" fill="#085041">Spectrum</text><text x="275" y="92" text-anchor="middle" font-size="11.5" fill="#0F6E56">m/z·电荷·RT·峰指针</text>
+        <rect x="400" y="50" width="110" height="54" rx="9" fill="#E1F5EE" stroke="#0F6E56"/><text x="455" y="74" text-anchor="middle" fill="#085041">PSM</text><text x="455" y="92" text-anchor="middle" font-size="11.5" fill="#0F6E56">score·q值·aa_scores</text>
+        <rect x="570" y="50" width="130" height="54" rx="9" fill="#E1F5EE" stroke="#0F6E56"/><text x="635" y="74" text-anchor="middle" fill="#085041">Peptide</text><text x="635" y="92" text-anchor="middle" font-size="11.5" fill="#0F6E56">peptidoform·修饰</text>
+      </g>
+      <g stroke="#1D9E75" stroke-width="2" fill="none" font-size="11">
+        <line x1="150" y1="77" x2="208" y2="77"/><polygon points="210,77 204,74 204,80" fill="#1D9E75"/>
+        <line x1="340" y1="77" x2="398" y2="77"/><polygon points="400,77 394,74 394,80" fill="#1D9E75"/>
+        <line x1="510" y1="77" x2="568" y2="77"/><polygon points="570,77 564,74 564,80" fill="#1D9E75"/>
+      </g>
+      <text x="166" y="70" font-size="11" fill="#5f5e5a">PRODUCED</text>
+      <text x="350" y="70" font-size="11" fill="#5f5e5a">HAS_PSM</text>
+      <text x="516" y="70" font-size="11" fill="#5f5e5a">IDENTIFIES</text>
+      <!-- fork down to protein layer -->
+      <line x1="635" y1="104" x2="635" y2="150" stroke="#BA7517" stroke-width="2" stroke-dasharray="5 4"/>
+      <polygon points="635,156 631,148 639,148" fill="#BA7517"/>
+      <text x="645" y="132" font-size="11" fill="#854F0B">归属(n:m)</text>
+      <!-- protein layer -->
+      <g font-size="13">
+        <rect x="570" y="156" width="130" height="50" rx="9" fill="#FAEEDA" stroke="#BA7517"/><text x="635" y="178" text-anchor="middle" fill="#633806">Protein</text><text x="635" y="195" text-anchor="middle" font-size="11.5" fill="#854F0B">unique/razor</text>
+        <rect x="380" y="156" width="150" height="50" rx="9" fill="#FAEEDA" stroke="#BA7517"/><text x="455" y="178" text-anchor="middle" fill="#633806">ProteinGroup</text><text x="455" y="195" text-anchor="middle" font-size="11.5" fill="#854F0B">= 连通分量(GDS)</text>
+        <rect x="30"  y="156" width="170" height="50" rx="9" fill="#FAEEDA" stroke="#BA7517"/><text x="115" y="178" text-anchor="middle" fill="#633806">Quantification</text><text x="115" y="195" text-anchor="middle" font-size="11.5" fill="#854F0B">reify · 连 蛋白×样本</text>
+      </g>
+      <line x1="570" y1="181" x2="532" y2="181" stroke="#BA7517" stroke-width="2"/><polygon points="528,181 536,178 536,184" fill="#BA7517"/>
+      <text x="540" y="174" font-size="11" fill="#854F0B">聚合</text>
+      <!-- legend -->
+      <rect x="30" y="222" width="13" height="13" rx="3" fill="#E1F5EE" stroke="#0F6E56"/><text x="50" y="233" font-size="12" fill="#5f5e5a">通用主干 · de novo 止于 Peptide</text>
+      <rect x="320" y="222" width="13" height="13" rx="3" fill="#FAEEDA" stroke="#BA7517"/><text x="340" y="233" font-size="12" fill="#5f5e5a">仅数据库搜索(MaxQuant/FragPipe/DIA-NN)</text>
+    </svg>
+  </figure>
+
+  <h3>节点</h3>
+  <table>
+    <tr><th>节点</th><th>身份(唯一键)</th><th>关键属性</th></tr>
+    <tr><td><code>Sample</code></td><td>sample_id</td><td>name, condition, instrument, raw_file, <span class="muted">data_object_id</span></td></tr>
+    <tr><td><code>Spectrum</code></td><td>spectrum_id</td><td>precursor_mz, charge, retention_time, nce, activation, scan_index, <span class="muted">data_object_id</span>　<em>(峰不入图,留指针)</em></td></tr>
+    <tr><td><code>PSM</code></td><td>psm_id</td><td>score, q_value, aa_scores, search_engine, is_decoy, <span class="muted">run_id, data_object_id</span></td></tr>
+    <tr><td><code>Peptide</code></td><td>peptidoform <em>(带修饰)</em></td><td>stripped_sequence, length</td></tr>
+    <tr><td><code>Protein</code> <span class="pill amber">DB搜索</span></td><td>accession</td><td>description, componentId, is_unique(边上)</td></tr>
+    <tr><td><code>ProteinGroup</code> <span class="pill amber">DB搜索</span></td><td>group_id</td><td>= 连通分量</td></tr>
+    <tr><td><code>Quantification</code> <span class="pill amber">DB搜索</span></td><td>—</td><td>定量值;连 蛋白 × 样本(reify,承载条件维度)</td></tr>
+  </table>
+
+  <h3>边</h3>
+  <table>
+    <tr><th>边</th><th>含义</th><th>属性</th></tr>
+    <tr><td><code>(Sample)-[:PRODUCED]-&gt;(Spectrum)</code></td><td>样本产生谱图</td><td>—</td></tr>
+    <tr><td><code>(Spectrum)-[:HAS_PSM]-&gt;(PSM)</code></td><td>谱图的一次匹配</td><td>—</td></tr>
+    <tr><td><code>(PSM)-[:IDENTIFIES]-&gt;(Peptide)</code></td><td>匹配到的肽段</td><td>—</td></tr>
+    <tr><td><code>(Peptide)-[:BELONGS_TO]-&gt;(Protein)</code> <span class="pill amber">DB搜索</span></td><td>肽段归属蛋白(n:m)</td><td>is_razor</td></tr>
+    <tr><td><code>(Protein)-[:IN_GROUP]-&gt;(ProteinGroup)</code> <span class="pill amber">DB搜索</span></td><td>蛋白入组</td><td>—</td></tr>
+  </table>
+
+  <div class="callout warn"><b>范式分叉(第一次和 PhD 必须锁的):</b>仓库现有解析器只有 Casanovo(<strong>de novo</strong>),输出 <code>sequence/score/aa_scores</code>、<strong>无蛋白</strong>;而连通分量/razor 那套建立在<strong>数据库搜索</strong>范式上。走哪条决定蛋白层挂不挂。</div>
+</section>
+
+<!-- 5 -->
+<section id="glossary">
+  <h2>5. 质谱背景速查</h2>
+  <p class="muted">便于跨背景对齐词汇。</p>
+  <table>
+    <tr><th>术语</th><th>含义</th><th>落到 schema</th></tr>
+    <tr><td>LC / RT</td><td>液相色谱按疏水性分离;保留时间</td><td>Spectrum.retention_time</td></tr>
+    <tr><td>MS1 / MS2</td><td>MS1 测完整肽段质量;MS2 碎裂读序列</td><td>Spectrum(默认指 MS2)</td></tr>
+    <tr><td>m/z · charge · precursor</td><td>质荷比、电荷、被选中打碎的母离子</td><td>Spectrum.precursor_mz / charge</td></tr>
+    <tr><td>PSM</td><td>肽谱匹配(一次"谱=肽段"判定 + 打分)</td><td>PSM 节点</td></tr>
+    <tr><td>FDR / q-value</td><td>假发现率;接受该鉴定的最小 FDR(越小越可信)</td><td>PSM.q_value(查询时过滤 ≤0.01)</td></tr>
+    <tr><td>DDA / DIA</td><td>窄窗一谱≈一肽 / 宽窗一谱混多肽 —— 决定 Spectrum→Peptide 基数</td><td>主干边的基数</td></tr>
+    <tr><td>de novo / DB 搜索</td><td>直接读序列(Casanovo) / 查 FASTA 比对(MaxQuant…)</td><td>决定蛋白层挂不挂</td></tr>
+    <tr><td>unique / razor</td><td>只属一个蛋白的肽段 / 共享肽段按 parsimony 归属</td><td>Peptide.is_unique / BELONGS_TO.is_razor</td></tr>
+    <tr><td>蛋白组 / 连通分量</td><td>被共享肽段绑在一起、无法区分的一组蛋白</td><td>ProteinGroup</td></tr>
+    <tr><td>LFQ / TMT / SILAC</td><td>无标 / 同重标签 / 同位素标记定量</td><td>Quantification(来源决定挂法)</td></tr>
+    <tr><td>MNAR / MCAR</td><td>非随机缺失(真没表达)/ 随机漏检</td><td>缺失值标注:边不存在 vs 值缺失</td></tr>
+  </table>
+</section>
+
+<!-- 6 -->
+<section id="flow">
+  <h2>6. 数据流:Materializer(解包入图)</h2>
+  <p>关系图谱通过一个 <strong>materializer</strong> 接进现有 agent 流——它作为 <code>execute_dag</code> 之后的自动步骤,把工具产出的结果文件解包成图节点。</p>
+  <ol>
+    <li>给一个 <code>run_id</code> → 查 <code>dp_run</code>,拿到<strong>输入谱图文件</strong>(input_object_ids)+ <strong>输出结果文件</strong>(output_object_ids);</li>
+    <li>谱图文件给 <code>Spectrum</code> 属性(m/z、电荷),结果文件给 <code>PSM</code>/<code>Peptide</code>;<strong>按 scan 号 join</strong> 拼成扁平行 <code>rows</code>;</li>
+    <li>分批 <code>UNWIND $rows</code> + <code>MERGE</code> 幂等写进 Neo4j,每个节点带溯源指针;</li>
+    <li>成功后在结果文件的 <code>meta_json</code> 标 <code>materialized:true</code>(防重复)。</li>
+  </ol>
+  <div class="callout key"><b>幂等而非两库事务:</b>SQLite 与 Neo4j 无跨库事务。靠 <code>MERGE</code> 在稳定键上去重 —— 先写 Neo4j、后标 SQLite,中途崩了重跑也安全。</div>
+
+  <h3>建议落点(镜像现有 <code>pkg/data_plane</code> 模式)</h3>
+<pre><code>src/pkg/graph/            # 底层存取(像 data_plane)
+  schema.py   cypher.py   store.py   types.py
+src/application/graph/     # 业务编排(像 ingest.py)
+  materializer.py
+  loaders/  casanovo.py  __init__.py
+src/application/pipeline/nodes/materialize_graph.py   # 新 LangGraph 节点
+config/graph_settings.py  # ✓ 已落地</code></pre>
+</section>
+
+<!-- 7 -->
+<section id="inference">
+  <h2>7. 蛋白推断 = 图算法(无手写逻辑)</h2>
+  <p>"肽段—蛋白"是带歧义的二部图:共享肽段把多个蛋白连在一起。<strong>蛋白组就是它的连通分量</strong>,unique/razor 看肽段的度数。</p>
+  <figure>
+    <svg viewBox="0 0 760 250" role="img" aria-label="蛋白推断连通分量">
+      <text x="20" y="22" font-size="13" font-weight="600" fill="#1c1c1a">被共享肽段连在一起的蛋白 = 一个连通分量 = 一个蛋白组</text>
+      <!-- component regions -->
+      <rect x="40" y="38" width="540" height="120" rx="11" fill="none" stroke="#0F6E56" stroke-dasharray="6 4"/>
+      <text x="48" y="54" font-size="12" fill="#0F6E56">连通分量 0 → 蛋白组 {P1, P2}</text>
+      <rect x="40" y="170" width="540" height="58" rx="11" fill="none" stroke="#BA7517" stroke-dasharray="6 4"/>
+      <text x="48" y="186" font-size="12" fill="#854F0B">连通分量 1 → 蛋白组 {P3}</text>
+      <!-- edges -->
+      <g stroke="#888780" stroke-width="1.5">
+        <line x1="200" y1="78" x2="430" y2="92"/>
+        <line x1="200" y1="118" x2="430" y2="92"/>
+        <line x1="200" y1="118" x2="430" y2="138"/>
+        <line x1="200" y1="138" x2="430" y2="138"/>
+        <line x1="200" y1="200" x2="430" y2="200"/>
+      </g>
+      <line x1="200" y1="118" x2="430" y2="92" stroke="#D85A30" stroke-width="2.6"/>
+      <line x1="200" y1="118" x2="430" y2="138" stroke="#D85A30" stroke-width="2.6"/>
+      <!-- peptide nodes -->
+      <g font-size="12.5">
+        <rect x="80" y="62" width="120" height="32" rx="8" fill="#EEEDFE" stroke="#534AB7"/><text x="140" y="83" text-anchor="middle" fill="#3C3489">PEP_A</text>
+        <rect x="80" y="102" width="120" height="32" rx="8" fill="#EEEDFE" stroke="#534AB7"/><text x="140" y="123" text-anchor="middle" fill="#3C3489">PEP_B（共享）</text>
+        <rect x="80" y="142" width="120" height="32" rx="8" fill="#EEEDFE" stroke="#534AB7"/><text x="140" y="163" text-anchor="middle" fill="#3C3489">PEP_C</text>
+        <rect x="80" y="184" width="120" height="32" rx="8" fill="#EEEDFE" stroke="#534AB7"/><text x="140" y="205" text-anchor="middle" fill="#3C3489">PEP_D</text>
+      </g>
+      <!-- protein nodes -->
+      <g font-size="12.5">
+        <rect x="430" y="76" width="100" height="32" rx="8" fill="#E1F5EE" stroke="#0F6E56"/><text x="480" y="97" text-anchor="middle" fill="#085041">P1</text>
+        <rect x="430" y="122" width="100" height="32" rx="8" fill="#E1F5EE" stroke="#0F6E56"/><text x="480" y="143" text-anchor="middle" fill="#085041">P2</text>
+        <rect x="430" y="184" width="100" height="32" rx="8" fill="#FAEEDA" stroke="#BA7517"/><text x="480" y="205" text-anchor="middle" fill="#633806">P3</text>
+      </g>
+      <!-- legend -->
+      <line x1="600" y1="80" x2="624" y2="80" stroke="#D85A30" stroke-width="2.6"/><text x="630" y="84" font-size="11.5" fill="#5f5e5a">共享肽段(度≥2)</text>
+      <line x1="600" y1="104" x2="624" y2="104" stroke="#888780" stroke-width="1.5"/><text x="630" y="108" font-size="11.5" fill="#5f5e5a">唯一肽段(度=1)</text>
+    </svg>
+    <figcaption>PEP_B 共享把 P1、P2 桥成一组;P3 独立。<code>gds.wcc</code> 一句出连通分量。</figcaption>
+  </figure>
+  <ul>
+    <li><b>蛋白组</b> = <code>gds.wcc</code> 弱连通分量 → 按 componentId 聚成 <code>ProteinGroup</code>;</li>
+    <li><b>unique</b> = 肽段 BELONGS_TO 度数为 1;</li>
+    <li><b>razor</b> = 共享肽段按 parsimony 归给证据最多者 <span class="muted">(简化版,严格对齐 MaxQuant 需贪心 set-cover)</span>。</li>
+  </ul>
+</section>
+
+<!-- 8 -->
+<section id="cypher">
+  <h2>8. Cypher 速览</h2>
+  <h3>约束(身份 = MERGE 去重键)</h3>
+<pre><code>CREATE CONSTRAINT spectrum_id IF NOT EXISTS FOR (x:Spectrum) REQUIRE x.spectrum_id IS UNIQUE;
+CREATE CONSTRAINT psm_id      IF NOT EXISTS FOR (p:PSM)      REQUIRE p.psm_id      IS UNIQUE;
+CREATE CONSTRAINT peptidoform IF NOT EXISTS FOR (e:Peptide)  REQUIRE e.peptidoform IS UNIQUE;
+CREATE CONSTRAINT protein_acc IF NOT EXISTS FOR (pr:Protein) REQUIRE pr.accession  IS UNIQUE;</code></pre>
+  <h3>蛋白推断(GDS 连通分量)</h3>
+<pre><code>CALL gds.graph.project('pep_prot', ['Peptide','Protein'],
+     { BELONGS_TO: { orientation: 'UNDIRECTED' } });
+CALL gds.wcc.write('pep_prot', { writeProperty: 'componentId' });
+CALL gds.graph.drop('pep_prot', false);
+
+MATCH (prot:Protein)
+WITH prot.componentId AS gid, collect(prot) AS members
+MERGE (g:ProteinGroup {group_id: 'grp_' + toString(gid)})
+WITH g, members UNWIND members AS prot
+MERGE (prot)-[:IN_GROUP]->(g);</code></pre>
+  <h3>报告查询示例 —— 指标即查询</h3>
+<pre><code>// 每条肽段被几张谱支持(1% FDR、去 decoy)
+MATCH (pep:Peptide)&lt;-[:IDENTIFIES]-(psm:PSM)
+WHERE psm.is_decoy = false AND (psm.q_value IS NULL OR psm.q_value &lt;= 0.01)
+RETURN pep.peptidoform, count(psm) AS spectral_support
+ORDER BY spectral_support DESC;</code></pre>
+</section>
+
+<!-- 9 -->
+<section id="open">
+  <h2>9. 待确认 &amp; 落地现状</h2>
+
+  <h3>第一次和 PhD 要锁死的 5 个约束</h3>
+  <ol>
+    <li><b>实验范式</b>:DDA / DIA</li>
+    <li><b>定量策略</b>:LFQ / TMT / SILAC</li>
+    <li><b>上游分析工具</b>:MaxQuant / FragPipe / DIA-NN(决定输入格式)</li>
+    <li><b>图的边界</b>:单实验一张图 / 多实验累积</li>
+    <li><b>报告受众</b>:QC 技术报告 / 生物学解读(决定要不要 L2)</li>
+  </ol>
+
+  <h3>三个建模决策(已采用默认,可调)</h3>
+  <table>
+    <tr><th>决策</th><th>默认</th><th>理由</th></tr>
+    <tr><td>Peptide 身份</td><td>peptidoform(带修饰)</td><td>定量/修饰分析在 peptidoform 级,裸序列作属性</td></tr>
+    <tr><td>谱图峰</td><td>不入图,留文件指针</td><td>几十万谱×上百峰会爆;按需回文件取</td></tr>
+    <tr><td>图库</td><td>Neo4j + GDS,与 SQLite 并存</td><td>边属性密集 + 要跑图算法;靠 id 互指</td></tr>
+  </table>
+
+  <h3>落地现状</h3>
+  <table>
+    <tr><th>项</th><th>状态</th></tr>
+    <tr><td>整套 schema 设计(节点/边/Cypher)</td><td class="ok">✓ 设计稿(本文档)</td></tr>
+    <tr><td>neo4j 驱动 + requirements</td><td class="ok">✓ 已进仓库</td></tr>
+    <tr><td>config/graph_settings.py(+ AppSettings/.env.example)</td><td class="ok">✓ 已进仓库</td></tr>
+    <tr><td>pkg/graph/(schema/cypher/store/types)</td><td class="todo">待落成文件</td></tr>
+    <tr><td>application/graph/(materializer + loaders)</td><td class="todo">待落成文件</td></tr>
+    <tr><td>materialize_graph 节点接进 pipeline</td><td class="todo">待落成文件</td></tr>
+    <tr><td>真实质谱分析工具(MCP toolCount=0)</td><td class="todo">待建</td></tr>
+  </table>
+</section>
+
+</main>
+</div>
+
+<footer>
+  PTAgent 关系图谱设计 · 生成于 2026-06-15 · 仅供内部设计对齐参考。
+</footer>
+
+</body>
+</html>

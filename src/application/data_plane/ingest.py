@@ -21,7 +21,7 @@ def _sha256_file(path: Path) -> str:
 
 def infer_data_type_from_filename(name: str) -> DataType:
     suf = Path(name).suffix.lower()
-    m = {".mgf": DataType.MGF, ".mzml": DataType.MZML, ".raw": DataType.RAW, ".fasta": DataType.FASTA, ".fa": DataType.FASTA}
+    m = {".mgf": DataType.MGF, ".mzml": DataType.MZML, ".raw": DataType.RAW, ".fasta": DataType.FASTA, ".fa": DataType.FASTA, ".mztab": DataType.MZTAB}
     return m.get(suf, DataType.OTHER)
 
 

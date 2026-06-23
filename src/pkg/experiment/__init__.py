@@ -1,0 +1,65 @@
+"""实验输入、证据与归档领域包。"""
+
+from .ingest import ingest_experiment_bundle, ingest_experiment_payload
+from .identity import stable_annotation_id
+from .mysql_store import MySQLExperimentStore, get_experiment_store
+from .repository import (
+    ExperimentRepository,
+    InMemoryExperimentRepository,
+    RequestVersionConflict,
+)
+from .types import (
+    AnnotationHistory,
+    AnnotationTargetType,
+    ContextConfirmationStatus,
+    DifferentialDirection,
+    DifferentialResult,
+    EnrichmentRecord,
+    EvidenceLevel,
+    ExperimentBundle,
+    ExperimentContext,
+    ExperimentContextRevision,
+    ExperimentGroup,
+    ExperimentInputArtifact,
+    ExperimentRequest,
+    ExperimentSnapshot,
+    ExperimentStatus,
+    GroupRole,
+    MetaAnnotation,
+    PeptideRecord,
+    ProteinQuantification,
+    ProteinRecord,
+    request_content_hash,
+)
+
+__all__ = [
+    "AnnotationHistory",
+    "AnnotationTargetType",
+    "ContextConfirmationStatus",
+    "DifferentialDirection",
+    "DifferentialResult",
+    "EnrichmentRecord",
+    "EvidenceLevel",
+    "ExperimentBundle",
+    "ExperimentContext",
+    "ExperimentContextRevision",
+    "ExperimentGroup",
+    "ExperimentInputArtifact",
+    "ExperimentRepository",
+    "ExperimentRequest",
+    "ExperimentSnapshot",
+    "ExperimentStatus",
+    "GroupRole",
+    "InMemoryExperimentRepository",
+    "MetaAnnotation",
+    "MySQLExperimentStore",
+    "PeptideRecord",
+    "ProteinQuantification",
+    "ProteinRecord",
+    "RequestVersionConflict",
+    "ingest_experiment_bundle",
+    "ingest_experiment_payload",
+    "get_experiment_store",
+    "stable_annotation_id",
+    "request_content_hash",
+]

@@ -15,7 +15,8 @@ class DataType(str, Enum):
     FASTA = "FASTA"
     TSV = "TSV"
     PLOT = "PLOT"
-    INFERENCE_JSON = "INFERENCE_JSON"  # Casanovo 等整次 run 的 JSON
+    MZTAB = "MZTAB"  # Casanovo 等 de novo/鉴定结果的 mzTab PSM 表（见 parse_casanovo_mztab_psms）
+    INFERENCE_JSON = "INFERENCE_JSON"  # 整次 run 的推理 JSON（若某工具确以 JSON 落盘时用；Casanovo 实际输出 mzTab，见 MZTAB）
     JSON = "JSON"  # 通用小 JSON 摘要/缓存
     OTHER = "OTHER"
 
