@@ -14,6 +14,11 @@ ENV/
 # User-uploaded spectra (experiment entry)
 data/uploads/
 
+# 公共库下载/缓存（体积大 + 许可禁止再分发；如 CTD ~2GB、AlphaFold/Foldseek 索引）
+data/ctd/
+data/alphafold/
+data/structures/
+
 # Environment & secrets（保留 .env.example 供模板提交）
 .env
 .env.*
@@ -53,6 +58,19 @@ Thumbs.db
 # 统一 SQLite 库（运行时生成；勿提交含敏感配置的卷）
 data/ptagent.db
 data/ptagent_registry.db
+# SQLite 边车文件（WAL / SHM / journal，运行时生成）
+*.db-shm
+*.db-wal
+*.db-journal
+
+# Claude Code 本地设置（机器相关；共享设置可保留 .claude/settings.json）
+.claude/settings.local.json
+
+# 误提交的散落文件（HTML 抓取等，非源码）
+/msagent
+
+# 私人待办笔记（勿提交）
+TODO.md
 
 # Logs & temp
 *.log
