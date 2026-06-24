@@ -444,7 +444,7 @@
 - ✅ 新版下游流程定义独立状态（`PipelineResult`/`StepResult`），不复用旧 `ExecutionResults`。
 - ✅ 节点顺序：import → base annotation → CTD → differential → enrichment → hypothesis → workspace KG → deep-search → freeze → report。
 - ✅ 节点支持幂等重跑、断点恢复（freeze 跳过 + `steps` 子集）、失败隔离和状态查询。
-- 🟨 新管线独立于旧 Mock（planner/scheduler/findings/evidence/report）；旧 Mock 主线下线归 §13。
+- ✅ 新管线独立于旧 Mock（planner/scheduler/findings/evidence/report）；旧 Mock 主线 `application/pipeline/` 已标记 deprecated（运行时 `DeprecationWarning` + 文档，§13），待整体移除。
 - 🟨 完整端到端集成测试：离线（全假源）已通过（`test_pipeline_v3.py`）；真实外部源 e2e 归 B 组。
 
 ---
@@ -464,6 +464,7 @@
 
 ## 13. 旧代码处置
 
+- 🟨 将旧 Mock LangGraph 主线 `application/pipeline/` 标记 deprecated（包 `__init__` 加运行时 `DeprecationWarning` + 文档，指向 `application.orchestration`）；已确认 src/tests 无引用，保守起见暂不物理删除，待确认确无外部依赖后整体移除。
 - ⬜ 将 `pkg/protein_db` 标记 deprecated，停止新版调用。
 - ⬜ 将 `application/graph/db_assign.py` 标记 deprecated。
 - ⬜ 将 `application/graph/materializer.py` 和 Casanovo loaders 移出新版运行路径。
