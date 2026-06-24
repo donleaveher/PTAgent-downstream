@@ -3,7 +3,7 @@
 > **用途**：本文件集中记录当前下游知识层从代码、数据、外部服务到交付验收的全部工作；后续实施进度只在这里勾选，避免散落在多个 TODO。
 > **规格依据**：机制与字段以 [`project-spec.md`](project-spec.md) 为准；背景与范围以 [`PROJECT-STATUS.md`](PROJECT-STATUS.md) 为准。
 > **更新日期**：2026-06-23。
-> **当前基线**：`198 passed, 1 skipped`；真实 MySQL、UniProt MCP、CTD、Foldseek、Neo4j 实例、文献检索工具尚未完成端到端联调。MVP 三件（M1/M2/M3）代码 + 离线闭环已完成；M3 默认 gene 解析器（UniProt MCP）已接好；L2 差异分析 + 富集引擎/服务已落地（离线测试）；**CTD 真实数据已下载/过滤/加载验证**（2.9GB→2.6MB，34,253 直接事实）；**L3 本次实验 KG 纯代码核心已落地**（双节点 GraphStore 端口 + 内存/Neo4j 实现 + MySQL→图投影 + 离线测试），真连 Neo4j 实例待 B 组；**L4 deep-search 认知态跃迁纯代码核心已落地**（任务/证据/可注入源 + 纯状态机 + 回写 evidence_level/追加 AnnotationHistory，幂等可回放 + 人工覆盖），真实文献检索源待接；**L5 实验冻结归档纯代码核心已落地**（冻结前检查 + 内容 manifest + 稳定 checksum + FINAL 只读/阻止覆盖/版本化 + 篡改检测，离线测试），隔离 Neo4j 导出/真库并发待 B 组；**富集结果持久化已落地**（`enrichment_result` 表 + Repository + `run_disease_enrichment` 写全量结果 + study/background checksum，并入冻结 manifest）；**L6 分层报告纯代码核心已落地**（只读冻结快照 manifest → 分层 Markdown：设计/差异/富集/结论/假说/伪理/未决 + 附录，每条带 annotation_id/来源/版本，确定性 + 防篡改）；**下游管线编排（§11.2）已落地**（把上述服务按依赖序串成端到端流程；提供两种编排：纯 Python 线性 runner + **LangGraph 主图**——StateGraph 复用同一批 step + 冻结前人审批条件边 + audit log；失败隔离 + 幂等重跑 + 断点续跑 + 状态查询，离线 e2e 通过）；**对外 API（§11.1）已落地**（FastAPI 路由：实验创建/查询、跑管线、查注释/差异/富集/历史、查 KG 证据路径、冻结/快照/报告，DI 可注入，TestClient 离线测试通过）。**A 组（纯代码）+ §11 编排与 API 已全部完成**，剩余主要为 B 组外部联调与鉴权/审计。
+> **当前基线**：`189 passed, 1 skipped`；真实 MySQL、UniProt MCP、CTD、Foldseek、Neo4j 实例、文献检索工具尚未完成端到端联调。MVP 三件（M1/M2/M3）代码 + 离线闭环已完成；M3 默认 gene 解析器（UniProt MCP）已接好；L2 差异分析 + 富集引擎/服务已落地（离线测试）；**CTD 真实数据已下载/过滤/加载验证**（2.9GB→2.6MB，34,253 直接事实）；**L3 本次实验 KG 纯代码核心已落地**（双节点 GraphStore 端口 + 内存/Neo4j 实现 + MySQL→图投影 + 离线测试），真连 Neo4j 实例待 B 组；**L4 deep-search 认知态跃迁纯代码核心已落地**（任务/证据/可注入源 + 纯状态机 + 回写 evidence_level/追加 AnnotationHistory，幂等可回放 + 人工覆盖），真实文献检索源待接；**L5 实验冻结归档纯代码核心已落地**（冻结前检查 + 内容 manifest + 稳定 checksum + FINAL 只读/阻止覆盖/版本化 + 篡改检测，离线测试），隔离 Neo4j 导出/真库并发待 B 组；**富集结果持久化已落地**（`enrichment_result` 表 + Repository + `run_disease_enrichment` 写全量结果 + study/background checksum，并入冻结 manifest）；**L6 分层报告纯代码核心已落地**（只读冻结快照 manifest → 分层 Markdown：设计/差异/富集/结论/假说/伪理/未决 + 附录，每条带 annotation_id/来源/版本，确定性 + 防篡改）；**下游管线编排（§11.2）已落地**（把上述服务按依赖序串成端到端流程；提供两种编排：纯 Python 线性 runner + **LangGraph 主图**——StateGraph 复用同一批 step + 冻结前人审批条件边 + audit log；失败隔离 + 幂等重跑 + 断点续跑 + 状态查询，离线 e2e 通过）；**对外 API（§11.1）已落地**（FastAPI 路由：实验创建/查询、跑管线、查注释/差异/富集/历史、查 KG 证据路径、冻结/快照/报告，DI 可注入，TestClient 离线测试通过）。**A 组（纯代码）+ §11 编排与 API 已全部完成**，剩余主要为 B 组外部联调与鉴权/审计。
 
 ## 状态符号
 
@@ -42,7 +42,7 @@
 - ⬜ §11 API/编排/产品接入（pipeline 串联、对外接口）——晚于知识管线。
 - 🟨 免疫维度（§12 / Q6）：暂用 UniProt GO + CTD；schema 预留扩展通道。
 
-> **A 组（纯代码）已全部完成 + 下游管线编排（§11.2）已落地**：L3 两层知识图谱 → L4 deep-search → L5 冻结归档 → L6 分层报告，外加 §4.3 富集持久化，并由下游管线编排串成端到端流程（纯 Python runner + LangGraph 主图两种），再经 **FastAPI 对外 API（§11.1）** 暴露（离线 e2e + TestClient 通过，`198 passed, 1 skipped`）。**下一步**：B 组外部联调（真连 MySQL/Neo4j/UniProt MCP/Foldseek/文献检索源）、鉴权/审计、LangGraph checkpointer/streaming 接线。各 L 的真库/外部部分见对应章节 ⬜。
+> **A 组（纯代码）已全部完成 + 下游管线编排（§11.2）已落地**：L3 两层知识图谱 → L4 deep-search → L5 冻结归档 → L6 分层报告，外加 §4.3 富集持久化，并由下游管线编排串成端到端流程（纯 Python runner + LangGraph 主图两种），再经 **FastAPI 对外 API（§11.1）** 暴露（离线 e2e + TestClient 通过，`189 passed, 1 skipped`）。**下一步**：B 组外部联调（真连 MySQL/Neo4j/UniProt MCP/Foldseek/文献检索源）、鉴权/审计、LangGraph checkpointer/streaming 接线。各 L 的真库/外部部分见对应章节 ⬜。
 
 ---
 
@@ -469,13 +469,10 @@
 
 ## 13. 旧代码处置
 
-- 🟨 将旧 Mock LangGraph 主线 `application/pipeline/` 标记 deprecated（包 `__init__` 加运行时 `DeprecationWarning` + 文档，指向 `application.orchestration`）；已确认 src/tests 无引用，保守起见暂不物理删除，待确认确无外部依赖后整体移除。
-- ⬜ 将 `pkg/protein_db` 标记 deprecated，停止新版调用。
-- ⬜ 将 `application/graph/db_assign.py` 标记 deprecated。
-- ⬜ 将 `application/graph/materializer.py` 和 Casanovo loaders 移出新版运行路径。
-- ⬜ 将旧 `embed_knn.py`、肽序列 embedding/KNN 与新版 Foldseek 路径明确隔离。
-- ⬜ 将旧“肽近邻→GO/EC 假说”从新版入口移除。
-- ⬜ 保留仍有价值的纯函数前先证明用途；否则归档或删除。
+- ✅ **已物理删除旧 `application/graph/` 上游入口**：`db_assign.py`（肽查库）、`embed_knn.py`（肽序列 KNN）、`enrich_annot.py`（旧注释富集）、`hypothesize.py`（旧"肽近邻→GO/EC"假说）、`materializer.py` + `loaders/`（Casanovo 物化）及其 4 个旧测试一并删除；`application/graph/` 现仅保留新版 `project_kg.py`（L3）。删除前已确认活代码/`project_kg` 零引用。
+- 🟨 旧 `pkg/*` 后端**保留未动**（`pkg/graph` 旧 store/types/cypher/schema、`pkg/protein_db`、`pkg/embedding`、`pkg/hypothesis`、`pkg/ms_formats`、旧 annotation 栈 `base/local/uniprot`）：删上游入口后它们成为孤儿，但各自仍有测试；待确认无复用后再清。**注意 `pkg/retrieval` 不是孤儿——已被新 `pkg/structure/rerank.py`（M3 融合重排）复用。**
+- 🟨 将旧 Mock LangGraph 主线 `application/pipeline/` 标记 deprecated（运行时 `DeprecationWarning` + 文档，指向 `application.orchestration`）；src/tests 无引用，暂不物理删除。
+- ⬜ 将旧 `application/dag_engine`（旧 DAG 编译/调度，仅旧 pipeline 用）一并处置。
 - ⬜ 在删除旧代码前建立新版替代测试，避免误伤仍由旧 API 使用的部分。
 - ⬜ 更新根 README、TODO、tests README 中过时的旧上游描述。
 
@@ -504,7 +501,7 @@
 - ✅ 下游 LangGraph 主图测试：approve 全流程、reject/modify 冻结前停、失败隔离、人审批路由单测、图可编译。
 - ✅ 下游对外 API 测试：创建/校验(422)/查询、跑管线、KG 证据路径、快照/报告、未知实验(404)、重复冻结(409)。
 - ✅ M3 结构近邻 RRF 融合重排测试：rerank_neighbors（覆盖度可反超 score / 额外通道 / 降序）+ M3 支持近邻按融合分重排、confidence 兼容、rerank=False 退回。
-- ✅ 当前全量测试：`198 passed, 1 skipped`。
+- ✅ 当前全量测试：`189 passed, 1 skipped`。
 
 ### 14.2 待补测试
 
