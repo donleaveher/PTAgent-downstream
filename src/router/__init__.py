@@ -12,6 +12,7 @@ from fastapi import FastAPI
 
 from .agent_studio import agent_studio_router
 from .data_plane import data_plane_router
+from .downstream import downstream_router
 from .mcp_admin import mcp_admin_router
 from .ptagent_admin import ptagent_admin_router
 
@@ -23,12 +24,14 @@ def register_routes(app: FastAPI) -> None:
     app.include_router(agent_studio_router)
     app.include_router(data_plane_router)
     app.include_router(ptagent_admin_router)
+    app.include_router(downstream_router)
 
 
 __all__ = [
     "register_routes",
     "agent_studio_router",
     "data_plane_router",
+    "downstream_router",
     "mcp_admin_router",
     "ptagent_admin_router",
 ]
