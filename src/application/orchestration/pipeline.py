@@ -57,6 +57,14 @@ class StepResult:
 
 
 @dataclass(frozen=True)
+class StepOutcome:
+    """单步执行结果：状态 + 可选的报告对象（report 步产出）。"""
+
+    result: StepResult
+    report: "ExperimentReport | None" = None
+
+
+@dataclass(frozen=True)
 class PipelineResult:
     experiment_id: str
     steps: tuple[StepResult, ...]
@@ -64,6 +72,7 @@ class PipelineResult:
     failed_step: str | None
     snapshot_version: str | None
     report: ExperimentReport | None
+    audit_log: tuple[str, ...] = ()  # LangGraph 编排逐步留痕；纯线性 runner 留空
 
     def step_statuses(self) -> dict[str, str]:
         return {s.name: s.status.value for s in self.steps}
@@ -222,6 +231,42 @@ _REGISTRY: dict[str, _StepFn] = {
 }
 
 
+def execute_step(
+    name: str,
+    experiment_id: str,
+    repo: ExperimentRepository,
+    cfg: DownstreamPipelineConfig,
+) -> StepOutcome:
+    """执行单个已注册步骤，归一为 ``StepOutcome``（含失败隔离 + 报告捕获）。
+
+    纯线性 runner 与 LangGraph 节点共用此函数，业务逻辑不重复。
+    """
+    if name not in _REGISTRY:
+        raise ValueError(f"unknown pipeline step: {name}")
+    try:
+        out = _REGISTRY[name](experiment_id, repo, cfg)
+    except Exception as exc:  # 失败隔离：转成 FAILED，不抛出
+        return StepOutcome(
+            StepResult(name=name, status=StepStatus.FAILED, error=f"{type(exc).__name__}: {exc}")
+        )
+    if isinstance(out, ExperimentReport):
+        return StepOutcome(
+            StepResult(
+                name=name,
+                status=StepStatus.OK,
+                summary={
+                    "snapshot_version": out.snapshot_version,
+                    "checksum": out.checksum,
+                    "sections": list(out.sections),
+                },
+            ),
+            report=out,
+        )
+    summary = out or {}
+    status = StepStatus.SKIPPED if summary.get("skipped") else StepStatus.OK
+    return StepOutcome(StepResult(name=name, status=status, summary=summary))
+
+
 def run_downstream_pipeline(
     experiment_id: str,
     *,
@@ -249,33 +294,11 @@ def run_downstream_pipeline(
     failed: str | None = None
 
     for name in ordered:
-        try:
-            out = _REGISTRY[name](experiment_id, repo, cfg)
-            if isinstance(out, ExperimentReport):
-                report = out
-                results.append(
-                    StepResult(
-                        name=name,
-                        status=StepStatus.OK,
-                        summary={
-                            "snapshot_version": out.snapshot_version,
-                            "checksum": out.checksum,
-                            "sections": list(out.sections),
-                        },
-                    )
-                )
-            else:
-                summary = out or {}
-                status = StepStatus.SKIPPED if summary.get("skipped") else StepStatus.OK
-                results.append(StepResult(name=name, status=status, summary=summary))
-        except Exception as exc:  # 失败隔离：记录并按策略中止
-            results.append(
-                StepResult(
-                    name=name,
-                    status=StepStatus.FAILED,
-                    error=f"{type(exc).__name__}: {exc}",
-                )
-            )
+        outcome = execute_step(name, experiment_id, repo, cfg)
+        results.append(outcome.result)
+        if outcome.report is not None:
+            report = outcome.report
+        if outcome.result.status is StepStatus.FAILED:
             failed = name
             if stop_on_error:
                 break
@@ -322,8 +345,10 @@ __all__ = [
     "DownstreamPipelineConfig",
     "PipelineResult",
     "STEP_ORDER",
+    "StepOutcome",
     "StepResult",
     "StepStatus",
+    "execute_step",
     "pipeline_status",
     "run_downstream_pipeline",
 ]

@@ -3,7 +3,7 @@
 > **用途**：本文件集中记录当前下游知识层从代码、数据、外部服务到交付验收的全部工作；后续实施进度只在这里勾选，避免散落在多个 TODO。
 > **规格依据**：机制与字段以 [`project-spec.md`](project-spec.md) 为准；背景与范围以 [`PROJECT-STATUS.md`](PROJECT-STATUS.md) 为准。
 > **更新日期**：2026-06-23。
-> **当前基线**：`157 passed, 1 skipped`；真实 MySQL、UniProt MCP、CTD、Foldseek、Neo4j 实例、文献检索工具尚未完成端到端联调。MVP 三件（M1/M2/M3）代码 + 离线闭环已完成；M3 默认 gene 解析器（UniProt MCP）已接好；L2 差异分析 + 富集引擎/服务已落地（离线测试）；**CTD 真实数据已下载/过滤/加载验证**（2.9GB→2.6MB，34,253 直接事实）；**L3 本次实验 KG 纯代码核心已落地**（双节点 GraphStore 端口 + 内存/Neo4j 实现 + MySQL→图投影 + 离线测试），真连 Neo4j 实例待 B 组；**L4 deep-search 认知态跃迁纯代码核心已落地**（任务/证据/可注入源 + 纯状态机 + 回写 evidence_level/追加 AnnotationHistory，幂等可回放 + 人工覆盖），真实文献检索源待接；**L5 实验冻结归档纯代码核心已落地**（冻结前检查 + 内容 manifest + 稳定 checksum + FINAL 只读/阻止覆盖/版本化 + 篡改检测，离线测试），隔离 Neo4j 导出/真库并发待 B 组；**富集结果持久化已落地**（`enrichment_result` 表 + Repository + `run_disease_enrichment` 写全量结果 + study/background checksum，并入冻结 manifest）；**L6 分层报告纯代码核心已落地**（只读冻结快照 manifest → 分层 Markdown：设计/差异/富集/结论/假说/伪理/未决 + 附录，每条带 annotation_id/来源/版本，确定性 + 防篡改）；**下游管线编排（§11.2）已落地**（把上述服务按依赖序串成端到端流程，失败隔离 + 幂等重跑 + 断点续跑 + 状态查询，离线 e2e 通过）。**A 组（纯代码）已全部完成**，剩余主要为 B 组外部联调与 §11.1 对外 API。
+> **当前基线**：`192 passed, 1 skipped`；真实 MySQL、UniProt MCP、CTD、Foldseek、Neo4j 实例、文献检索工具尚未完成端到端联调。MVP 三件（M1/M2/M3）代码 + 离线闭环已完成；M3 默认 gene 解析器（UniProt MCP）已接好；L2 差异分析 + 富集引擎/服务已落地（离线测试）；**CTD 真实数据已下载/过滤/加载验证**（2.9GB→2.6MB，34,253 直接事实）；**L3 本次实验 KG 纯代码核心已落地**（双节点 GraphStore 端口 + 内存/Neo4j 实现 + MySQL→图投影 + 离线测试），真连 Neo4j 实例待 B 组；**L4 deep-search 认知态跃迁纯代码核心已落地**（任务/证据/可注入源 + 纯状态机 + 回写 evidence_level/追加 AnnotationHistory，幂等可回放 + 人工覆盖），真实文献检索源待接；**L5 实验冻结归档纯代码核心已落地**（冻结前检查 + 内容 manifest + 稳定 checksum + FINAL 只读/阻止覆盖/版本化 + 篡改检测，离线测试），隔离 Neo4j 导出/真库并发待 B 组；**富集结果持久化已落地**（`enrichment_result` 表 + Repository + `run_disease_enrichment` 写全量结果 + study/background checksum，并入冻结 manifest）；**L6 分层报告纯代码核心已落地**（只读冻结快照 manifest → 分层 Markdown：设计/差异/富集/结论/假说/伪理/未决 + 附录，每条带 annotation_id/来源/版本，确定性 + 防篡改）；**下游管线编排（§11.2）已落地**（把上述服务按依赖序串成端到端流程；提供两种编排：纯 Python 线性 runner + **LangGraph 主图**——StateGraph 复用同一批 step + 冻结前人审批条件边 + audit log；失败隔离 + 幂等重跑 + 断点续跑 + 状态查询，离线 e2e 通过）；**对外 API（§11.1）已落地**（FastAPI 路由：实验创建/查询、跑管线、查注释/差异/富集/历史、查 KG 证据路径、冻结/快照/报告，DI 可注入，TestClient 离线测试通过）。**A 组（纯代码）+ §11 编排与 API 已全部完成**，剩余主要为 B 组外部联调与鉴权/审计。
 
 ## 状态符号
 
@@ -42,7 +42,7 @@
 - ⬜ §11 API/编排/产品接入（pipeline 串联、对外接口）——晚于知识管线。
 - 🟨 免疫维度（§12 / Q6）：暂用 UniProt GO + CTD；schema 预留扩展通道。
 
-> **A 组（纯代码）已全部完成 + 下游管线编排（§11.2）已落地**：L3 两层知识图谱 → L4 deep-search → L5 冻结归档 → L6 分层报告，外加 §4.3 富集持久化，并由 `run_downstream_pipeline` 按依赖序串成端到端流程（离线 e2e 通过，`179 passed, 1 skipped`）。**下一步**：§11.1 对外 API（把管线/查询暴露成接口），以及 B 组外部联调（真连 MySQL/Neo4j/UniProt MCP/Foldseek/文献检索源）。各 L 的真库/外部部分见对应章节 ⬜。
+> **A 组（纯代码）已全部完成 + 下游管线编排（§11.2）已落地**：L3 两层知识图谱 → L4 deep-search → L5 冻结归档 → L6 分层报告，外加 §4.3 富集持久化，并由下游管线编排串成端到端流程（纯 Python runner + LangGraph 主图两种），再经 **FastAPI 对外 API（§11.1）** 暴露（离线 e2e + TestClient 通过，`192 passed, 1 skipped`）。**下一步**：B 组外部联调（真连 MySQL/Neo4j/UniProt MCP/Foldseek/文献检索源）、鉴权/审计、LangGraph checkpointer/streaming 接线。各 L 的真库/外部部分见对应章节 ⬜。
 
 ---
 
@@ -428,24 +428,28 @@
 
 ### 11.1 API
 
-- ⬜ 实验 Bundle 创建/校验/查询 API。
-- ⬜ MySQL schema/health 管理接口或部署命令。
-- ⬜ 启动全量基础注释、CTD、差异分析、Foldseek、假说和 deep-search 的任务 API。
-- ⬜ 查询 MetaAnnotation、历史、差异蛋白和缺失项 API。
-- ⬜ 查询本次实验 KG、按 evidence level 过滤和展开推导路径 API。
-- ⬜ 冻结、列出快照、获取报告和跨实验比较 API。
+> **进展（下游对外 API 已落地；TestClient 离线测试通过）**：新建 FastAPI 路由 `router/downstream.py`（前缀 `/ptagent/api`，已挂入 `register_routes`）。端点：`POST /experiments`（创建/校验）、`GET /experiments/{id}`（状态）、`GET …/annotations|differentials|enrichments|history`（查询，注释可按 evidence_level 过滤）、`GET …/kg/proteins/{accession}/diseases`（从蛋白展开证据路径）、`POST …/pipeline`（跑下游管线）、`POST …/freeze`、`GET …/snapshots`、`GET …/report`、`GET /health`。事实库/图库/管线 config 经 `Depends` 注入，测试用 `dependency_overrides` 注入内存实现。
+
+- ✅ 实验 Bundle 创建/校验/查询 API（`POST /experiments` + `GET /experiments/{id}`；校验失败 → 422）。
+- 🟨 health 接口已加（`GET /health`）；MySQL schema 管理/部署命令 ⬜。
+- ✅ 启动下游任务 API：`POST …/pipeline`（可传 `steps` 跑子集，等价于按需启动各任务）。
+- 🟨 查询 MetaAnnotation/历史/差异蛋白 API 已加；“缺失项”查询 ⬜。
+- 🟨 查询本次实验 KG：`…/kg/proteins/{acc}/diseases` 证据路径 + 注释按 evidence_level 过滤已加；更全的 KG 查询/路径展开 ⬜。
+- 🟨 冻结/列快照/取报告 API 已加；跨实验比较 ⬜。
 - ⬜ 接入鉴权、实验所有权和审计日志。
 
 ### 11.2 Pipeline
 
 > **进展（下游管线编排已落地；离线 e2e 通过）**：新建独立包 `application/orchestration/`——`run_downstream_pipeline` 按依赖序串 `import → base_annotation → ctd_disease → differential → enrichment → hypothesis → kg_projection → deep_search → freeze → report`；`DownstreamPipelineConfig` 注入外部源/参数，`PipelineResult`/`StepResult` 为独立状态（不复用旧 `ExecutionResults`）。每步独立 try/except（失败隔离 + `stop_on_error`），freeze 版本已存在则跳过（幂等重跑/断点续跑），`steps=` 可只跑子集，`pipeline_status` 派生进度。与旧 Mock LangGraph 主图隔离。
-> **仍 ⬜**：旧 Mock 主线（`application/pipeline/` 的 planner/scheduler/findings/report 节点）下线（§13）、真实外部源的端到端集成（B 组）。
+> **另提供 LangGraph 主图**（`orchestration/graph.py`，旧主图风格的新实现）：`StateGraph` + 下游专用共享状态 `DownstreamState`（非旧 `ExecutionResults`）+ 节点复用同一批 `execute_step`（业务逻辑不重复）+ **冻结前 `human_approval` 条件边**（approve→freeze / modify→END / reject→END）+ audit log 逐步留痕；节点级失败隔离（下游 no-op，条件边收敛 END）。当前内存 `invoke`；接 checkpointer + `interrupt_before` 即得暂停/恢复式人在回路。
+> **仍 ⬜**：旧 Mock 主线（`application/pipeline/` 的 planner/scheduler/findings/report 节点）下线（§13）、真实外部源的端到端集成（B 组）、LangGraph checkpointer/streaming 接线。
 
 - ✅ 新版下游流程定义独立状态（`PipelineResult`/`StepResult`），不复用旧 `ExecutionResults`。
 - ✅ 节点顺序：import → base annotation → CTD → differential → enrichment → hypothesis → workspace KG → deep-search → freeze → report。
 - ✅ 节点支持幂等重跑、断点恢复（freeze 跳过 + `steps` 子集）、失败隔离和状态查询。
 - ✅ 新管线独立于旧 Mock（planner/scheduler/findings/evidence/report）；旧 Mock 主线 `application/pipeline/` 已标记 deprecated（运行时 `DeprecationWarning` + 文档，§13），待整体移除。
-- 🟨 完整端到端集成测试：离线（全假源）已通过（`test_pipeline_v3.py`）；真实外部源 e2e 归 B 组。
+- ✅ 提供 LangGraph 主图（`run_downstream_graph`，旧风格新实现）：复用同一批 step + 冻结前人审批条件边 + audit log，与纯 Python runner 共存。
+- 🟨 完整端到端集成测试：离线（全假源）已通过（`test_pipeline_v3.py` 纯 runner、`test_pipeline_graph_v3.py` LangGraph、`test_downstream_api_v3.py` API）；真实外部源 e2e 归 B 组。
 
 ---
 
@@ -495,8 +499,10 @@
 - ✅ L5 冻结归档测试：FINAL 快照 + manifest/checksum、冻结前检查、只读/阻止覆盖、版本化（旧版不变）、篡改检测。
 - ✅ 富集持久化测试：服务写全量结果 + study/background checksum + 幂等重跑 + MySQL 往返。
 - ✅ L6 分层报告测试：分层章节/可追溯陈述、确定性、只读冻结快照、防篡改、未知版本。
-- ✅ 下游管线编排测试：端到端 9 步全过、幂等重跑（freeze 跳过）、失败隔离、子集执行、状态查询。
-- ✅ 当前全量测试：`179 passed, 1 skipped`。
+- ✅ 下游管线编排测试：纯 runner 端到端 9 步全过、幂等重跑（freeze 跳过）、失败隔离、子集执行、状态查询。
+- ✅ 下游 LangGraph 主图测试：approve 全流程、reject/modify 冻结前停、失败隔离、人审批路由单测、图可编译。
+- ✅ 下游对外 API 测试：创建/校验(422)/查询、跑管线、KG 证据路径、快照/报告、未知实验(404)、重复冻结(409)。
+- ✅ 当前全量测试：`192 passed, 1 skipped`。
 
 ### 14.2 待补测试
 
@@ -665,5 +671,11 @@
 
 ### §11.2 · 下游管线编排
 
-- ✅ [`src/application/orchestration/pipeline.py`](../src/application/orchestration/pipeline.py)：`run_downstream_pipeline`（9 步依赖序 + 失败隔离 + 幂等/断点 + 状态查询）+ `pipeline_status`。
-- 🧪 [`tests/test_pipeline_v3.py`](../tests/test_pipeline_v3.py)。
+- ✅ [`src/application/orchestration/pipeline.py`](../src/application/orchestration/pipeline.py)：纯 Python 线性 runner `run_downstream_pipeline`（9 步依赖序 + 失败隔离 + 幂等/断点 + 状态查询）+ 共用 `execute_step` + `pipeline_status`。
+- ✅ [`src/application/orchestration/graph.py`](../src/application/orchestration/graph.py)：LangGraph 主图 `build_downstream_graph` / `run_downstream_graph`（共享状态 + 冻结前人审批条件边 + audit log，复用 `execute_step`）。
+- 🧪 [`tests/test_pipeline_v3.py`](../tests/test_pipeline_v3.py)、[`tests/test_pipeline_graph_v3.py`](../tests/test_pipeline_graph_v3.py)。
+
+### §11.1 · 下游对外 API
+
+- ✅ [`src/router/downstream.py`](../src/router/downstream.py)：FastAPI 路由（实验创建/查询、跑管线、查注释/差异/富集/历史、KG 证据路径、冻结/快照/报告、health；DI 可注入）。
+- 🧪 [`tests/test_downstream_api_v3.py`](../tests/test_downstream_api_v3.py)。
