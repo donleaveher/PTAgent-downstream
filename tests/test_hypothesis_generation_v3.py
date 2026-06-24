@@ -142,6 +142,51 @@ def test_hypotheses_are_idempotent() -> None:
     assert first == second and len(second) == 1
 
 
+def test_supporting_neighbors_are_reranked_by_rrf_fusion() -> None:
+    repo = InMemoryExperimentRepository()
+    ingest_experiment_payload(_payload_with_novel_protein(), repo)
+    # 一个蛋白的 3 个结构近邻经 3 个基因都指向同一疾病；纯 score 序 N_A 居首，
+    # 但 N_B 覆盖度最高 → RRF 融合后 N_B 顶到首位（confidence 仍取最高结构分，保持兼容）。
+    structure = _FakeStructure(
+        {
+            "Q_NOVEL": [
+                StructuralNeighbor("Q_NOVEL", "N_A", score=0.9, coverage=0.10, taxon_id=9606),
+                StructuralNeighbor("Q_NOVEL", "N_B", score=0.8, coverage=0.99, taxon_id=9606),
+                StructuralNeighbor("Q_NOVEL", "N_C", score=0.7, coverage=0.98, taxon_id=9606),
+            ]
+        }
+    )
+    resolver = InMemoryGeneResolver({"N_A": "GA", "N_B": "GB", "N_C": "GC"})
+    ctd = _FakeCTD(
+        {
+            "GA": [GeneDiseaseFact("GA", "MESH:D1", "DX", "marker", "rA")],
+            "GB": [GeneDiseaseFact("GB", "MESH:D1", "DX", "marker", "rB")],
+            "GC": [GeneDiseaseFact("GC", "MESH:D1", "DX", "marker", "rC")],
+        }
+    )
+
+    generate_experiment_hypotheses(
+        "exp_1", repository=repo, structure_provider=structure, gene_resolver=resolver, disease_source=ctd
+    )
+    der = repo.list_annotations("exp_1")[0].derivation
+    assert der["neighbors"][0]["accession"] == "N_B"      # 重排把高覆盖近邻顶上来
+    assert der["neighbors"][0]["coverage"] == 0.99
+    assert der["confidence"] == 0.9                         # 最高结构分(N_A)，与顺序无关
+    assert der["ranking"] == "rrf(score,coverage)"
+    assert der["rerank_confidence"] == max(n["fused_score"] for n in der["neighbors"])
+
+    # 关掉重排 → 回到纯 score 序（N_A 居首）
+    repo2 = InMemoryExperimentRepository()
+    ingest_experiment_payload(_payload_with_novel_protein(), repo2)
+    generate_experiment_hypotheses(
+        "exp_1", repository=repo2, structure_provider=structure, gene_resolver=resolver,
+        disease_source=ctd, rerank=False,
+    )
+    der2 = repo2.list_annotations("exp_1")[0].derivation
+    assert der2["neighbors"][0]["accession"] == "N_A"
+    assert der2["ranking"] == "score"
+
+
 def test_unknown_experiment_rejected() -> None:
     structure, resolver, ctd = _deps()
     with pytest.raises(ValueError, match="unknown experiment_id"):

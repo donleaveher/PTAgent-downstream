@@ -19,7 +19,11 @@ from pkg.experiment import (
     get_experiment_store,
     stable_annotation_id,
 )
-from pkg.structure import StructureSearchProvider, get_structure_search_provider
+from pkg.structure import (
+    StructureSearchProvider,
+    get_structure_search_provider,
+    rerank_neighbors,
+)
 
 _SOURCE = "Foldseek-KNN"
 
@@ -33,6 +37,8 @@ def generate_experiment_hypotheses(
     disease_source: GeneDiseaseSource | None = None,
     protein_ids: Iterable[str] | None = None,
     top_k: int | None = None,
+    rerank: bool = True,
+    rrf_k: int = 60,
 ) -> dict[str, Any]:
     """生成蛋白级结构类比假说，幂等落库。
 
@@ -89,8 +95,15 @@ def generate_experiment_hypotheses(
     annotations: dict[str, MetaAnnotation] = {}
     proteins_with_hypotheses = 0
     for protein in proteins:
+        prot_neighbors = neighbors_by_acc.get(protein.accession, [])
+        # 多路融合重排（结构相似 + 覆盖度），把单路 score 升级为 RRF 融合分
+        fused_by_acc = (
+            {n.target_accession: fs for n, fs in rerank_neighbors(prot_neighbors, rrf_k=rrf_k)}
+            if rerank
+            else {}
+        )
         support: dict[str, dict[str, Any]] = {}
-        for neighbor in neighbors_by_acc.get(protein.accession, []):
+        for neighbor in prot_neighbors:
             gene = gene_by_acc.get(neighbor.target_accession)
             if not gene:
                 continue
@@ -106,15 +119,20 @@ def generate_experiment_hypotheses(
                         "accession": neighbor.target_accession,
                         "gene": gene,
                         "score": neighbor.score,
+                        "coverage": neighbor.coverage,
                         "taxon_id": neighbor.taxon_id,
                         "ctd_relation_id": fact.relation_id,
+                        "fused_score": fused_by_acc.get(neighbor.target_accession, neighbor.score),
                     }
                 )
 
         if support:
             proteins_with_hypotheses += 1
         for disease_id, entry in support.items():
-            sup = sorted(entry["neighbors"], key=lambda s: s["score"], reverse=True)
+            # 按融合分重排支持近邻（同分回退结构 score）
+            sup = sorted(
+                entry["neighbors"], key=lambda s: (s["fused_score"], s["score"]), reverse=True
+            )
             value = {"disease_id": disease_id, "disease_name": entry["disease_name"]}
             attribute = f"disease:{disease_id}"
             annotation_id = stable_annotation_id(
@@ -137,8 +155,10 @@ def generate_experiment_hypotheses(
                 derivation={
                     "neighbors": sup,
                     "via_genes": sorted({s["gene"] for s in sup}),
-                    "confidence": max(s["score"] for s in sup),
+                    "confidence": max(s["score"] for s in sup),  # 最高结构相似分（兼容）
+                    "rerank_confidence": max(s["fused_score"] for s in sup),  # 融合重排最高分
                     "support_count": len(sup),
+                    "ranking": "rrf(score,coverage)" if rerank else "score",
                 },
                 provenance={
                     "structure_version": structures.version,

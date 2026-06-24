@@ -7,6 +7,7 @@ from pkg.structure.foldseek import (
     parse_foldseek_output,
     select_neighbors,
 )
+from pkg.structure.rerank import rerank_neighbors
 from pkg.structure.types import StructuralNeighbor, StructureSearchProvider
 
 __all__ = [
@@ -16,5 +17,6 @@ __all__ = [
     "StructureSearchRunner",
     "get_structure_search_provider",
     "parse_foldseek_output",
+    "rerank_neighbors",
     "select_neighbors",
 ]
