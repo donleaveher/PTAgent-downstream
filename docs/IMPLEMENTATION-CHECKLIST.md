@@ -64,6 +64,7 @@
 - ✅ Q4：公共实体/稳定事实引用通用 KG；实验判断保存在本次实验 KG；完成后冻结归档。
 - ✅ Q5：MySQL 是事实唯一来源；Neo4j 负责关系遍历，通过 `GraphStore` 抽象访问。
 - 🟨 Q6：当前不建设专用免疫数据库，但保持扩展通道，不关闭后续可能性。
+- ✅ Q7：上游交接为**结构化数据**（MCP/服务直接递已鉴定肽/蛋白 + 背景），**下游不解析文件**（上游已确认不传文件）。输入经现有 `ingest_experiment_payload` / `POST /experiments` 收下；最多加一层"上游 schema → `ExperimentBundle` 字段映射"薄适配器，不做 CSV/TSV/mzTab 解析。
 
 ---
 
@@ -111,11 +112,11 @@
 - ✅ 结构化字段优先级已固定：`extra.structured_context → extra → constraints`。
 - ✅ `data_object_ids`、FilterConfig 和 WorkflowPreset 通过独立映射结果保留，不污染领域 `design`。
 - ✅ 修复旧 HTTP `filter_config.default_factory` 导致 Context 无法实例化的问题。
-- ⬜ 将转换器接入正式实验创建 Router/Pipeline；当前已有独立应用服务和测试，尚未接生产入口。
-- ⬜ 增加文件导入适配器：CSV/TSV/JSON 三件套。
-- ⬜ 定义并实现 DIA-NN/其他上游已鉴定结果的字段映射；只做结果导入，不做上游鉴定。
+- ✅ 将转换器接入正式实验创建入口：`POST /ptagent/api/experiments`（§11.1）已接 `ingest_experiment_payload`。
+- 🚫 文件导入适配器（CSV/TSV/JSON/mzTab）：**不做** —— 上游确定不传文件（Q7），输入走结构化数据入口。
+- ⬜ 上游 MCP/服务结构化输出 → `ExperimentBundle` **字段映射薄适配器**（待上游真实输出 schema 确认后落地；不解析文件，只对字段名/形态）。
 - ⬜ 从背景原文结构化抽取 disease/pathway/organism/groups，并保留人工确认入口。
-- ⬜ 提供导入错误报告：行号、字段、引用错误和修复建议。
+- ⬜ 提供输入校验错误报告：字段、引用错误和修复建议（结构化入参的 Pydantic 校验已有，待包装成友好报告）。
 - ⬜ 增加输入 Bundle 大数据量批量写入和性能测试。
 
 ### 1.4 原始请求版本与审计
@@ -203,14 +204,20 @@
 ## 4. 差异分析与富集
 
 > **进展（L2 引擎 + 服务已落地；离线测试通过）**：`pkg/analysis/`——`compute_differential_results`（log2FC + Welch t + BH；无重复退化为 fold-change）、`over_representation`（超几何 ORA + BH，**背景=鉴定蛋白池** Q1）；`application/analysis/`——`analyze_experiment_differential`（按 role 自动选组、写 `differential_result`）、`run_disease_enrichment`（差异基因 vs 全部鉴定基因，基因集取自 CTD 结论）。定量/差异持久化复用仓库 `add_quantifications`/`add_differentials`（InMemory+MySQL 均已实现）；"仅差异蛋白"在服务内由 `list_differentials` 过滤 `is_differential` 派生。
-> 下面 ⬜ 中 **差异统计(4.2)/富集统计(4.3)/数值正确性测试** 已由代码满足；**富集结果持久化已落地**（`enrichment_result` 表 + Repository + 服务写全量结果 + study/background checksum）。**仍 ⬜**：真实定量写入(4.1)、缺失值/归一化的真实数据边界、真实 case/control 联调。
+> 下面 ⬜ 中 **差异统计(4.2)/富集统计(4.3)/数值正确性测试** 已由代码满足；**富集结果持久化已落地**（`enrichment_result` 表 + Repository + 服务写全量结果 + study/background checksum）；**定量提交入口已落地**（§4.1：下游自定义契约 + `POST/GET /experiments/{id}/quantifications` + 校验/原子/upsert，离线往返测试）。**仍 ⬜**：真实 DIA 定量数据端到端联调(4.1)、缺失值/归一化的真实数据边界、真实 case/control 联调。
 
 ### 4.1 定量输入契约
 
-- ⬜ 明确样本重复、组别、缺失值、归一化后丰度和原始丰度字段。
-- ⬜ 明确 DIA 输入的蛋白级定量是否由上游直接提供，避免在本层重复蛋白汇总。
-- ⬜ 将真实定量数据写入 `protein_quantification`。
-- ⬜ 校验 case/control、样本重复和可比较性。
+> **进展（契约 + 入口已落地；离线测试通过）**：定量走**下游自定义契约**（INPUT-CONTRACT §6），与 bundle 分离、可增量提交。
+> `POST /experiments/{id}/quantifications` 收一批 `{protein_id, group_id, sample_id, abundance, meta?}` →
+> `application/experiment/quantification_ingest.py`（校验 `protein_id`/`group_id` 属于该实验、整批原子、幂等 upsert）→
+> 复用仓库 `add_quantifications` 落 `protein_quantification`；`GET` 同路径往返查询。**蛋白级直收，不在本层重复肽→蛋白汇总。**
+> **仍 ⬜**：真实 DIA 定量数据端到端写入与 case/control 联调（与上游集成时若格式不同，入口前加字段映射适配器）。
+
+- ✅ 明确样本重复（`sample_id`）、组别（`group_id`）、丰度（`abundance`）、归一化等放 `meta`；缺失值由差异引擎按 `>0` 过滤。
+- ✅ 明确 DIA 蛋白级定量**由下游入口直收**（自定义契约），避免在本层重复蛋白汇总。
+- 🟨 定量写入 `protein_quantification` 的**入口/写路径已落地**（离线往返测试通过）；真实数据写入待联调。
+- 🟨 校验 `group_id` ∈ 实验分组（已做）；case/control 可比较性由差异服务按 role 选组（已有），真实数据边界待联调。
 
 ### 4.2 差异统计
 
