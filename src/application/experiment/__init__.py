@@ -12,6 +12,10 @@ from .freeze import (
     freeze_experiment,
     verify_snapshot_integrity,
 )
+from .quantification_ingest import (
+    QuantificationIngestError,
+    ingest_experiment_quantifications,
+)
 from .request_service import RecordedExperimentRequest, record_http_experiment_request
 
 __all__ = [
@@ -23,6 +27,8 @@ __all__ = [
     "compute_manifest_checksum",
     "freeze_experiment",
     "verify_snapshot_integrity",
+    "QuantificationIngestError",
+    "ingest_experiment_quantifications",
     "RecordedExperimentRequest",
     "record_http_experiment_request",
 ]

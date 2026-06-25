@@ -14,9 +14,13 @@ import dataclasses
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, Field, ValidationError
 
 from application.experiment.freeze import FreezePreconditionError, freeze_experiment
+from application.experiment.quantification_ingest import (
+    QuantificationIngestError,
+    ingest_experiment_quantifications,
+)
 from application.orchestration import (
     DownstreamPipelineConfig,
     pipeline_status,
@@ -67,6 +71,19 @@ class FreezeBody(BaseModel):
     allow_unresolved_hypotheses: bool = False
 
 
+class QuantificationRowBody(BaseModel):
+    """单行蛋白定量（下游自定义契约 §6）；experiment_id 由 URL 路径给出。"""
+    protein_id: str = Field(min_length=1)
+    group_id: str = Field(min_length=1)
+    sample_id: str = Field(min_length=1)
+    abundance: float
+    meta: dict[str, Any] = Field(default_factory=dict)
+
+
+class QuantificationsBody(BaseModel):
+    quantifications: list[QuantificationRowBody]
+
+
 # ---------------- 健康检查 ----------------
 @downstream_router.get("/health")
 def api_health() -> dict[str, Any]:
@@ -97,6 +114,42 @@ def api_get_experiment(
 ) -> dict[str, Any]:
     _require(repo, experiment_id)
     return pipeline_status(experiment_id, repository=repo)
+
+
+# ---------------- 定量：录入 / 查询（差异分析输入，下游自定义契约 §6）----------------
+@downstream_router.post("/experiments/{experiment_id}/quantifications")
+def api_ingest_quantifications(
+    experiment_id: str,
+    body: QuantificationsBody,
+    repo: ExperimentRepository = Depends(get_repository),
+) -> dict[str, Any]:
+    """录入一批 {protein_id, group_id, sample_id, abundance}。
+
+    引用了该实验不存在的 protein_id / group_id → 整批拒绝 422。
+    同一 (protein, group, sample) 重复提交按 upsert 覆盖。
+    """
+    _require(repo, experiment_id)
+    try:
+        return ingest_experiment_quantifications(
+            experiment_id,
+            [row.model_dump() for row in body.quantifications],
+            repository=repo,
+        )
+    except QuantificationIngestError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@downstream_router.get("/experiments/{experiment_id}/quantifications")
+def api_list_quantifications(
+    experiment_id: str, repo: ExperimentRepository = Depends(get_repository)
+) -> dict[str, Any]:
+    _require(repo, experiment_id)
+    rows = repo.list_quantifications(experiment_id)
+    return {
+        "experiment_id": experiment_id,
+        "count": len(rows),
+        "quantifications": [r.model_dump(mode="json") for r in rows],
+    }
 
 
 # ---------------- 查询：注释 / 差异 / 富集 / 历史 ----------------
