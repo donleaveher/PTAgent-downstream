@@ -7,6 +7,8 @@
 
 特性：
 - **独立状态**：用本模块的 `StepResult`/`PipelineResult`，不复用旧上游 `ExecutionResults`。
+- **Q2 聚焦差异蛋白**：`restrict_to_differential`（默认开）令 hypothesis/structure/deep_search 只覆盖
+  差异蛋白；base_annotation/ctd_disease 仍覆盖全部蛋白。
 - **失败隔离**：每步独立 try/except，记录状态；`stop_on_error` 控制遇错是否中止。
 - **幂等重跑 / 断点恢复**：各底层服务以稳定 ID upsert；freeze 若版本已存在则跳过；
   `steps=` 可只跑子集（从断点续跑）。
@@ -91,6 +93,8 @@ class DownstreamPipelineConfig:
     min_samples: int = 2
     enrichment_min_overlap: int = 2
     top_k: int | None = None
+    # Q2：结构类比假说(M2/M3)与 deep_search(L4) 仅覆盖差异蛋白；关掉则退回全蛋白。
+    restrict_to_differential: bool = True
     allow_unresolved_hypotheses: bool = False
     # 输入（import 步用；None 表示已预先导入）
     bundle: ExperimentBundle | None = None
@@ -150,9 +154,17 @@ def _step_enrichment(experiment_id, repo, cfg):
 
 
 def _step_hypothesis(experiment_id, repo, cfg):
+    # Q2：仅对差异蛋白做结构类比假说（M2/M3）；deep_search(L4) 只验证 HYPOTHESIS 注释，
+    # 故自动随之收窄。无差异（如未提交定量）→ 空集 → 不出假说。依赖 differential 步先落库。
+    protein_ids = None
+    if cfg.restrict_to_differential:
+        protein_ids = sorted(
+            {d.protein_id for d in repo.list_differentials(experiment_id) if d.is_differential}
+        )
     return generate_experiment_hypotheses(
         experiment_id,
         repository=repo,
+        protein_ids=protein_ids,
         structure_provider=cfg.structure_provider,
         gene_resolver=cfg.gene_resolver,
         disease_source=cfg.disease_source,

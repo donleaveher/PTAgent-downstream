@@ -225,7 +225,7 @@
 - ⬜ 计算 log2FC、p-value、BH q-value 和 direction。
 - ⬜ 明确默认显著性阈值，并允许实验级配置。
 - ⬜ 将全量结果写入 `differential_result`，而不只保存显著项。
-- ⬜ 生成“仅差异蛋白”查询接口，供 Foldseek/deep-search 使用。
+- ✅ “仅差异蛋白”供给 Foldseek/deep-search：管线 `restrict_to_differential`（默认开）由 `list_differentials` 过滤 `is_differential`，把差异蛋白集喂给 hypothesis(M2/M3)/deep_search(L4)；`GET …/differentials?only_significant=true` 亦可查询。
 - ⬜ 处理缺失值、极端值和零值。
 - ⬜ 增加已知小数据集的数值正确性测试。
 
@@ -246,7 +246,7 @@
 ## 5. AlphaFold/Foldseek 结构近邻
 
 > **进展（结构检索引擎已落地，对标 UniProt/CTD 链；离线/假源已测）**：新建独立包 `pkg/structure/`——`StructureSearchProvider` 协议 + `StructuralNeighbor`（score/coverage/rank/taxon/relation_id/版本）+ `parse_foldseek_output` + `select_neighbors`（去自身/阈值/top-k/排名）+ `FoldseekStructureSearchProvider`（runner 可注入）+ `StructureSettings`。**不复用旧序列 KNN**。
-> 已离线验证**跨物种 大鼠→人** 近邻案例。**仍 ⬜**：真实 Foldseek 二进制 + AlphaFold DB 索引/查询结构、"仅差异蛋白"编排（依赖 L2）、检索摘要持久化/`STRUCTURAL_NEIGHBOR` 图投影（依赖 §7）、物种过滤选项。
+> 已离线验证**跨物种 大鼠→人** 近邻案例。**"仅差异蛋白"编排已落地**（管线 `restrict_to_differential` 默认开，依赖 L2 差异先落库）。**仍 ⬜**：真实 Foldseek 二进制 + AlphaFold DB 索引/查询结构、检索摘要持久化/`STRUCTURAL_NEIGHBOR` 图投影（依赖 §7）、物种过滤选项。
 
 ### 5.1 Provider 与运行环境
 
@@ -259,7 +259,7 @@
 
 ### 5.2 检索与持久化
 
-- ⬜ 仅对差异蛋白执行结构检索。
+- ✅ 仅对差异蛋白执行结构检索（结构检索在 M3 假说生成内进行，管线 `restrict_to_differential` 默认开 → 只喂差异蛋白集）。
 - ⬜ 输出 query protein、neighbor protein、score、coverage、rank、taxon 和数据库版本。
 - ⬜ 将原始检索摘要写 MySQL/cache，不把大结构文件写入 Neo4j。
 - ⬜ 为 `STRUCTURAL_NEIGHBOR` 图投影准备稳定关系 ID。
@@ -286,11 +286,12 @@
 > **进展（M3 已落地；离线/假源 MVP 闭环已测）**：`application/knowledge/hypothesis_generation.py`——每蛋白 取结构近邻(M2) → 解析近邻 gene(`GeneResolver`) → 查近邻 gene 的 CTD 疾病(M1) → 借为 **Protein 级 `MetaAnnotation(HYPOTHESIS)`**；derivation 存全部支持近邻/score/taxon/via_gene/CTD relation，confidence=最高近邻分；**蛋白自身 gene 已有直接结论的疾病不重复出假说**；幂等。
 > `get_gene_resolver` **已实现**（复用师兄的 UniProt MCP，见 `UniProtMCPGeneResolver`）——M3 默认装配不再有 `NotImplementedError`，仅待真实 MCP 联调。
 > **多路融合重排（接入 `pkg.retrieval`）**：结构近邻不再只按 Foldseek 单路 `score` 排，而经 `pkg/structure/rerank.py::rerank_neighbors`——用 RRF（`pkg.retrieval.rrf`）融合 `score` + `coverage` 两路（并留 `extra_channels` 口子接序列/向量/属性召回），支持近邻按融合分重排；`confidence` 仍取最高结构分（保持兼容），新增 `rerank_confidence`/`fused_score`/`ranking`。可 `rerank=False` 退回纯 score。
-> **仍 ⬜**："仅差异蛋白"编排（L2）、创建后续 deep-search 任务（§8）、背景疾病/通路优先级、把更多召回路（序列/向量）真正接成 `extra_channels`。
+> **"仅差异蛋白"编排已落地**：管线 `_step_hypothesis` 在 `restrict_to_differential`（默认开）下由 `list_differentials` 取 `is_differential` 蛋白集传 `protein_ids`；deep_search(L4) 只验证 HYPOTHESIS 注释，随之自动收窄。无差异（如未提交定量）→ 不出假说。
+> **仍 ⬜**：创建后续 deep-search 任务（§8）、背景疾病/通路优先级、把更多召回路（序列/向量）真正接成 `extra_channels`。
 
 - ⬜ 停止使用旧“肽序列近邻→借 GO/EC”作为新版假说链。
 - ⬜ 定义结构邻居疾病证据输入模型。
-- ⬜ 对每个差异蛋白读取 Foldseek 近邻。
+- ✅ 对每个差异蛋白读取结构近邻（管线只传差异蛋白集；离线假源已测，真实 Foldseek 二进制见 §5）。
 - ⬜ 查询近邻 protein→gene→CTD disease 直接关系。
 - ⬜ 将借来的疾病关联生成 Protein 级 `MetaAnnotation(HYPOTHESIS)`。
 - ⬜ derivation 必须保存所有支持近邻、score、via gene、CTD relation 和版本。

@@ -212,3 +212,43 @@ def test_unknown_experiment_and_unknown_step_raise() -> None:
         run_downstream_pipeline("nope", repository=repo, config=_full_config())
     with pytest.raises(ValueError):
         run_downstream_pipeline(EXP, repository=repo, config=_full_config(), steps=["bogus"])
+
+
+def _repo_prot2(case_hi: float, ctrl_lo: float) -> InMemoryExperimentRepository:
+    """只含 prot2(Q_NOVEL，有结构近邻)；是否差异由丰度决定。"""
+    repo = InMemoryExperimentRepository()
+    repo.save_bundle(ExperimentBundle(
+        context=ExperimentContext(experiment_id=EXP, raw_text="ischemia", organism="rat"),
+        groups=[
+            ExperimentGroup(group_id="g_case", label="Case", role=GroupRole.CASE),
+            ExperimentGroup(group_id="g_ctrl", label="Control", role=GroupRole.CONTROL),
+        ],
+        proteins=[ProteinRecord(protein_id="prot2", accession="Q_NOVEL", gene="Novelx", taxon_id=10116)],
+        peptides=[],
+    ))
+    repo.add_quantifications(_quants("prot2", case_hi, ctrl_lo))
+    return repo
+
+
+def test_hypotheses_restricted_to_differential_proteins() -> None:
+    """Q2：非差异蛋白即便有结构近邻也不出假说；关掉开关退回全蛋白；差异蛋白照常出。"""
+    steps = ["differential", "hypothesis"]
+
+    # 非差异（case≈control）+ restrict 默认开 → 0 假说
+    repo_flat = _repo_prot2(10, 10)
+    run_downstream_pipeline(EXP, repository=repo_flat, config=_full_config(), steps=steps)
+    assert all(not d.is_differential for d in repo_flat.list_differentials(EXP))
+    assert pipeline_status(EXP, repository=repo_flat)["hypotheses"] == 0
+
+    # 同样非差异，但关掉 restrict → 退回全蛋白 → 出假说（证明是过滤所致，非结构源缺失）
+    repo_off = _repo_prot2(10, 10)
+    run_downstream_pipeline(
+        EXP, repository=repo_off, config=_full_config(restrict_to_differential=False), steps=steps
+    )
+    assert pipeline_status(EXP, repository=repo_off)["hypotheses"] >= 1
+
+    # 差异（case≫control）+ restrict 默认开 → 在差异集 → 出假说（证明不过度过滤）
+    repo_diff = _repo_prot2(100, 10)
+    run_downstream_pipeline(EXP, repository=repo_diff, config=_full_config(), steps=steps)
+    assert any(d.is_differential for d in repo_diff.list_differentials(EXP))
+    assert pipeline_status(EXP, repository=repo_diff)["hypotheses"] >= 1
