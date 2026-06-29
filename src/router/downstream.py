@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, ValidationError
 
 from application.experiment.freeze import FreezePreconditionError, freeze_experiment
+from application.analysis import compare_experiments
 from application.experiment.quantification_ingest import (
     QuantificationIngestError,
     ingest_experiment_quantifications,
@@ -106,6 +107,22 @@ def api_create_experiment(
         "groups": len(bundle.groups),
         "peptides": len(bundle.peptides),
     }
+
+
+# 注意：本路由必须在 `/experiments/{experiment_id}` 之前注册，否则 "compare" 会被
+# 当作 experiment_id 捕获。
+@downstream_router.get("/experiments/compare")
+def api_compare_experiments(
+    ids: str = Query(..., description="逗号分隔的 experiment_id（≥2 个）"),
+    repo: ExperimentRepository = Depends(get_repository),
+) -> dict[str, Any]:
+    """跨实验比较差异蛋白（按 accession）与疾病结论（按 disease_id）。"""
+    experiment_ids = [s for s in (x.strip() for x in ids.split(",")) if s]
+    try:
+        return compare_experiments(experiment_ids, repository=repo)
+    except ValueError as exc:
+        msg = str(exc)
+        raise HTTPException(404 if "unknown experiment" in msg else 400, msg) from exc
 
 
 @downstream_router.get("/experiments/{experiment_id}")
