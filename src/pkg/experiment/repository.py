@@ -19,6 +19,7 @@ from .types import (
     ExperimentInputArtifact,
     ExperimentRequest,
     ExperimentSnapshot,
+    ExperimentStatus,
     MetaAnnotation,
     PeptideRecord,
     ProteinQuantification,
@@ -93,6 +94,10 @@ class ExperimentRepository(Protocol):
     def get_snapshot(self, snapshot_id: str) -> ExperimentSnapshot | None: ...
 
     def list_snapshots(self, experiment_id: str) -> list[ExperimentSnapshot]: ...
+
+    def supersede_other_snapshots(
+        self, experiment_id: str, *, keep_snapshot_id: str
+    ) -> int: ...
 
     def save_report(self, report: ReportRecord) -> None: ...
 
@@ -328,6 +333,20 @@ class InMemoryExperimentRepository:
         ids = self._snapshot_ids.get(experiment_id, [])
         snapshots = [self._snapshots[sid].model_copy(deep=True) for sid in ids]
         return sorted(snapshots, key=lambda snap: snap.frozen_at)
+
+    def supersede_other_snapshots(
+        self, experiment_id: str, *, keep_snapshot_id: str
+    ) -> int:
+        # 新版本生效 → 把该实验其余 FINAL 快照标 SUPERSEDED（不删，仍可读、仍自洽）。
+        count = 0
+        for sid in self._snapshot_ids.get(experiment_id, []):
+            snap = self._snapshots[sid]
+            if sid != keep_snapshot_id and snap.status is ExperimentStatus.FINAL:
+                self._snapshots[sid] = snap.model_copy(
+                    update={"status": ExperimentStatus.SUPERSEDED}
+                )
+                count += 1
+        return count
 
     def save_report(self, report: ReportRecord) -> None:
         # 按 (experiment_id, snapshot_version) 幂等 upsert：确定性渲染重复落库不增行。

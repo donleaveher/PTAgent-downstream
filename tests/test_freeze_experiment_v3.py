@@ -145,6 +145,30 @@ def test_old_version_unchanged_after_new_evidence() -> None:
     assert {s.snapshot_version for s in repo.list_snapshots(EXP)} == {"1.0", "1.1"}
 
 
+def test_new_version_supersedes_prior() -> None:
+    repo = _ready_repo()
+    snap1 = freeze_experiment(EXP, snapshot_version="1.0", pipeline_version="p", repository=repo)
+    assert repo.get_snapshot(snap1.snapshot_id).status is ExperimentStatus.FINAL  # 唯一 FINAL
+
+    snap2 = freeze_experiment(EXP, snapshot_version="1.1", pipeline_version="p", repository=repo)
+    by_id = {s.snapshot_id: s for s in repo.list_snapshots(EXP)}
+    assert by_id[snap1.snapshot_id].status is ExperimentStatus.SUPERSEDED  # 旧版被标记
+    assert by_id[snap2.snapshot_id].status is ExperimentStatus.FINAL       # 新版当前
+    # 不删：旧版仍在、仍可读、仍自洽
+    assert {s.snapshot_version for s in repo.list_snapshots(EXP)} == {"1.0", "1.1"}
+    assert verify_snapshot_integrity(by_id[snap1.snapshot_id])
+
+
+def test_supersede_prior_can_be_disabled() -> None:
+    repo = _ready_repo()
+    snap1 = freeze_experiment(EXP, snapshot_version="1.0", pipeline_version="p", repository=repo)
+    freeze_experiment(
+        EXP, snapshot_version="1.1", pipeline_version="p", repository=repo, supersede_prior=False
+    )
+    by_id = {s.snapshot_id: s for s in repo.list_snapshots(EXP)}
+    assert by_id[snap1.snapshot_id].status is ExperimentStatus.FINAL  # 关掉 → 旧版仍 FINAL
+
+
 def test_tamper_is_detected() -> None:
     repo = _ready_repo()
     snap = freeze_experiment(EXP, snapshot_version="1.0", pipeline_version="pipe-1", repository=repo)

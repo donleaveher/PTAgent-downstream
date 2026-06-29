@@ -66,8 +66,13 @@ def freeze_experiment(
     query_and_params: dict[str, Any] | None = None,
     report_artifact_ref: str = "",
     allow_unresolved_hypotheses: bool = False,
+    supersede_prior: bool = True,
 ) -> ExperimentSnapshot:
-    """冻结一个实验为只读快照；版本重复将被仓库拒绝（阻止覆盖）。"""
+    """冻结一个实验为只读快照；版本重复将被仓库拒绝（阻止覆盖）。
+
+    `supersede_prior=True`（默认）：新版本生效后，把该实验其余 FINAL 快照标
+    `SUPERSEDED`（不删，旧版仍可读、仍自洽），使"当前版本"唯一。
+    """
 
     repo = repository or get_experiment_store()
     context = repo.get_context(experiment_id)
@@ -202,6 +207,8 @@ def freeze_experiment(
         manifest=manifest,
     )
     repo.save_snapshot(snapshot)  # 版本重复 → RequestVersionConflict（阻止覆盖）
+    if supersede_prior:
+        repo.supersede_other_snapshots(experiment_id, keep_snapshot_id=snapshot.snapshot_id)
     return snapshot
 
 

@@ -20,6 +20,7 @@ from .types import (
     ExperimentInputArtifact,
     ExperimentRequest,
     ExperimentSnapshot,
+    ExperimentStatus,
     MetaAnnotation,
     PeptideRecord,
     ProteinQuantification,
@@ -1056,6 +1057,29 @@ class MySQLExperimentStore:
             return [_snapshot_from_row(row) for row in cursor.fetchall()]
 
         return self._read(fetch)
+
+    def supersede_other_snapshots(
+        self, experiment_id: str, *, keep_snapshot_id: str
+    ) -> int:
+        captured: dict[str, int] = {}
+
+        def run(cursor: Any) -> None:
+            cursor.execute(
+                """
+                UPDATE experiment_snapshot SET status=%s
+                WHERE experiment_id=%s AND snapshot_id<>%s AND status=%s
+                """,
+                (
+                    ExperimentStatus.SUPERSEDED.value,
+                    experiment_id,
+                    keep_snapshot_id,
+                    ExperimentStatus.FINAL.value,
+                ),
+            )
+            captured["count"] = cursor.rowcount
+
+        self._write(run)
+        return captured.get("count", 0)
 
     def save_report(self, report: ReportRecord) -> None:
         def save(cursor: Any) -> None:
