@@ -3,7 +3,7 @@
 > **用途**：本文件集中记录当前下游知识层从代码、数据、外部服务到交付验收的全部工作；后续实施进度只在这里勾选，避免散落在多个 TODO。
 > **规格依据**：机制与字段以 [`project-spec.md`](project-spec.md) 为准；背景与范围以 [`PROJECT-STATUS.md`](PROJECT-STATUS.md) 为准。
 > **更新日期**：2026-06-23。
-> **当前基线**：`189 passed, 1 skipped`；真实 MySQL、UniProt MCP、CTD、Foldseek、Neo4j 实例、文献检索工具尚未完成端到端联调。MVP 三件（M1/M2/M3）代码 + 离线闭环已完成；M3 默认 gene 解析器（UniProt MCP）已接好；L2 差异分析 + 富集引擎/服务已落地（离线测试）；**CTD 真实数据已下载/过滤/加载验证**（2.9GB→2.6MB，34,253 直接事实）；**L3 本次实验 KG 纯代码核心已落地**（双节点 GraphStore 端口 + 内存/Neo4j 实现 + MySQL→图投影 + 离线测试），真连 Neo4j 实例待 B 组；**L4 deep-search 认知态跃迁纯代码核心已落地**（任务/证据/可注入源 + 纯状态机 + 回写 evidence_level/追加 AnnotationHistory，幂等可回放 + 人工覆盖），真实文献检索源待接；**L5 实验冻结归档纯代码核心已落地**（冻结前检查 + 内容 manifest + 稳定 checksum + FINAL 只读/阻止覆盖/版本化 + 篡改检测，离线测试），隔离 Neo4j 导出/真库并发待 B 组；**富集结果持久化已落地**（`enrichment_result` 表 + Repository + `run_disease_enrichment` 写全量结果 + study/background checksum，并入冻结 manifest）；**L6 分层报告纯代码核心已落地**（只读冻结快照 manifest → 分层 Markdown：设计/差异/富集/结论/假说/伪理/未决 + 附录，每条带 annotation_id/来源/版本，确定性 + 防篡改）；**下游管线编排（§11.2）已落地**（把上述服务按依赖序串成端到端流程；提供两种编排：纯 Python 线性 runner + **LangGraph 主图**——StateGraph 复用同一批 step + 冻结前人审批条件边 + audit log；失败隔离 + 幂等重跑 + 断点续跑 + 状态查询，离线 e2e 通过）；**对外 API（§11.1）已落地**（FastAPI 路由：实验创建/查询、跑管线、查注释/差异/富集/历史、查 KG 证据路径、冻结/快照/报告，DI 可注入，TestClient 离线测试通过）。**A 组（纯代码）+ §11 编排与 API 已全部完成**，剩余主要为 B 组外部联调与鉴权/审计。
+> **当前基线**：`203 passed, 1 skipped`；真实 MySQL、UniProt MCP、CTD、Foldseek、Neo4j 实例、文献检索工具尚未完成端到端联调。MVP 三件（M1/M2/M3）代码 + 离线闭环已完成；M3 默认 gene 解析器（UniProt MCP）已接好；L2 差异分析 + 富集引擎/服务已落地（离线测试）；**CTD 真实数据已下载/过滤/加载验证**（2.9GB→2.6MB，34,253 直接事实）；**L3 本次实验 KG 纯代码核心已落地**（双节点 GraphStore 端口 + 内存/Neo4j 实现 + MySQL→图投影 + 离线测试），真连 Neo4j 实例待 B 组；**L4 deep-search 认知态跃迁纯代码核心已落地**（任务/证据/可注入源 + 纯状态机 + 回写 evidence_level/追加 AnnotationHistory，幂等可回放 + 人工覆盖），真实文献检索源待接；**L5 实验冻结归档纯代码核心已落地**（冻结前检查 + 内容 manifest + 稳定 checksum + FINAL 只读/阻止覆盖/版本化 + 篡改检测，离线测试），隔离 Neo4j 导出/真库并发待 B 组；**富集结果持久化已落地**（`enrichment_result` 表 + Repository + `run_disease_enrichment` 写全量结果 + study/background checksum，并入冻结 manifest）；**L6 分层报告纯代码核心已落地**（只读冻结快照 manifest → 分层 Markdown：设计/差异/富集/结论/假说/伪理/未决 + 附录，每条带 annotation_id/来源/版本，确定性 + 防篡改 + **报告 artifact 落库**到 `experiment_report` 表，checksum 自洽）；**下游定量摄入入口已落地**（下游自定义契约 §6：`POST/GET …/quantifications`，校验属于实验 + 整批原子 + 幂等 upsert）；**下游管线编排（§11.2）已落地**（把上述服务按依赖序串成端到端流程；提供两种编排：纯 Python 线性 runner + **LangGraph 主图**——StateGraph 复用同一批 step + 冻结前人审批条件边 + audit log；失败隔离 + 幂等重跑 + 断点续跑 + 状态查询，离线 e2e 通过）；**对外 API（§11.1）已落地**（FastAPI 路由：实验创建/查询、跑管线、查注释/差异/富集/历史、定量录入/查询、查 KG 证据路径、冻结/快照/报告 artifact，DI 可注入，TestClient 离线测试通过）。**A 组（纯代码）+ §11 编排与 API 已全部完成**，剩余主要为 B 组外部联调与鉴权/审计。
 
 ## 状态符号
 
@@ -24,7 +24,7 @@
 - 🟨 **L3 · Neo4j 通用 KG + 本次实验 KG**（§7）：把 MySQL 事实投影成**双节点**图——`Protein`/`Gene`（`ENCODED_BY`）+ `Disease`，边带 `evidence_level`、`STRUCTURAL_NEIGHBOR`、`DIFFERENTIAL`，节点带 `mysql_ref`。**纯代码核心已落地**（端口 + 内存/Neo4j 实现 + 投影 + 离线测试）；真连 Neo4j 实例（B 组）、版本化重建、deep-search 回写、Domain/Tissue 等扩展节点仍 ⬜。
 - 🟨 **deep-search 认知态跃迁**（§8）：假说 +直接证据→结论 / +反证→伪理 / 冲突·无→保持，回写 `evidence_level` + 追加 `AnnotationHistory`。**纯代码核心已落地**（可注入检索源 + 纯状态机 + 幂等可回放 + 人工覆盖）；真实文献检索源（DeepXiv/MCP）、失败/超时重试仍 ⬜。
 - 🟨 **实验冻结归档**（§9）：本次 KG → 只读版本化快照。**纯代码核心已落地**（`freeze_experiment` 冻结前检查 + 内容 manifest + 稳定 checksum + FINAL 只读/版本化 + `verify_snapshot_integrity` 篡改检测）；隔离 Neo4j 导出、SUPERSEDED 编排、真库版本并发仍 ⬜。
-- ✅ **分层报告**（§10）：`generate_experiment_report` 从冻结快照按 结论/假说/伪理/未决 出 Markdown，绑定 `snapshot_version`，只读快照 + 确定性 + 防篡改；报告 artifact 落库（独立报告表）留后续。
+- ✅ **分层报告**（§10）：`generate_experiment_report` 从冻结快照按 结论/假说/伪理/未决 出 Markdown，绑定 `snapshot_version`，只读快照 + 确定性 + 防篡改；**报告 artifact 落库已落地**（`experiment_report` 表 + Repository + 管线 report 步幂等 upsert，`content`/`checksum`/`snapshot_id` 绑定，artifact 自洽）。
 - ✅ **富集结果持久化**（§4.3）：`enrichment_result` 表 + `EnrichmentRecord` 模型 + Repository（端口/内存/MySQL）；`run_disease_enrichment` 幂等写**全量**结果，记录 study/background checksum 与基因集来源版本，并入冻结 manifest（§9）。
 
 ### B · 卡真实外部资源（代码就绪，等数据/服务联调）
@@ -42,7 +42,7 @@
 - ⬜ §11 API/编排/产品接入（pipeline 串联、对外接口）——晚于知识管线。
 - 🟨 免疫维度（§12 / Q6）：暂用 UniProt GO + CTD；schema 预留扩展通道。
 
-> **A 组（纯代码）已全部完成 + 下游管线编排（§11.2）已落地**：L3 两层知识图谱 → L4 deep-search → L5 冻结归档 → L6 分层报告，外加 §4.3 富集持久化，并由下游管线编排串成端到端流程（纯 Python runner + LangGraph 主图两种），再经 **FastAPI 对外 API（§11.1）** 暴露（离线 e2e + TestClient 通过，`189 passed, 1 skipped`）。**下一步**：B 组外部联调（真连 MySQL/Neo4j/UniProt MCP/Foldseek/文献检索源）、鉴权/审计、LangGraph checkpointer/streaming 接线。各 L 的真库/外部部分见对应章节 ⬜。
+> **A 组（纯代码）已全部完成 + 下游管线编排（§11.2）已落地**：L3 两层知识图谱 → L4 deep-search → L5 冻结归档 → L6 分层报告，外加 §4.1 定量摄入入口、§4.3 富集持久化、§10 报告 artifact 落库，并由下游管线编排串成端到端流程（纯 Python runner + LangGraph 主图两种），再经 **FastAPI 对外 API（§11.1）** 暴露（离线 e2e + TestClient 通过，`203 passed, 1 skipped`）。**下一步**：B 组外部联调（真连 MySQL/Neo4j/UniProt MCP/Foldseek/文献检索源）、鉴权/审计、LangGraph checkpointer/streaming 接线。各 L 的真库/外部部分见对应章节 ⬜。
 
 ---
 
@@ -81,6 +81,7 @@
 - ✅ `MetaAnnotation`：target、value、evidence level、source、derivation、provenance。
 - ✅ `AnnotationHistory`：证据状态变化历史。
 - ✅ `ExperimentSnapshot`：归档快照模型。
+- ✅ `ReportRecord`：报告 artifact 落库模型（content/checksum/sections + snapshot 绑定，`str_strip_whitespace=False` 逐字节存原文保 checksum 自洽）。
 - ✅ `ExperimentBundle` 三件套跨引用校验：重复 ID、未知组别、未知蛋白、错误肽归属。
 - ✅ 确定性 `annotation_id`，保证相同事实重跑时幂等 upsert。
 
@@ -90,7 +91,7 @@
 - ✅ `InMemoryExperimentRepository` 测试实现。
 - ✅ MySQL 配置与环境变量。
 - ✅ PyMySQL 依赖声明，运行时延迟加载。
-- ✅ MySQL DDL：实验、分组、蛋白、肽、定量、差异、Meta、历史和快照。
+- ✅ MySQL DDL：实验、分组、蛋白、肽、定量、差异、富集、Meta、历史、快照和报告（`experiment_report`）。
 - ✅ `MySQLExperimentStore`：Schema 初始化、Bundle 写入/读取、Meta 写入/读取、历史追加。
 - ✅ MySQL 写操作事务提交、异常回滚和连接关闭测试。
 - ✅ MySQL 读路径离线往返测试（忠实模拟 DictCursor）：覆盖列名映射、JSON/枚举反序列化与 datetime 时区往返（写前 tz-aware == 读回 tz-aware UTC）。
@@ -98,9 +99,10 @@
 - 🟨 在部署环境安装更新后的依赖并创建 `ptagent_experiment` 数据库。
 - 🟨 使用真实 MySQL 运行 DDL 和 Bundle round-trip smoke test。
 - ⬜ 引入正式迁移机制和 schema version，不长期依赖纯 `CREATE TABLE IF NOT EXISTS`。
-- ⬜ 实现 `ProteinQuantification` Repository CRUD。
-- ⬜ 实现 `DifferentialResult` Repository CRUD 和仅查询差异蛋白接口。
+- ✅ 实现 `ProteinQuantification` Repository CRUD（`add/list_quantifications` + 摄入服务 `ingest_experiment_quantifications`，InMemory+MySQL）。
+- ✅ 实现 `DifferentialResult` Repository CRUD（`add/list_differentials`）与仅查询差异蛋白（API `only_significant` + 管线 `restrict_to_differential`）。
 - ✅ 实现实验快照 Repository CRUD（`save/get/list_snapshots` + `manifest` 字段；冻结服务见 §9）。
+- ✅ 实现报告 artifact Repository CRUD（`save/get/list_reports` + `experiment_report` 表；按 `(experiment_id, snapshot_version)` 幂等 upsert）。
 - ⬜ 增加 `db_cache`、`deep_search_evidence` 的正式表和 Repository 接口。
 - ⬜ 定义重复导入、输入修订、软删除和实验取消规则。
 
@@ -415,7 +417,8 @@
 ## 10. 分层报告
 
 > **进展（L6 纯代码核心已落地；离线测试通过）**：`application/report/layered_report.py`——`generate_experiment_report(experiment_id, snapshot_version)`：定位冻结快照 → `verify_snapshot_integrity` 校验完整性（篡改即拒绝）→ **只从快照 manifest** 渲染分层 Markdown（实验设计 / 差异 / 富集 / 结论 / 假说 / 伪理 / 未决 + 附录基础注释），每条带 `annotation_id` + 来源 + 版本/文献引用，并对 markdown 算 report checksum。区分公共事实（CTD 结论、UniProt 基础注释）/ 实验观察（差异、富集）/ 推导假说。因只读冻结内容，**重复生成结果稳定**。
-> **仍 ⬜（后续）**：报告 artifact/checksum/snapshot_id 落库（独立报告表）、PDF/其他格式、旧 Mock 报告节点（`pipeline/nodes/generate_report.py`）的下线、大图/多版本报告测试。
+> **报告 artifact 落库已落地**：`experiment_report` 表 + Repository `save_report/get_report/list_reports` + 管线 report 步幂等 upsert；`GET …/reports` 列出、`GET …/report` 优先返回已落库版本。
+> **仍 ⬜（后续）**：PDF/其他格式、旧 Mock 报告节点（`pipeline/nodes/generate_report.py`）的下线、大图/多版本报告测试。
 
 - ✅ 新版报告独立于旧 Mock（`application/report/`）；旧 Mock 节点的下线见 §13。
 - ✅ 报告只从指定的冻结 `snapshot_version` 生成（读 manifest，不碰活库）。
@@ -424,7 +427,7 @@
 - ✅ 区分公共事实、实验观察和推导假说。
 - ✅ 报告正文以差异蛋白与证据分级为重点，附录保留全部蛋白基础注释。
 - 🟨 生成 Markdown 已实现；PDF/其他格式（绑定同一快照）⬜。
-- ⬜ 将报告 artifact、checksum 和 snapshot ID 写入实验数据库（独立报告表）。
+- ✅ 将报告 artifact、checksum 和 snapshot ID 写入实验数据库（`experiment_report` 表，按 `(experiment_id, snapshot_version)` 幂等 upsert，`report_id` 由 `snapshot_id` 派生）。
 - 🟨 已加确定性/防篡改/只读快照/未知版本测试；无证据/部分失败/大图/多版本报告测试 ⬜。
 
 **阶段验收：**
@@ -437,14 +440,14 @@
 
 ### 11.1 API
 
-> **进展（下游对外 API 已落地；TestClient 离线测试通过）**：新建 FastAPI 路由 `router/downstream.py`（前缀 `/ptagent/api`，已挂入 `register_routes`）。端点：`POST /experiments`（创建/校验）、`GET /experiments/{id}`（状态）、`GET …/annotations|differentials|enrichments|history`（查询，注释可按 evidence_level 过滤）、`GET …/kg/proteins/{accession}/diseases`（从蛋白展开证据路径）、`POST …/pipeline`（跑下游管线）、`POST …/freeze`、`GET …/snapshots`、`GET …/report`、`GET /health`。事实库/图库/管线 config 经 `Depends` 注入，测试用 `dependency_overrides` 注入内存实现。
+> **进展（下游对外 API 已落地；TestClient 离线测试通过）**：新建 FastAPI 路由 `router/downstream.py`（前缀 `/ptagent/api`，已挂入 `register_routes`）。端点：`POST /experiments`（创建/校验）、`GET /experiments/{id}`（状态）、`POST/GET …/quantifications`（定量录入/查询，§6）、`GET …/annotations|differentials|enrichments|history`（查询，注释可按 evidence_level 过滤）、`GET …/kg/proteins/{accession}/diseases`（从蛋白展开证据路径）、`POST …/pipeline`（跑下游管线）、`POST …/freeze`、`GET …/snapshots`、`GET …/reports`（列报告 artifact）、`GET …/report`（取报告，优先返回已落库版本）、`GET /health`。事实库/图库/管线 config 经 `Depends` 注入，测试用 `dependency_overrides` 注入内存实现。
 
 - ✅ 实验 Bundle 创建/校验/查询 API（`POST /experiments` + `GET /experiments/{id}`；校验失败 → 422）。
 - 🟨 health 接口已加（`GET /health`）；MySQL schema 管理/部署命令 ⬜。
 - ✅ 启动下游任务 API：`POST …/pipeline`（可传 `steps` 跑子集，等价于按需启动各任务）。
-- 🟨 查询 MetaAnnotation/历史/差异蛋白 API 已加；“缺失项”查询 ⬜。
+- 🟨 查询 MetaAnnotation/历史/差异蛋白/定量 API 已加；“缺失项”查询 ⬜。
 - 🟨 查询本次实验 KG：`…/kg/proteins/{acc}/diseases` 证据路径 + 注释按 evidence_level 过滤已加；更全的 KG 查询/路径展开 ⬜。
-- 🟨 冻结/列快照/取报告 API 已加；跨实验比较 ⬜。
+- 🟨 冻结/列快照/取报告 API 已加（`GET …/reports` 列 artifact、`GET …/report` 优先返回已落库版本）；跨实验比较 ⬜。
 - ⬜ 接入鉴权、实验所有权和审计日志。
 
 ### 11.2 Pipeline
@@ -500,16 +503,17 @@
 - ✅ M3 结构类比假说测试（借 CTD/跨物种/去重已结论/幂等）+ MVP 闭环测试（结论与假说同现、可追溯）。
 - ✅ UniProt MCP gene 解析测试（多返回形态/分号取首/跳过无 gene/去重批处理）。
 - ✅ L2 差异分析测试（log2FC/方向/BH/无重复退化 + 服务自动选组持久化）与富集测试（超几何显著性/背景裁剪 + 疾病富集服务接线）。
+- ✅ 定量摄入测试（§4.1）：契约校验通过/坏引用整批拦截/`experiment_id` 不匹配/缺字段(422)/幂等 upsert/未知实验，含 API 录入查询往返。
 - ✅ L3 知识图谱测试：图模型/端口契约 + Neo4j Cypher 形状 + 投影服务（双节点/两层/遍历/幂等/删工作区隔离）。
 - ✅ L4 deep-search 测试：纯状态机/检索源 + 服务（三态跃迁/幂等/历史回放/人工覆盖/隔离）。
 - ✅ L5 冻结归档测试：FINAL 快照 + manifest/checksum、冻结前检查、只读/阻止覆盖、版本化（旧版不变）、篡改检测。
 - ✅ 富集持久化测试：服务写全量结果 + study/background checksum + 幂等重跑 + MySQL 往返。
-- ✅ L6 分层报告测试：分层章节/可追溯陈述、确定性、只读冻结快照、防篡改、未知版本。
+- ✅ L6 分层报告测试：分层章节/可追溯陈述、确定性、只读冻结快照、防篡改、未知版本、**报告落库往返/幂等 upsert/checksum 自洽（防 strip）/生成不落库**。
 - ✅ 下游管线编排测试：纯 runner 端到端 9 步全过、幂等重跑（freeze 跳过）、失败隔离、子集执行、状态查询。
 - ✅ 下游 LangGraph 主图测试：approve 全流程、reject/modify 冻结前停、失败隔离、人审批路由单测、图可编译。
-- ✅ 下游对外 API 测试：创建/校验(422)/查询、跑管线、KG 证据路径、快照/报告、未知实验(404)、重复冻结(409)。
+- ✅ 下游对外 API 测试：创建/校验(422)/查询、定量录入/查询往返、跑管线、KG 证据路径、快照/报告 artifact 列表、未知实验(404)、重复冻结(409)。
 - ✅ M3 结构近邻 RRF 融合重排测试：rerank_neighbors（覆盖度可反超 score / 额外通道 / 降序）+ M3 支持近邻按融合分重排、confidence 兼容、rerank=False 退回。
-- ✅ 当前全量测试：`189 passed, 1 skipped`。
+- ✅ 当前全量测试：`203 passed, 1 skipped`。
 
 ### 14.2 待补测试
 
@@ -576,7 +580,7 @@
 
 - 🟨 deep-search 完成三态跃迁：状态机 + 回写/历史/幂等/人工覆盖 + 离线（内存源）已通过；真实文献检索源联调 ⬜。
 - 🟨 实验 KG 冻结为不可变版本：冻结服务 + manifest/checksum + 只读/版本化 + 篡改检测 + 离线已通过；隔离 Neo4j 导出/真库并发 ⬜。
-- 🟨 从冻结快照生成可审计报告：分层报告 + 可追溯/确定性/防篡改 + 离线已通过；报告落库/PDF/真实数据联调 ⬜。
+- 🟨 从冻结快照生成可审计报告：分层报告 + 可追溯/确定性/防篡改 + 报告落库（`experiment_report` 表）+ 离线已通过；PDF/真实数据联调 ⬜。
 - ⬜ 完成真实端到端测试、部署说明和恢复演练。
 
 ---
@@ -591,7 +595,7 @@
 6. 🟨 重构 `GraphStore` 并构建通用 KG/实验工作区：端口 + 内存/Neo4j 实现 + 投影服务 + 离线测试完成；真连 Neo4j 联调 ⬜。
 7. 🟨 接入 deep-search 状态机：任务/证据/可注入源 + 纯状态机 + 回写/历史/幂等/人工覆盖 + 离线测试完成；真实文献检索源联调 ⬜。
 8. 🟨 实现冻结归档和版本管理：冻结前检查 + manifest + checksum + FINAL 只读/版本化 + 篡改检测 + 离线测试完成；隔离 Neo4j 导出/真库并发 ⬜。
-9. 🟨 实现分层报告与 API/Pipeline 集成：分层报告（从冻结快照出可审计 Markdown）+ 离线测试完成；报告落库、API/Pipeline 集成（§11）⬜。
+9. 🟨 实现分层报告与 API/Pipeline 集成：分层报告（从冻结快照出可审计 Markdown）+ 报告落库 + API/Pipeline 集成 + 离线测试完成；PDF ⬜。
 10. ⬜ 清理旧上游和旧 KNN 代码路径，完成生产质量验证。
 
 ---
@@ -643,7 +647,8 @@
 - ✅ [`src/pkg/analysis/enrichment.py`](../src/pkg/analysis/enrichment.py)：过表达富集引擎（超几何+BH）。
 - ✅ [`src/application/analysis/differential_analysis.py`](../src/application/analysis/differential_analysis.py)：差异分析服务。
 - ✅ [`src/application/analysis/enrichment_analysis.py`](../src/application/analysis/enrichment_analysis.py)：疾病富集服务（含持久化 + study/background checksum）。
-- 🧪 [`tests/test_differential_v3.py`](../tests/test_differential_v3.py)、[`tests/test_enrichment_v3.py`](../tests/test_enrichment_v3.py)、[`tests/test_enrichment_persist_v3.py`](../tests/test_enrichment_persist_v3.py)。
+- ✅ [`src/application/experiment/quantification_ingest.py`](../src/application/experiment/quantification_ingest.py)：定量摄入服务（校验 protein/group 属于实验 + 整批原子 + 幂等 upsert，§4.1）。
+- 🧪 [`tests/test_differential_v3.py`](../tests/test_differential_v3.py)、[`tests/test_enrichment_v3.py`](../tests/test_enrichment_v3.py)、[`tests/test_enrichment_persist_v3.py`](../tests/test_enrichment_persist_v3.py)、[`tests/test_quantification_ingest.py`](../tests/test_quantification_ingest.py)。
 
 ### M3 · 结构类比假说
 
@@ -674,7 +679,7 @@
 
 ### L6 · 分层报告
 
-- ✅ [`src/application/report/layered_report.py`](../src/application/report/layered_report.py)：从冻结快照生成可审计 Markdown 报告（分层 + 可追溯 + 确定性）。
+- ✅ [`src/application/report/layered_report.py`](../src/application/report/layered_report.py)：从冻结快照生成可审计 Markdown 报告（分层 + 可追溯 + 确定性）+ `persist_experiment_report` 落库 artifact（`experiment_report` 表，幂等 upsert，checksum 自洽）。
 - 🧪 [`tests/test_layered_report_v3.py`](../tests/test_layered_report_v3.py)。
 
 ### §11.2 · 下游管线编排
@@ -685,5 +690,5 @@
 
 ### §11.1 · 下游对外 API
 
-- ✅ [`src/router/downstream.py`](../src/router/downstream.py)：FastAPI 路由（实验创建/查询、跑管线、查注释/差异/富集/历史、KG 证据路径、冻结/快照/报告、health；DI 可注入）。
+- ✅ [`src/router/downstream.py`](../src/router/downstream.py)：FastAPI 路由（实验创建/查询、定量录入/查询、跑管线、查注释/差异/富集/历史、KG 证据路径、冻结/快照/报告 artifact、health；DI 可注入）。
 - 🧪 [`tests/test_downstream_api_v3.py`](../tests/test_downstream_api_v3.py)。
