@@ -29,6 +29,7 @@ from .types import (
     PeptideRecord,
     ProteinQuantification,
     ProteinRecord,
+    ReportRecord,
     request_content_hash,
 )
 
@@ -56,6 +57,7 @@ __all__ = [
     "PeptideRecord",
     "ProteinQuantification",
     "ProteinRecord",
+    "ReportRecord",
     "RequestVersionConflict",
     "ingest_experiment_bundle",
     "ingest_experiment_payload",

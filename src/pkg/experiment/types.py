@@ -307,6 +307,30 @@ class ExperimentSnapshot(StrictModel):
         return self
 
 
+class ReportRecord(StrictModel):
+    """落库的报告 artifact：绑定冻结快照，存内容 + checksum，可审计、可回取。
+
+    报告是冻结快照的确定性渲染（§10/L6），故 ``report_id`` 由 ``snapshot_id`` 派生、
+    按 ``(experiment_id, snapshot_version)`` 幂等 upsert：重复生成不产生新行。
+
+    ``str_strip_whitespace=False``：``content`` 必须**逐字节存原文**，否则 strip 掉
+    尾随换行会让 ``sha256(content) != checksum``，破坏 artifact 自洽性。
+    """
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=False)
+
+    report_id: str = Field(default_factory=lambda: _new_id("report"))
+    experiment_id: str = Field(min_length=1)
+    snapshot_id: str = Field(min_length=1)
+    snapshot_version: str = Field(min_length=1)
+    report_format: str = "markdown"
+    checksum: str = Field(min_length=1)  # content 的 SHA-256
+    content: str
+    sections: list[str] = Field(default_factory=list)
+    generated_at: datetime = Field(default_factory=_utcnow)
+    meta: dict[str, Any] = Field(default_factory=dict)
+
+
 class ExperimentBundle(StrictModel):
     """输入三件套的结构化表示，并验证全部跨表引用。"""
 
@@ -382,5 +406,6 @@ __all__ = [
     "PeptideRecord",
     "ProteinQuantification",
     "ProteinRecord",
+    "ReportRecord",
     "request_content_hash",
 ]

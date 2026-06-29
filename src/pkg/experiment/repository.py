@@ -23,6 +23,7 @@ from .types import (
     PeptideRecord,
     ProteinQuantification,
     ProteinRecord,
+    ReportRecord,
 )
 
 
@@ -93,6 +94,12 @@ class ExperimentRepository(Protocol):
 
     def list_snapshots(self, experiment_id: str) -> list[ExperimentSnapshot]: ...
 
+    def save_report(self, report: ReportRecord) -> None: ...
+
+    def get_report(self, experiment_id: str, snapshot_version: str) -> ReportRecord | None: ...
+
+    def list_reports(self, experiment_id: str) -> list[ReportRecord]: ...
+
 
 class InMemoryExperimentRepository:
     """确定性的测试/开发实现，不作为生产事实库。"""
@@ -111,6 +118,7 @@ class InMemoryExperimentRepository:
         self._enrichments: dict[str, dict[str, EnrichmentRecord]] = {}
         self._snapshots: dict[str, ExperimentSnapshot] = {}
         self._snapshot_ids: dict[str, list[str]] = {}
+        self._reports: dict[str, dict[str, ReportRecord]] = {}
 
     def initialize_schema(self) -> None:
         return None
@@ -320,6 +328,19 @@ class InMemoryExperimentRepository:
         ids = self._snapshot_ids.get(experiment_id, [])
         snapshots = [self._snapshots[sid].model_copy(deep=True) for sid in ids]
         return sorted(snapshots, key=lambda snap: snap.frozen_at)
+
+    def save_report(self, report: ReportRecord) -> None:
+        # 按 (experiment_id, snapshot_version) 幂等 upsert：确定性渲染重复落库不增行。
+        bucket = self._reports.setdefault(report.experiment_id, {})
+        bucket[report.snapshot_version] = report.model_copy(deep=True)
+
+    def get_report(self, experiment_id: str, snapshot_version: str) -> ReportRecord | None:
+        report = self._reports.get(experiment_id, {}).get(snapshot_version)
+        return report.model_copy(deep=True) if report else None
+
+    def list_reports(self, experiment_id: str) -> list[ReportRecord]:
+        rows = self._reports.get(experiment_id, {})
+        return [rows[key].model_copy(deep=True) for key in sorted(rows)]
 
 
 __all__ = [

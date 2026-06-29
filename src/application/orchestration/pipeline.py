@@ -34,7 +34,11 @@ from application.knowledge import (
     generate_experiment_hypotheses,
     verify_experiment_hypotheses,
 )
-from application.report import ExperimentReport, generate_experiment_report
+from application.report import (
+    ExperimentReport,
+    generate_experiment_report,
+    persist_experiment_report,
+)
 from pkg.experiment import (
     EvidenceLevel,
     ExperimentBundle,
@@ -211,7 +215,9 @@ def _step_freeze(experiment_id, repo, cfg):
 
 
 def _step_report(experiment_id, repo, cfg):
-    return generate_experiment_report(experiment_id, cfg.snapshot_version, repository=repo)
+    report = generate_experiment_report(experiment_id, cfg.snapshot_version, repository=repo)
+    persist_experiment_report(report, repository=repo)  # 落库 artifact（幂等 upsert）
+    return report
 
 
 _StepFn = Callable[[str, ExperimentRepository, DownstreamPipelineConfig], Any]

@@ -1,12 +1,14 @@
 """§10 分层报告测试：从冻结快照出可审计 Markdown，分层/可追溯/确定性/防篡改/只读。"""
 from __future__ import annotations
 
+import hashlib
+
 import pytest
 
 from application.analysis import run_disease_enrichment
 from application.experiment.freeze import freeze_experiment
 from application.knowledge.deep_search import verify_experiment_hypotheses
-from application.report import generate_experiment_report
+from application.report import generate_experiment_report, persist_experiment_report
 from pkg.deep_search import EvidenceRecord, EvidenceStance, InMemoryLiteratureSource
 from pkg.experiment import (
     AnnotationTargetType,
@@ -194,3 +196,38 @@ def test_unknown_snapshot_version_raises() -> None:
     repo = _frozen_repo()
     with pytest.raises(ValueError):
         generate_experiment_report(EXP, "9.9", repository=repo)
+
+
+def test_generate_does_not_persist_by_itself() -> None:
+    repo = _frozen_repo()
+    generate_experiment_report(EXP, "1.0", repository=repo)  # 纯只读，不落库
+    assert repo.get_report(EXP, "1.0") is None
+    assert repo.list_reports(EXP) == []
+
+
+def test_persist_report_roundtrip_and_idempotent() -> None:
+    repo = _frozen_repo()
+    report = generate_experiment_report(EXP, "1.0", repository=repo)
+    record = persist_experiment_report(report, repository=repo)
+
+    # report_id 由 snapshot_id 派生（确定性），artifact 绑定快照
+    assert record.report_id == f"report_{report.snapshot_id}"
+    assert record.snapshot_id == report.snapshot_id
+    assert record.report_format == "markdown"
+
+    # 取回往返：内容 / checksum / sections 与生成一致（逐字节，不被 strip）
+    fetched = repo.get_report(EXP, "1.0")
+    assert fetched is not None
+    assert fetched.content == report.markdown
+    assert fetched.checksum == report.checksum
+    assert list(fetched.sections) == list(report.sections)
+    # artifact 自洽：存的内容与 checksum 对得上（防 str_strip_whitespace 改写正文）
+    assert hashlib.sha256(fetched.content.encode("utf-8")).hexdigest() == fetched.checksum
+
+    # 幂等：重复落库不新增行、report_id 稳定（确定性渲染）
+    persist_experiment_report(
+        generate_experiment_report(EXP, "1.0", repository=repo), repository=repo
+    )
+    reports = repo.list_reports(EXP)
+    assert len(reports) == 1
+    assert reports[0].report_id == record.report_id

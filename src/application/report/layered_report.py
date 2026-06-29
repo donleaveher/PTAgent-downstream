@@ -5,8 +5,10 @@
 区分公共事实（CTD 基因结论、UniProt 蛋白基础注释）、实验观察（差异/富集）与推导假说。
 正文以差异蛋白与证据分级为重点，附录保留全部蛋白基础注释。
 
-因只读冻结内容，**同一快照重复生成结果稳定**（report checksum 不变）。报告 artifact
-落库（独立报告表）暂留后续。
+因只读冻结内容，**同一快照重复生成结果稳定**（report checksum 不变）。
+``persist_experiment_report`` 把生成结果落到独立报告表（``ReportRecord``），按
+``(experiment_id, snapshot_version)`` 幂等 upsert；生成本身（``generate_experiment_report``）
+保持纯只读，便于 API GET 直接调用。
 """
 
 from __future__ import annotations
@@ -16,7 +18,12 @@ from dataclasses import dataclass
 from typing import Any
 
 from application.experiment.freeze import verify_snapshot_integrity
-from pkg.experiment import ExperimentRepository, ExperimentSnapshot, get_experiment_store
+from pkg.experiment import (
+    ExperimentRepository,
+    ExperimentSnapshot,
+    ReportRecord,
+    get_experiment_store,
+)
 
 
 @dataclass(frozen=True)
@@ -247,4 +254,34 @@ def generate_experiment_report(
     )
 
 
-__all__ = ["ExperimentReport", "generate_experiment_report"]
+def persist_experiment_report(
+    report: ExperimentReport,
+    *,
+    repository: ExperimentRepository | None = None,
+) -> ReportRecord:
+    """把已生成的报告落库为 ``ReportRecord``（幂等 upsert），返回落库记录。
+
+    ``report_id`` 由 ``snapshot_id`` 派生 → 同一快照重复落库命中同一行，不产生新记录，
+    与报告渲染的确定性一致。报告引用冻结快照（``snapshot_id``），不回写已冻结的快照。
+    """
+
+    repo = repository or get_experiment_store()
+    record = ReportRecord(
+        report_id=f"report_{report.snapshot_id}",
+        experiment_id=report.experiment_id,
+        snapshot_id=report.snapshot_id,
+        snapshot_version=report.snapshot_version,
+        report_format="markdown",
+        checksum=report.checksum,
+        content=report.markdown,
+        sections=list(report.sections),
+    )
+    repo.save_report(record)
+    return record
+
+
+__all__ = [
+    "ExperimentReport",
+    "generate_experiment_report",
+    "persist_experiment_report",
+]

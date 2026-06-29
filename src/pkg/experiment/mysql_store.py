@@ -24,6 +24,7 @@ from .types import (
     PeptideRecord,
     ProteinQuantification,
     ProteinRecord,
+    ReportRecord,
 )
 
 ConnectionFactory = Callable[[], Any]
@@ -177,6 +178,21 @@ def _snapshot_from_row(row: dict[str, Any]) -> ExperimentSnapshot:
         request_content_hash=row.get("request_content_hash"),
         input_artifact_hashes=_json_load(row["input_artifact_hashes_json"], []),
         manifest=_json_load(row["manifest_json"], {}),
+    )
+
+
+def _report_from_row(row: dict[str, Any]) -> ReportRecord:
+    return ReportRecord(
+        report_id=row["report_id"],
+        experiment_id=row["experiment_id"],
+        snapshot_id=row["snapshot_id"],
+        snapshot_version=row["snapshot_version"],
+        report_format=row["report_format"],
+        checksum=row["checksum"],
+        content=row["content"],
+        sections=_json_load(row["sections_json"], []),
+        generated_at=_from_db_datetime(row["generated_at"]),
+        meta=_json_load(row["meta_json"], {}),
     )
 
 
@@ -1038,6 +1054,64 @@ class MySQLExperimentStore:
                 (experiment_id,),
             )
             return [_snapshot_from_row(row) for row in cursor.fetchall()]
+
+        return self._read(fetch)
+
+    def save_report(self, report: ReportRecord) -> None:
+        def save(cursor: Any) -> None:
+            cursor.execute(
+                """
+                INSERT INTO experiment_report
+                  (report_id, experiment_id, snapshot_id, snapshot_version,
+                   report_format, checksum, content, sections_json,
+                   generated_at, meta_json)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                  snapshot_id=VALUES(snapshot_id), report_format=VALUES(report_format),
+                  checksum=VALUES(checksum), content=VALUES(content),
+                  sections_json=VALUES(sections_json), generated_at=VALUES(generated_at),
+                  meta_json=VALUES(meta_json)
+                """,
+                (
+                    report.report_id,
+                    report.experiment_id,
+                    report.snapshot_id,
+                    report.snapshot_version,
+                    report.report_format,
+                    report.checksum,
+                    report.content,
+                    _json_dump(report.sections),
+                    _db_datetime(report.generated_at),
+                    _json_dump(report.meta),
+                ),
+            )
+
+        self._write(save)
+
+    def get_report(self, experiment_id: str, snapshot_version: str) -> ReportRecord | None:
+        def fetch(cursor: Any) -> ReportRecord | None:
+            cursor.execute(
+                """
+                SELECT * FROM experiment_report
+                WHERE experiment_id=%s AND snapshot_version=%s
+                """,
+                (experiment_id, snapshot_version),
+            )
+            row = cursor.fetchone()
+            return _report_from_row(row) if row else None
+
+        return self._read(fetch)
+
+    def list_reports(self, experiment_id: str) -> list[ReportRecord]:
+        def fetch(cursor: Any) -> list[ReportRecord]:
+            cursor.execute(
+                """
+                SELECT * FROM experiment_report
+                WHERE experiment_id=%s ORDER BY generated_at
+                """,
+                (experiment_id,),
+            )
+            return [_report_from_row(row) for row in cursor.fetchall()]
 
         return self._read(fetch)
 

@@ -260,6 +260,26 @@ MYSQL_EXPERIMENT_SCHEMA: tuple[str, ...] = (
         REFERENCES experiment_request(request_id) ON DELETE RESTRICT
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     """,
+    """
+    CREATE TABLE IF NOT EXISTS experiment_report (
+      report_id VARCHAR(64) PRIMARY KEY,
+      experiment_id VARCHAR(64) NOT NULL,
+      snapshot_id VARCHAR(64) NOT NULL,
+      snapshot_version VARCHAR(64) NOT NULL,
+      report_format VARCHAR(32) NOT NULL,
+      checksum VARCHAR(128) NOT NULL,
+      content LONGTEXT NOT NULL,
+      sections_json JSON NOT NULL,
+      generated_at DATETIME(6) NOT NULL,
+      meta_json JSON NOT NULL,
+      UNIQUE KEY uq_experiment_report_version (experiment_id, snapshot_version),
+      INDEX idx_report_snapshot (snapshot_id),
+      CONSTRAINT fk_report_experiment FOREIGN KEY (experiment_id)
+        REFERENCES experiment_context(experiment_id) ON DELETE CASCADE,
+      CONSTRAINT fk_report_snapshot FOREIGN KEY (snapshot_id)
+        REFERENCES experiment_snapshot(snapshot_id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    """,
 )
 
 

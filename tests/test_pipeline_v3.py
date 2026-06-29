@@ -141,6 +141,14 @@ def test_full_pipeline_runs_end_to_end() -> None:
     assert result.snapshot_version == "1.0"
     assert [s.snapshot_version for s in repo.list_snapshots(EXP)] == ["1.0"]
 
+    # 报告 artifact 落库（§10）：内容 + checksum + snapshot 绑定
+    reports = repo.list_reports(EXP)
+    assert len(reports) == 1
+    assert reports[0].snapshot_version == "1.0"
+    assert reports[0].checksum == result.report.checksum
+    assert reports[0].content == result.report.markdown
+    assert reports[0].report_id == f"report_{result.report.snapshot_id}"
+
     # 链路产物都在库里：结论(Jak2→缺血) + 假说升结论(prot2→炎症) + 差异 + 富集 + 历史
     status = pipeline_status(EXP, repository=repo)
     assert status["conclusions"] >= 1
@@ -160,6 +168,7 @@ def test_pipeline_rerun_is_idempotent() -> None:
     assert second.step_statuses()["freeze"] == "skipped"  # 版本已冻结 → 跳过
     assert second.report is not None
     assert [s.snapshot_version for s in repo.list_snapshots(EXP)] == ["1.0"]  # 不重复冻结
+    assert len(repo.list_reports(EXP)) == 1  # 报告幂等 upsert，不重复落库
 
 
 def test_failure_is_isolated_and_stops_chain() -> None:

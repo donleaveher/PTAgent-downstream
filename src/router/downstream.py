@@ -313,6 +313,31 @@ def api_list_snapshots(
     }
 
 
+@downstream_router.get("/experiments/{experiment_id}/reports")
+def api_list_reports(
+    experiment_id: str, repo: ExperimentRepository = Depends(get_repository)
+) -> dict[str, Any]:
+    """列出已落库的报告 artifact（元数据，不含正文）。"""
+    _require(repo, experiment_id)
+    reports = repo.list_reports(experiment_id)
+    return {
+        "experiment_id": experiment_id,
+        "count": len(reports),
+        "reports": [
+            {
+                "report_id": r.report_id,
+                "snapshot_id": r.snapshot_id,
+                "snapshot_version": r.snapshot_version,
+                "report_format": r.report_format,
+                "checksum": r.checksum,
+                "sections": list(r.sections),
+                "generated_at": r.generated_at.isoformat(),
+            }
+            for r in reports
+        ],
+    }
+
+
 @downstream_router.get("/experiments/{experiment_id}/report")
 def api_report(
     experiment_id: str,
@@ -320,7 +345,19 @@ def api_report(
     repo: ExperimentRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     _require(repo, experiment_id)
-    try:
+    stored = repo.get_report(experiment_id, snapshot_version)
+    if stored is not None:  # 优先返回已落库 artifact（稳定、带 generated_at）
+        return {
+            "experiment_id": experiment_id,
+            "snapshot_version": stored.snapshot_version,
+            "checksum": stored.checksum,
+            "sections": list(stored.sections),
+            "markdown": stored.content,
+            "report_id": stored.report_id,
+            "generated_at": stored.generated_at.isoformat(),
+            "persisted": True,
+        }
+    try:  # 快照在但报告步未跑过 → 按需只读生成（不落库）
         report = generate_experiment_report(experiment_id, snapshot_version, repository=repo)
     except ValueError as exc:
         msg = str(exc)
@@ -331,6 +368,7 @@ def api_report(
         "checksum": report.checksum,
         "sections": list(report.sections),
         "markdown": report.markdown,
+        "persisted": False,
     }
 
 

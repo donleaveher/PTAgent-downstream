@@ -84,6 +84,7 @@ def test_unknown_experiment_returns_404() -> None:
     assert client.get("/ptagent/api/experiments/nope").status_code == 404
     assert client.get("/ptagent/api/experiments/nope/annotations").status_code == 404
     assert client.get("/ptagent/api/experiments/nope/snapshots").status_code == 404
+    assert client.get("/ptagent/api/experiments/nope/reports").status_code == 404
 
 
 def test_full_flow_via_api() -> None:
@@ -122,6 +123,15 @@ def test_full_flow_via_api() -> None:
     assert report["snapshot_version"] == "1.0"
     assert "# 实验报告" in report["markdown"]
     assert len(report["sections"]) == 8
+
+    # 报告 artifact 已落库（§10）：GET /report 返回持久化版本，GET /reports 列出
+    assert report["persisted"] is True
+    assert report["report_id"]
+    reports_list = client.get(f"/ptagent/api/experiments/{EXP}/reports").json()
+    assert reports_list["count"] == 1
+    assert reports_list["reports"][0]["snapshot_version"] == "1.0"
+    assert reports_list["reports"][0]["report_id"] == report["report_id"]
+    assert reports_list["reports"][0]["checksum"] == report["checksum"]
 
     # 重复冻结同版本 → 409（阻止覆盖）
     again = client.post(
