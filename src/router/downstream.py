@@ -5,15 +5,22 @@
 
 外部依赖（事实库 / 图库 / 管线外部源）经 FastAPI ``Depends`` 注入：生产默认走
 ``get_experiment_store()`` / ``get_kg_store()``，离线测试用 ``dependency_overrides``
-注入内存实现。鉴权 / 实验所有权 / 审计日志（§11.1 末项）暂未接入。
+注入内存实现。
+
+鉴权 / 审计（§11.1 末项）：路由级依赖 ``authorize`` 复用全站 JWT（``pkg.auth.jwt``）。
+默认**关闭**（环境变量 ``PTAGENT_DOWNSTREAM_AUTH`` 未设 → 开放，便于开发/测试）；置 ``1`` 时
+除 ``/health`` 外都要求 ``Authorization: Bearer <JWT>``，校验失败 → 401。修改类请求（POST/…）
+记审计日志（who/what/when）。JWT/config 仅在启用时惰性导入，不拖累离线路径。
 """
 
 from __future__ import annotations
 
 import dataclasses
+import logging
+import os
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field, ValidationError
 
 from application.experiment.freeze import FreezePreconditionError, freeze_experiment
@@ -37,7 +44,46 @@ from pkg.experiment import (
 )
 from pkg.graph import GraphStore, get_kg_store
 
-downstream_router = APIRouter(prefix="/ptagent/api", tags=["downstream"])
+# ---------------- 鉴权 + 审计（路由级依赖）----------------
+_MUTATING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+_audit_logger = logging.getLogger("ptagent.downstream.audit")
+
+
+def _auth_enabled() -> bool:
+    return os.environ.get("PTAGENT_DOWNSTREAM_AUTH", "").strip().lower() in {"1", "true", "yes"}
+
+
+def authorize(request: Request) -> None:
+    """JWT 鉴权 + 修改类请求审计。健康检查不鉴权；未启用鉴权时放行（匿名）。"""
+    path = request.url.path
+    if path.endswith("/health"):
+        return  # 存活探针不鉴权
+
+    principal = "anonymous"
+    if _auth_enabled():
+        auth = request.headers.get("authorization")
+        if not auth or not auth.startswith("Bearer "):
+            raise HTTPException(401, "missing or malformed Authorization header")
+        token = auth[len("Bearer ") :].strip()
+        # JWT/config 惰性导入：仅在启用鉴权时才拉入基座，离线路径零依赖。
+        from config import get_settings
+        from pkg.auth.jwt import RequestValidationError, parse_jwt_token
+
+        try:
+            claims = parse_jwt_token(token, get_settings())
+        except RequestValidationError as exc:
+            raise HTTPException(401, "invalid token") from exc
+        principal = str(claims.get("userId") or claims.get("sub") or "authenticated")
+
+    if request.method in _MUTATING_METHODS:  # 审计：who/what/when
+        _audit_logger.info(
+            "audit method=%s path=%s principal=%s", request.method, path, principal
+        )
+
+
+downstream_router = APIRouter(
+    prefix="/ptagent/api", tags=["downstream"], dependencies=[Depends(authorize)]
+)
 
 
 # ---------------- 可注入依赖（测试用 dependency_overrides 覆盖）----------------
@@ -410,6 +456,7 @@ def api_report(
 
 
 __all__ = [
+    "authorize",
     "downstream_router",
     "get_graph_store",
     "get_pipeline_config",
