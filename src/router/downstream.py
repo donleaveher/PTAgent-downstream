@@ -58,6 +58,24 @@ def _require(repo: ExperimentRepository, experiment_id: str) -> None:
         raise HTTPException(404, f"unknown experiment_id: {experiment_id}")
 
 
+def _validation_error_detail(exc: ValidationError, *, error: str) -> dict[str, Any]:
+    """把 Pydantic 校验错误（含字段错与跨表引用错）包装成可定位、可修复的结构化报告。"""
+    errors = [
+        {
+            "location": ".".join(str(p) for p in err["loc"]) or "(root)",
+            "message": err["msg"],
+            "type": err["type"],
+        }
+        for err in exc.errors()
+    ]
+    return {
+        "error": error,
+        "error_count": len(errors),
+        "errors": errors,
+        "hint": "字段规范与跨表引用规则见 docs/INPUT-CONTRACT.md",
+    }
+
+
 # ---------------- Body 模型 ----------------
 class PipelineRunBody(BaseModel):
     snapshot_version: str | None = None
@@ -100,7 +118,9 @@ def api_create_experiment(
     try:
         bundle = ingest_experiment_payload(payload, repo)
     except ValidationError as exc:
-        raise HTTPException(422, f"invalid experiment bundle: {exc.error_count()} errors") from exc
+        raise HTTPException(
+            422, detail=_validation_error_detail(exc, error="invalid experiment bundle")
+        ) from exc
     return {
         "experiment_id": bundle.context.experiment_id,
         "proteins": len(bundle.proteins),

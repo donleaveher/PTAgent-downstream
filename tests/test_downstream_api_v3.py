@@ -77,6 +77,12 @@ def test_invalid_bundle_returns_422() -> None:
     client, _ = _empty_client()
     resp = client.post("/ptagent/api/experiments", json={"context": {}, "groups": []})
     assert resp.status_code == 422
+    # 结构化报告：可定位字段 + 数量 + 修复指引
+    detail = resp.json()["detail"]
+    assert detail["error"] == "invalid experiment bundle"
+    assert detail["error_count"] >= 1
+    assert detail["errors"] and all("location" in e and "message" in e for e in detail["errors"])
+    assert "INPUT-CONTRACT" in detail["hint"]
 
 
 def test_unknown_experiment_returns_404() -> None:
