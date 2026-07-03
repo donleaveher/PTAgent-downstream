@@ -20,6 +20,8 @@ from pkg.experiment import (
     InMemoryExperimentRepository,
     MetaAnnotation,
     ProteinRecord,
+    StructureNeighborEvidence,
+    StructureSearchRun,
 )
 from pkg.graph import (
     EdgeType,
@@ -28,7 +30,6 @@ from pkg.graph import (
     NodeLabel,
     NodeRef,
 )
-from pkg.structure import StructuralNeighbor
 
 EXP = "exp_kg_test"
 
@@ -105,28 +106,43 @@ def _seed_repo() -> InMemoryExperimentRepository:
             ),
         ]
     )
-    return repo
-
-
-_NEIGHBORS = [
-    StructuralNeighbor(
-        query_accession="P2",
-        target_accession="P9",
-        score=0.95,
-        coverage=0.8,
-        rank=1,
-        taxon_id=9606,
-        relation_id="P2->P9",
+    repo.save_structure_search_run(
+        StructureSearchRun(
+            run_id="strun_kg",
+            experiment_id=EXP,
+            provider="Foldseek-AlphaFold",
+            provider_version="afdb-2024_01",
+            db_version="afdb-2024_01",
+            params_hash="a" * 64,
+            params={"top_k": 20},
+            status="completed",
+            meta={"neighbor_count": 1},
+        )
     )
-]
+    repo.add_structure_neighbor_evidence(
+        [
+            StructureNeighborEvidence(
+                evidence_id="sne_high",
+                run_id="strun_kg",
+                experiment_id=EXP,
+                query_protein_id="prot2",
+                query_accession="P2",
+                target_accession="P9",
+                score=0.95,
+                coverage=0.8,
+                rank=1,
+                taxon_id=9606,
+                relation_id="P2->P9",
+            )
+        ]
+    )
+    return repo
 
 
 def test_projection_builds_two_layer_graph() -> None:
     repo = _seed_repo()
     store = InMemoryGraphStore()
-    summary = project_experiment_kg(
-        EXP, repository=repo, store=store, structural_neighbors=_NEIGHBORS
-    )
+    summary = project_experiment_kg(EXP, repository=repo, store=store)
 
     assert summary["nodes_by_label"] == {
         "Protein": 3,  # P1, P2 + 结构近邻引入的 P9
@@ -142,6 +158,9 @@ def test_projection_builds_two_layer_graph() -> None:
     }
     assert summary["general_nodes"] == 7
     assert summary["experiment_nodes"] == 2
+    assert summary["structural_neighbors"] == 1
+    assert summary["structure_neighbor_evidence"] == 1
+    assert summary["projection_skipped"] == {}
 
     # 两层分离：分组节点 + 差异/假说边在实验工作区；其余在通用 KG
     assert store.count_nodes(scope=GraphScope.EXPERIMENT, experiment_id=EXP) == 2
@@ -159,7 +178,7 @@ def test_projection_builds_two_layer_graph() -> None:
 def test_traversal_protein_to_disease_structure_and_group() -> None:
     repo = _seed_repo()
     store = InMemoryGraphStore()
-    project_experiment_kg(EXP, repository=repo, store=store, structural_neighbors=_NEIGHBORS)
+    project_experiment_kg(EXP, repository=repo, store=store)
 
     # P1 → 基因 Stat3 结论 → 疾病（跨 ENCODED_BY 缝合）
     p1_diseases = store.protein_diseases("P1")
@@ -177,6 +196,8 @@ def test_traversal_protein_to_disease_structure_and_group() -> None:
     sn = store.neighbors(NodeRef(NodeLabel.PROTEIN, "P2"), EdgeType.STRUCTURAL_NEIGHBOR)
     assert len(sn) == 1
     assert sn[0].end.key == "P9" and sn[0].properties["score"] == 0.95
+    assert sn[0].properties["evidence_id"] == "sne_high"
+    assert sn[0].properties["projection_reason"] == "rank<=5"
 
     # P1 → 差异组（带 log2fc）
     diff = store.neighbors(NodeRef(NodeLabel.PROTEIN, "P1"), EdgeType.DIFFERENTIAL)
@@ -187,8 +208,8 @@ def test_traversal_protein_to_disease_structure_and_group() -> None:
 def test_projection_is_idempotent() -> None:
     repo = _seed_repo()
     store = InMemoryGraphStore()
-    first = project_experiment_kg(EXP, repository=repo, store=store, structural_neighbors=_NEIGHBORS)
-    project_experiment_kg(EXP, repository=repo, store=store, structural_neighbors=_NEIGHBORS)
+    first = project_experiment_kg(EXP, repository=repo, store=store)
+    project_experiment_kg(EXP, repository=repo, store=store)
     assert store.count_nodes() == first["nodes"] == 9
     assert store.count_edges() == first["edges"] == 7
 
@@ -196,7 +217,7 @@ def test_projection_is_idempotent() -> None:
 def test_drop_experiment_keeps_general_kg() -> None:
     repo = _seed_repo()
     store = InMemoryGraphStore()
-    project_experiment_kg(EXP, repository=repo, store=store, structural_neighbors=_NEIGHBORS)
+    project_experiment_kg(EXP, repository=repo, store=store)
 
     removed = store.drop_experiment(EXP)
     assert removed == 5  # 2 分组节点 + 3 实验边（1 假说 + 2 差异）
@@ -209,6 +230,35 @@ def test_drop_experiment_keeps_general_kg() -> None:
     # 通用基因结论仍可达；本实验蛋白假说已随工作区清除
     assert {d.disease_key for d in store.protein_diseases("P1")} == {"MESH:D001"}
     assert store.protein_diseases("P2", experiment_id=EXP) == []
+
+
+def test_projection_policy_skips_low_rank_structure_evidence() -> None:
+    repo = _seed_repo()
+    repo.add_structure_neighbor_evidence(
+        [
+            StructureNeighborEvidence(
+                evidence_id="sne_low",
+                run_id="strun_kg",
+                experiment_id=EXP,
+                query_protein_id="prot2",
+                query_accession="P2",
+                target_accession="P_LOW",
+                score=0.9,
+                coverage=0.9,
+                rank=99,
+                taxon_id=9606,
+                relation_id="P2->P_LOW",
+            )
+        ]
+    )
+    store = InMemoryGraphStore()
+    summary = project_experiment_kg(EXP, repository=repo, store=store)
+
+    assert summary["structure_neighbor_evidence"] == 2
+    assert summary["structural_neighbors"] == 1
+    assert summary["projection_skipped"] == {"rank>5": 1}
+    sn = store.neighbors(NodeRef(NodeLabel.PROTEIN, "P2"), EdgeType.STRUCTURAL_NEIGHBOR)
+    assert [edge.end.key for edge in sn] == ["P9"]
 
 
 def test_unknown_experiment_raises() -> None:

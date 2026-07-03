@@ -5,18 +5,20 @@ L2 差异），按 Q3 双节点（``Protein``/``Gene`` 以 ``ENCODED_BY`` 缝合
 （通用 KG / 本次实验 KG）投影成节点与边，经 :class:`GraphStore` 端口幂等写入。
 MySQL 仍是事实唯一来源（Q5）；节点/边只带 canonical key + 轻量属性 + ``mysql_ref``。
 
-结构近邻（``STRUCTURAL_NEIGHBOR``）目前尚未持久化进 MySQL（§5.2 仍 ⬜），故作为可选注入
-参数 ``structural_neighbors`` 传入；待检索摘要落库后改为从仓库读取即可。
+结构近邻（``STRUCTURAL_NEIGHBOR``）从仓库中的轻量 evidence 读取；KG 投影只 materialize
+通过 projection policy 的高信号关系，完整 provider payload 仍留在 MySQL。
 """
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import Any
 
 from pkg.experiment import (
     AnnotationTargetType,
     ExperimentRepository,
+    StructureNeighborEvidence,
+    StructureSearchRun,
     get_experiment_store,
 )
 from pkg.graph.model import (
@@ -31,6 +33,14 @@ from pkg.graph.neo4j_store import get_kg_store
 from pkg.graph.port import GraphStore
 from pkg.structure import StructuralNeighbor
 
+from .projection_policy import (
+    DEFAULT_PROJECTION_POLICY,
+    ProjectionCandidate,
+    ProjectionPolicy,
+)
+
+_AddStructureEdge = Callable[..., None]
+
 
 def project_experiment_kg(
     experiment_id: str,
@@ -38,6 +48,7 @@ def project_experiment_kg(
     repository: ExperimentRepository | None = None,
     store: GraphStore | None = None,
     structural_neighbors: Sequence[StructuralNeighbor] = (),
+    projection_policy: ProjectionPolicy | None = None,
 ) -> dict[str, Any]:
     """把某实验的 MySQL 事实投影成通用 KG + 实验工作区，幂等可重投。
 
@@ -56,6 +67,11 @@ def project_experiment_kg(
     groups = repo.list_groups(experiment_id)
     annotations = repo.list_annotations(experiment_id)
     differentials = repo.list_differentials(experiment_id)
+    structure_runs = {
+        run.run_id: run for run in repo.list_structure_search_runs(experiment_id)
+    }
+    structure_evidence = repo.list_structure_neighbor_evidence(experiment_id)
+    policy = projection_policy or DEFAULT_PROJECTION_POLICY
 
     accession_by_protein_id = {p.protein_id: p.accession for p in proteins}
 
@@ -205,13 +221,39 @@ def project_experiment_kg(
             )
         )
 
-    # 5) 结构近邻（可选注入；通用 KG，跨物种桥）
-    for neighbor in structural_neighbors:
-        query_ref = _general_protein(neighbor.query_accession)
-        target_ref = _general_protein(neighbor.target_accession)
-        key = neighbor.relation_id or (
-            f"{neighbor.query_accession}|STRUCTURAL_NEIGHBOR|{neighbor.target_accession}"
+    # 5) 结构近邻：完整 evidence 留 MySQL；只有 policy 认为显著的关系进入 KG。
+    skipped_projection: dict[str, int] = {}
+
+    def _skip_projection(reason: str) -> None:
+        skipped_projection[reason] = skipped_projection.get(reason, 0) + 1
+
+    def _add_structure_edge(
+        *,
+        query_accession: str,
+        target_accession: str,
+        rank: int,
+        score: float,
+        coverage: float,
+        taxon_id: int | None,
+        relation_id: str,
+        properties: dict[str, Any],
+    ) -> None:
+        decision = policy.decide(
+            ProjectionCandidate(
+                channel="structure",
+                relation_type=EdgeType.STRUCTURAL_NEIGHBOR.value,
+                rank=rank,
+                score=score,
+                coverage=coverage,
+                support_channels=("structure",),
+            )
         )
+        if not decision.projected:
+            _skip_projection(decision.reason)
+            return
+        query_ref = _general_protein(query_accession)
+        target_ref = _general_protein(target_accession)
+        key = relation_id or f"{query_accession}|STRUCTURAL_NEIGHBOR|{target_accession}"
         _add_edge(
             GraphEdge(
                 type=EdgeType.STRUCTURAL_NEIGHBOR,
@@ -220,12 +262,43 @@ def project_experiment_kg(
                 key=key,
                 scope=GraphScope.GENERAL,
                 properties={
-                    "score": neighbor.score,
-                    "coverage": neighbor.coverage,
-                    "rank": neighbor.rank,
-                    "taxon_id": neighbor.taxon_id,
+                    "score": score,
+                    "coverage": coverage,
+                    "rank": rank,
+                    "taxon_id": taxon_id,
+                    "channel": "structure",
+                    "projection_reason": decision.reason,
+                    **properties,
                 },
             )
+        )
+
+    for evidence in structure_evidence:
+        run = structure_runs.get(evidence.run_id)
+        _add_structure_evidence_edge(
+            evidence=evidence,
+            run=run,
+            query_accession=accession_by_protein_id.get(
+                evidence.query_protein_id, evidence.query_accession
+            ),
+            add_structure_edge=_add_structure_edge,
+        )
+
+    # Legacy/test injection path. It is intentionally still policy-gated so
+    # callers cannot bypass graph visibility thresholds.
+    for neighbor in structural_neighbors:
+        _add_structure_edge(
+            query_accession=neighbor.query_accession,
+            target_accession=neighbor.target_accession,
+            rank=neighbor.rank,
+            score=neighbor.score,
+            coverage=neighbor.coverage,
+            taxon_id=neighbor.taxon_id,
+            relation_id=neighbor.relation_id,
+            properties={
+                "source": "injected",
+                "taxon_name": neighbor.taxon_name,
+            },
         )
 
     node_list = list(nodes.values())
@@ -250,8 +323,46 @@ def project_experiment_kg(
         "experiment_nodes": sum(
             1 for n in node_list if n.scope is GraphScope.EXPERIMENT
         ),
-        "structural_neighbors": len(structural_neighbors),
+        "structural_neighbors": sum(
+            1 for e in edge_list if e.type is EdgeType.STRUCTURAL_NEIGHBOR
+        ),
+        "structure_neighbor_evidence": len(structure_evidence),
+        "structural_neighbors_injected": len(structural_neighbors),
+        "projection_skipped": dict(sorted(skipped_projection.items())),
     }
+
+
+def _add_structure_evidence_edge(
+    *,
+    evidence: StructureNeighborEvidence,
+    run: StructureSearchRun | None,
+    query_accession: str,
+    add_structure_edge: _AddStructureEdge,
+) -> None:
+    properties = {
+        "source": "structure_neighbor_evidence",
+        "evidence_id": evidence.evidence_id,
+        "run_id": evidence.run_id,
+        "taxon_name": evidence.taxon_name,
+    }
+    if run is not None:
+        properties.update(
+            {
+                "provider": run.provider,
+                "provider_version": run.provider_version,
+                "db_version": run.db_version,
+            }
+        )
+    add_structure_edge(
+        query_accession=query_accession,
+        target_accession=evidence.target_accession,
+        rank=evidence.rank,
+        score=evidence.score,
+        coverage=evidence.coverage,
+        taxon_id=evidence.taxon_id,
+        relation_id=evidence.relation_id,
+        properties=properties,
+    )
 
 
 __all__ = ["project_experiment_kg"]

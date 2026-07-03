@@ -248,7 +248,7 @@
 ## 5. AlphaFold/Foldseek 结构近邻
 
 > **进展（结构检索引擎已落地，对标 UniProt/CTD 链；离线/假源已测）**：新建独立包 `pkg/structure/`——`StructureSearchProvider` 协议 + `StructuralNeighbor`（score/coverage/rank/taxon/relation_id/版本）+ `parse_foldseek_output` + `select_neighbors`（去自身/阈值/top-k/排名）+ `FoldseekStructureSearchProvider`（runner 可注入）+ `StructureSettings`。**不复用旧序列 KNN**。
-> 已离线验证**跨物种 大鼠→人** 近邻案例。**"仅差异蛋白"编排已落地**（管线 `restrict_to_differential` 默认开，依赖 L2 差异先落库）。**StructureCatalog + 结构缺失状态持久化已落地**：缺结构/不可用结构写入 `structure_evidence_status`，不再中断管线。**成功结构检索摘要持久化已落地**：`structure_search_run` + `structure_neighbor_evidence` 记录 run 参数、版本和 top-k neighbor evidence。**仍 ⬜**：真实 Foldseek 二进制 + AlphaFold DB 索引/查询结构联调、`STRUCTURAL_NEIGHBOR` 从库投影（依赖 §7）、物种过滤选项。
+> 已离线验证**跨物种 大鼠→人** 近邻案例。**"仅差异蛋白"编排已落地**（管线 `restrict_to_differential` 默认开，依赖 L2 差异先落库）。**StructureCatalog + 结构缺失状态持久化已落地**：缺结构/不可用结构写入 `structure_evidence_status`，不再中断管线。**成功结构检索摘要持久化已落地**：`structure_search_run` + `structure_neighbor_evidence` 记录 run 参数、版本和 top-k neighbor evidence。**KG projection policy 已落地**：`STRUCTURAL_NEIGHBOR` 从持久化 evidence 读取，并只投影 rank 显著的关系。**仍 ⬜**：真实 Foldseek 二进制 + AlphaFold DB 索引/查询结构联调、物种过滤选项。
 
 ### 5.1 Provider 与运行环境
 
@@ -264,7 +264,7 @@
 - ✅ 仅对差异蛋白执行结构检索（结构检索在 M3 假说生成内进行，管线 `restrict_to_differential` 默认开 → 只喂差异蛋白集）。
 - ✅ 输出 query protein、neighbor protein、score、coverage、rank、taxon 和数据库版本。
 - ✅ 将成功结构检索摘要写 MySQL/cache，不把大结构文件写入 Neo4j（`structure_search_run`/`structure_neighbor_evidence`；缺结构状态写入 `structure_evidence_status`）。
-- ✅ 为 `STRUCTURAL_NEIGHBOR` 图投影准备稳定关系 ID（`StructuralNeighbor.relation_id`，默认 `query->target`；KG 投影可回退到 `query|STRUCTURAL_NEIGHBOR|target`）。
+- ✅ 为 `STRUCTURAL_NEIGHBOR` 图投影准备稳定关系 ID，并从持久化 `structure_neighbor_evidence` 经 projection policy 投影（默认 `rank<=5`；边回指 `evidence_id/run_id`）。
 - 🟨 增加 fake provider 单元测试和小型 Foldseek 集成测试：离线 fake/static provider 测试已覆盖；真实 Foldseek 小型集成测试仍待外部环境。
 - ✅ 验证至少一个大鼠→人结构近邻案例（离线 Foldseek TSV fixture）。
 
@@ -281,7 +281,7 @@
 
 **阶段验收：**
 
-- 🟨 输入差异蛋白 accession，可得到版本明确、参数完整、可复现的 top-k 结构近邻；若结构缺失，可得到可审计的缺失状态并继续降级流程。**离线 provider/catalog/缺失状态/neighbor evidence 持久化已测；真实 Foldseek DB 联调和 KG 从库投影仍待做。**
+- 🟨 输入差异蛋白 accession，可得到版本明确、参数完整、可复现的 top-k 结构近邻；若结构缺失，可得到可审计的缺失状态并继续降级流程。**离线 provider/catalog/缺失状态/neighbor evidence 持久化/KG policy 投影已测；真实 Foldseek DB 联调仍待做。**
 
 ---
 
@@ -337,7 +337,8 @@
 > `pkg/graph/model.py`——节点/边模型（`NodeLabel` Protein/Gene/Disease/Group、`EdgeType` ENCODED_BY/ASSOCIATED_WITH/STRUCTURAL_NEIGHBOR/DIFFERENTIAL、`GraphScope` GENERAL/EXPERIMENT、`DiseaseLink`），节点带 `mysql_ref`、EXPERIMENT 作用域强制带 `experiment_id`。
 > `pkg/graph/port.py`——`GraphStore` 端口（Protocol）+ `InMemoryGraphStore`（幂等 upsert/合并、一跳 `neighbors`、跨 `ENCODED_BY` 缝合的 `protein_diseases`、`drop_experiment` 只清工作区、带过滤的 `count_*`）。
 > `pkg/graph/neo4j_store.py`——`Neo4jGraphStore`（按 label/relType 分组 MERGE、`mysql_ref`/`props_json` JSON 编码、查询标量提升、`session(database=…)`、`get_kg_store` 单例；neo4j 延迟加载）。
-> `application/graph/project_kg.py`——`project_experiment_kg`：读仓库蛋白/基因、CTD 基因结论、蛋白级假说、L2 差异，按 Q3/Q4 投影成两层图，幂等可重投；结构近邻当前作为可选注入（§5.2 持久化后改读仓库）。
+> `application/graph/project_kg.py`——`project_experiment_kg`：读仓库蛋白/基因、CTD 基因结论、蛋白级假说、L2 差异、`structure_neighbor_evidence`，按 Q3/Q4 投影成两层图，幂等可重投；结构近邻已改为从持久化 evidence 投影，旧可选注入仅作为兼容路径。
+> `application/graph/projection_policy.py`——KG 不承载所有检索 channel 明细；多 channel/Fusion 结果应先落 MySQL evidence，只有满足 projection policy（如 rank 显著、融合 rank 靠前、多 channel 共识）的轻量关系才进入 KG，并在边上回指 `evidence_id/run_id`。
 > **仍 ⬜（B 组/后续）**：真连 Neo4j 实例集成测试、事务/重试、版本化重建与过期清理、deep-search 回写、Domain/Tissue/Taxon 等扩展节点与 HAS_DOMAIN/EXPRESSED_IN/BELONGS_TO/IN_GROUP/HAS_ANNOTATION 等扩展边。
 
 ### 7.1 GraphStore 重构
@@ -352,7 +353,7 @@
 ### 7.2 通用 KG
 
 - 🟨 创建 canonical 节点约束/索引：`Protein/Gene/Disease/Group` 的 key 唯一约束已实现；`Taxon/Domain/Tissue` 暂未建模。
-- 🟨 创建关系：`ENCODED_BY/ASSOCIATED_WITH/STRUCTURAL_NEIGHBOR/DIFFERENTIAL` 已实现；`HAS_DOMAIN/EXPRESSED_IN` 暂未建模。
+- 🟨 创建关系：`ENCODED_BY/ASSOCIATED_WITH/STRUCTURAL_NEIGHBOR/DIFFERENTIAL` 已实现；`STRUCTURAL_NEIGHBOR` 由 `structure_neighbor_evidence` 经 projection policy 筛选后投影；`HAS_DOMAIN/EXPRESSED_IN` 暂未建模。
 - ✅ 节点/关系保存 canonical key + `mysql_ref`（重数据不进图，Q5）；source/version 随属性按需携带。
 - ✅ 公共事实只从 MySQL 投影（`project_kg` 读仓库），不以 Neo4j 为事实源。
 - ⬜ 实现按版本重建、增量更新和删除过期投影（`drop_experiment` 仅清实验工作区）。
@@ -369,7 +370,7 @@
 
 **阶段验收：**
 
-- 🟨 能从 MySQL 投影出通用 KG + 一个实验工作区，删除工作区不影响通用 KG，图节点经 `mysql_ref` 回指 MySQL：**离线（内存图库）已通过**（`test_project_kg_v3.py`）；真实 Neo4j 重建/隔离联调待做。
+- 🟨 能从 MySQL 投影出通用 KG + 一个实验工作区，删除工作区不影响通用 KG，图节点经 `mysql_ref` 回指 MySQL；结构近邻从持久化 evidence 读取，并按 rank 显著性筛边：**离线（内存图库）已通过**（`test_project_kg_v3.py`/`test_graph_projection_policy.py`）；真实 Neo4j 重建/隔离联调待做。
 
 ---
 

@@ -110,6 +110,7 @@ class DownstreamPipelineConfig:
     literature_source: Any = None
     graph_store: Any = None
     structural_neighbors: Sequence[Any] = ()
+    kg_projection_policy: Any = None
 
 
 # ---------------- 各步骤（均 (experiment_id, repo, cfg) -> dict | ExperimentReport）----------------
@@ -182,6 +183,7 @@ def _step_kg_projection(experiment_id, repo, cfg):
         repository=repo,
         store=cfg.graph_store,
         structural_neighbors=cfg.structural_neighbors,
+        projection_policy=cfg.kg_projection_policy,
     )
 
 
