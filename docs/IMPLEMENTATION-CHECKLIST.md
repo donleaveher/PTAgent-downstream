@@ -316,11 +316,12 @@
 
 ### 6.3 多通道近邻融合与证据降级
 
-> **设计补充**：项目价值不应绑定在 AlphaFold/Foldseek 单一路径上。结构近邻只是一个高价值 channel；当结构不可用时，应自动降级到 sequence、domain、metadata、ortholog、pathway、literature 等 provider。当前 `pkg.retrieval.HybridRetriever`/`rrf` 与 `pkg.structure.rerank.extra_channels` 已提供基础件，但尚未并入主假说流程。
+> **设计补充**：项目价值不应绑定在 AlphaFold/Foldseek 单一路径上。结构近邻只是一个高价值 channel；当结构不可用时，应自动降级到 sequence、domain、metadata、ortholog、pathway、literature 等 provider。当前 `pkg.retrieval.HybridRetriever`/`rrf` 与 `pkg.structure.rerank.extra_channels` 已提供基础件。**融合候选中间层已落地**：`FusedCandidate` + `fused_candidate` 表 + Repository/MySQL 往返 + KG `CANDIDATE_NEIGHBOR` policy 投影；真实多 channel provider/fusion engine 仍待接入。
 
 - ⬜ 抽象统一 `NeighborProvider` / `ProteinNeighborCandidate`：各 provider 输出 `query_accession`、`target_accession`、`channel`、`rank`、`raw_score`、`evidence`、`provider_version`。
 - ⬜ 接入候选通道：`structure`(Foldseek)、`sequence`(FASTA/MMseqs2/BLAST/k-mer/embedding)、`domain`(InterPro/Pfam)、`metadata`(GO/EC/keyword/pathway)、`ortholog`(OrthoDB/eggNOG/Ensembl Compara/OMA)、`literature`(DeepXiv/PubMed 等)。
-- ⬜ 用 weighted RRF 融合多路 ranked targets，优先按名次融合异构分数；结构缺失时重分配权重而不是失败。
+- 🟨 用 weighted RRF 融合多路 ranked targets，优先按名次融合异构分数；结构缺失时重分配权重而不是失败：融合结果承载模型 `FusedCandidate`/表 `fused_candidate` 已完成，实际 fusion engine 待接。
+- ✅ `FusedCandidate` 进入 KG 前必须过 projection policy：默认 `CANDIDATE_NEIGHBOR` 需 `fusion_rank<=5` 且至少两个 support channels；未通过只留 MySQL。
 - ⬜ 融合后的相似蛋白再进入 evidence transfer：`neighbor accession -> gene -> CTD disease`；目标 accession/gene 自身直接证据为 `CONCLUSION`，homolog/ortholog/domain/pathway/literature 迁移证据为 `HYPOTHESIS`。
 - ⬜ 避免循环论证：疾病标签本身不参与“相似蛋白检索”的打分；CTD/疾病库只用于检索后证据转移和报告溯源。
 - ⬜ 对完全无法解析 accession/gene/sequence/ortholog 的蛋白记录 `unresolved`，不生成结论或假说。
@@ -334,10 +335,10 @@
 ## 7. Neo4j 通用 KG 与本次实验 KG
 
 > **进展（L3 纯代码核心已落地；离线测试通过）**：新建独立的双节点知识图谱层，与旧 PSM/肽 KNN 图（§13 待 deprecate）完全隔离。
-> `pkg/graph/model.py`——节点/边模型（`NodeLabel` Protein/Gene/Disease/Group、`EdgeType` ENCODED_BY/ASSOCIATED_WITH/STRUCTURAL_NEIGHBOR/DIFFERENTIAL、`GraphScope` GENERAL/EXPERIMENT、`DiseaseLink`），节点带 `mysql_ref`、EXPERIMENT 作用域强制带 `experiment_id`。
+> `pkg/graph/model.py`——节点/边模型（`NodeLabel` Protein/Gene/Disease/Group、`EdgeType` ENCODED_BY/ASSOCIATED_WITH/STRUCTURAL_NEIGHBOR/CANDIDATE_NEIGHBOR/DIFFERENTIAL、`GraphScope` GENERAL/EXPERIMENT、`DiseaseLink`），节点带 `mysql_ref`、EXPERIMENT 作用域强制带 `experiment_id`。
 > `pkg/graph/port.py`——`GraphStore` 端口（Protocol）+ `InMemoryGraphStore`（幂等 upsert/合并、一跳 `neighbors`、跨 `ENCODED_BY` 缝合的 `protein_diseases`、`drop_experiment` 只清工作区、带过滤的 `count_*`）。
 > `pkg/graph/neo4j_store.py`——`Neo4jGraphStore`（按 label/relType 分组 MERGE、`mysql_ref`/`props_json` JSON 编码、查询标量提升、`session(database=…)`、`get_kg_store` 单例；neo4j 延迟加载）。
-> `application/graph/project_kg.py`——`project_experiment_kg`：读仓库蛋白/基因、CTD 基因结论、蛋白级假说、L2 差异、`structure_neighbor_evidence`，按 Q3/Q4 投影成两层图，幂等可重投；结构近邻已改为从持久化 evidence 投影，旧可选注入仅作为兼容路径。
+> `application/graph/project_kg.py`——`project_experiment_kg`：读仓库蛋白/基因、CTD 基因结论、蛋白级假说、L2 差异、`structure_neighbor_evidence`、`fused_candidate`，按 Q3/Q4 投影成两层图，幂等可重投；结构近邻已改为从持久化 evidence 投影，融合候选按 policy 投为实验作用域 `CANDIDATE_NEIGHBOR`。
 > `application/graph/projection_policy.py`——KG 不承载所有检索 channel 明细；多 channel/Fusion 结果应先落 MySQL evidence，只有满足 projection policy（如 rank 显著、融合 rank 靠前、多 channel 共识）的轻量关系才进入 KG，并在边上回指 `evidence_id/run_id`。
 > **仍 ⬜（B 组/后续）**：真连 Neo4j 实例集成测试、事务/重试、版本化重建与过期清理、deep-search 回写、Domain/Tissue/Taxon 等扩展节点与 HAS_DOMAIN/EXPRESSED_IN/BELONGS_TO/IN_GROUP/HAS_ANNOTATION 等扩展边。
 
@@ -353,7 +354,7 @@
 ### 7.2 通用 KG
 
 - 🟨 创建 canonical 节点约束/索引：`Protein/Gene/Disease/Group` 的 key 唯一约束已实现；`Taxon/Domain/Tissue` 暂未建模。
-- 🟨 创建关系：`ENCODED_BY/ASSOCIATED_WITH/STRUCTURAL_NEIGHBOR/DIFFERENTIAL` 已实现；`STRUCTURAL_NEIGHBOR` 由 `structure_neighbor_evidence` 经 projection policy 筛选后投影；`HAS_DOMAIN/EXPRESSED_IN` 暂未建模。
+- 🟨 创建关系：`ENCODED_BY/ASSOCIATED_WITH/STRUCTURAL_NEIGHBOR/CANDIDATE_NEIGHBOR/DIFFERENTIAL` 已实现；`STRUCTURAL_NEIGHBOR` 由 `structure_neighbor_evidence` 经 projection policy 筛选后投影；`CANDIDATE_NEIGHBOR` 由 `fused_candidate` 经 fusion rank/support channel policy 投影；`HAS_DOMAIN/EXPRESSED_IN` 暂未建模。
 - ✅ 节点/关系保存 canonical key + `mysql_ref`（重数据不进图，Q5）；source/version 随属性按需携带。
 - ✅ 公共事实只从 MySQL 投影（`project_kg` 读仓库），不以 Neo4j 为事实源。
 - ⬜ 实现按版本重建、增量更新和删除过期投影（`drop_experiment` 仅清实验工作区）。
@@ -362,7 +363,7 @@
 
 - 🟨 实验作用域节点：`Group` 已建模（带 `experiment_id`）；`Experiment/Peptide` 节点暂未建（`Annotation` 当前投影为带 `evidence_level` 的边而非节点）。
 - ✅ 全部蛋白保留基础 `Protein` 节点（通用 KG 字典）。
-- 🟨 实验关系：`DIFFERENTIAL`（Protein→Group）已实现；`BELONGS_TO/IN_GROUP/HAS_ANNOTATION` 暂未建模。
+- 🟨 实验关系：`DIFFERENTIAL`（Protein→Group）和 `CANDIDATE_NEIGHBOR`（Protein→Protein 融合候选）已实现；`BELONGS_TO/IN_GROUP/HAS_ANNOTATION` 暂未建模。
 - ✅ 公共实体通过 canonical key 引用，不复制成可修改公共事实（疾病节点 GENERAL，假说性仅落在 EXPERIMENT 边）。
 - ✅ 实验判断绑定 `experiment_id` 且作用域为 EXPERIMENT，不同实验互不污染（`drop_experiment` 隔离已测）。
 - ⬜ deep-search 只更新实验 Annotation/历史，不直接修改公共关系（deep-search 见 §8）。
@@ -370,7 +371,7 @@
 
 **阶段验收：**
 
-- 🟨 能从 MySQL 投影出通用 KG + 一个实验工作区，删除工作区不影响通用 KG，图节点经 `mysql_ref` 回指 MySQL；结构近邻从持久化 evidence 读取，并按 rank 显著性筛边：**离线（内存图库）已通过**（`test_project_kg_v3.py`/`test_graph_projection_policy.py`）；真实 Neo4j 重建/隔离联调待做。
+- 🟨 能从 MySQL 投影出通用 KG + 一个实验工作区，删除工作区不影响通用 KG，图节点经 `mysql_ref` 回指 MySQL；结构近邻从持久化 evidence 读取，并按 rank 显著性筛边；融合候选按 `fusion_rank/support_channels` 投 `CANDIDATE_NEIGHBOR`：**离线（内存图库）已通过**（`test_project_kg_v3.py`/`test_graph_projection_policy.py`）；真实 Neo4j 重建/隔离联调待做。
 
 ---
 

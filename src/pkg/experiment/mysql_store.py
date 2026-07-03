@@ -21,6 +21,7 @@ from .types import (
     ExperimentRequest,
     ExperimentSnapshot,
     ExperimentStatus,
+    FusedCandidate,
     MetaAnnotation,
     PeptideRecord,
     ProteinQuantification,
@@ -172,6 +173,26 @@ def _structure_neighbor_from_row(row: dict[str, Any]) -> StructureNeighborEviden
         taxon_name=row["taxon_name"],
         relation_id=row["relation_id"],
         provenance=_json_load(row["provenance_json"], {}),
+        created_at=_from_db_datetime(row["created_at"]),
+    )
+
+
+def _fused_candidate_from_row(row: dict[str, Any]) -> FusedCandidate:
+    return FusedCandidate(
+        candidate_id=row["candidate_id"],
+        experiment_id=row["experiment_id"],
+        query_protein_id=row["query_protein_id"],
+        query_accession=row["query_accession"],
+        target_type=row["target_type"],
+        target_id=row["target_id"],
+        relation_type=row["relation_type"],
+        fused_score=float(row["fused_score"]),
+        fusion_rank=int(row["fusion_rank"]),
+        support_channels=_json_load(row["support_channels_json"], []),
+        evidence_ids=_json_load(row["evidence_ids_json"], []),
+        projection_status=row["projection_status"],
+        projection_reason=row["projection_reason"],
+        meta=_json_load(row["meta_json"], {}),
         created_at=_from_db_datetime(row["created_at"]),
     )
 
@@ -1114,6 +1135,68 @@ class MySQLExperimentStore:
                 (experiment_id,),
             )
             return [_structure_neighbor_from_row(row) for row in cursor.fetchall()]
+
+        return self._read(fetch)
+
+    def add_fused_candidates(self, rows: list[FusedCandidate]) -> int:
+        if not rows:
+            return 0
+
+        def save(cursor: Any) -> None:
+            cursor.executemany(
+                """
+                INSERT INTO fused_candidate
+                  (candidate_id, experiment_id, query_protein_id, query_accession,
+                   target_type, target_id, relation_type, fused_score, fusion_rank,
+                   support_channels_json, evidence_ids_json, projection_status,
+                   projection_reason, meta_json, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                  query_accession=VALUES(query_accession),
+                  fused_score=VALUES(fused_score),
+                  fusion_rank=VALUES(fusion_rank),
+                  support_channels_json=VALUES(support_channels_json),
+                  evidence_ids_json=VALUES(evidence_ids_json),
+                  projection_status=VALUES(projection_status),
+                  projection_reason=VALUES(projection_reason),
+                  meta_json=VALUES(meta_json),
+                  created_at=VALUES(created_at)
+                """,
+                [
+                    (
+                        row.candidate_id,
+                        row.experiment_id,
+                        row.query_protein_id,
+                        row.query_accession,
+                        row.target_type,
+                        row.target_id,
+                        row.relation_type,
+                        row.fused_score,
+                        row.fusion_rank,
+                        _json_dump(row.support_channels),
+                        _json_dump(row.evidence_ids),
+                        row.projection_status,
+                        row.projection_reason,
+                        _json_dump(row.meta),
+                        _db_datetime(row.created_at),
+                    )
+                    for row in rows
+                ],
+            )
+
+        self._write(save)
+        return len(rows)
+
+    def list_fused_candidates(self, experiment_id: str) -> list[FusedCandidate]:
+        def fetch(cursor: Any) -> list[FusedCandidate]:
+            cursor.execute(
+                """
+                SELECT * FROM fused_candidate
+                WHERE experiment_id=%s ORDER BY fusion_rank, candidate_id
+                """,
+                (experiment_id,),
+            )
+            return [_fused_candidate_from_row(row) for row in cursor.fetchall()]
 
         return self._read(fetch)
 

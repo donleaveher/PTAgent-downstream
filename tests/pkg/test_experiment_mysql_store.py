@@ -20,6 +20,7 @@ from pkg.experiment import (
     ExperimentInputArtifact,
     ExperimentRequest,
     ExperimentSnapshot,
+    FusedCandidate,
     MetaAnnotation,
     ProteinQuantification,
     StructureEvidenceStatus,
@@ -117,6 +118,7 @@ _PK: dict[str, tuple[str, ...]] = {
     "structure_evidence_status": ("experiment_id", "protein_id", "channel"),
     "structure_search_run": ("run_id",),
     "structure_neighbor_evidence": ("evidence_id",),
+    "fused_candidate": ("candidate_id",),
     "differential_result": ("differential_id",),
     "enrichment_result": ("enrichment_id",),
 }
@@ -398,6 +400,32 @@ def test_mysql_store_round_trips_structure_run_and_neighbor_evidence() -> None:
     assert store.list_structure_search_runs("exp_1") == [run]
     loaded = store.list_structure_neighbor_evidence("exp_1")
     assert loaded == [evidence]
+    assert loaded[0].created_at.tzinfo == timezone.utc
+
+
+def test_mysql_store_round_trips_fused_candidates() -> None:
+    store = _round_trip_store()
+    store.save_bundle(ExperimentBundle.model_validate(valid_payload()))
+    candidate = FusedCandidate(
+        candidate_id="fc_1",
+        experiment_id="exp_1",
+        query_protein_id="prot_1",
+        query_accession="P12345",
+        target_type="protein",
+        target_id="P40763",
+        relation_type="CANDIDATE_NEIGHBOR",
+        fused_score=0.87,
+        fusion_rank=1,
+        support_channels=["structure", "sequence"],
+        evidence_ids=["sne_1", "seq_1"],
+        projection_status="projected",
+        projection_reason="fusion_rank<=5;support_channels>=2",
+        meta={"fusion": "rrf"},
+    )
+
+    assert store.add_fused_candidates([candidate]) == 1
+    loaded = store.list_fused_candidates("exp_1")
+    assert loaded == [candidate]
     assert loaded[0].created_at.tzinfo == timezone.utc
 
 

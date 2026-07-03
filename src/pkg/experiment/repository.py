@@ -20,6 +20,7 @@ from .types import (
     ExperimentRequest,
     ExperimentSnapshot,
     ExperimentStatus,
+    FusedCandidate,
     MetaAnnotation,
     PeptideRecord,
     ProteinQuantification,
@@ -98,6 +99,10 @@ class ExperimentRepository(Protocol):
         self, experiment_id: str
     ) -> list[StructureNeighborEvidence]: ...
 
+    def add_fused_candidates(self, rows: list[FusedCandidate]) -> int: ...
+
+    def list_fused_candidates(self, experiment_id: str) -> list[FusedCandidate]: ...
+
     def add_differentials(self, rows: list[DifferentialResult]) -> int: ...
 
     def list_differentials(self, experiment_id: str) -> list[DifferentialResult]: ...
@@ -139,6 +144,7 @@ class InMemoryExperimentRepository:
         self._structure_statuses: dict[str, dict[str, StructureEvidenceStatus]] = {}
         self._structure_runs: dict[str, StructureSearchRun] = {}
         self._structure_neighbors: dict[str, dict[str, StructureNeighborEvidence]] = {}
+        self._fused_candidates: dict[str, dict[str, FusedCandidate]] = {}
         self._differentials: dict[str, dict[str, DifferentialResult]] = {}
         self._enrichments: dict[str, dict[str, EnrichmentRecord]] = {}
         self._snapshots: dict[str, ExperimentSnapshot] = {}
@@ -340,6 +346,19 @@ class InMemoryExperimentRepository:
     ) -> list[StructureNeighborEvidence]:
         rows = self._structure_neighbors.get(experiment_id, {})
         return [rows[key].model_copy(deep=True) for key in sorted(rows)]
+
+    def add_fused_candidates(self, rows: list[FusedCandidate]) -> int:
+        for row in rows:
+            bucket = self._fused_candidates.setdefault(row.experiment_id, {})
+            bucket[row.candidate_id] = row.model_copy(deep=True)
+        return len(rows)
+
+    def list_fused_candidates(self, experiment_id: str) -> list[FusedCandidate]:
+        rows = self._fused_candidates.get(experiment_id, {})
+        return sorted(
+            (rows[key].model_copy(deep=True) for key in rows),
+            key=lambda row: (row.fusion_rank, row.candidate_id),
+        )
 
     def add_differentials(self, rows: list[DifferentialResult]) -> int:
         for row in rows:

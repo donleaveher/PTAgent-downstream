@@ -27,8 +27,20 @@ from pkg.graph.model import (
 )
 
 # Neo4j 属性里另行提升为顶层标量的 key（便于按值过滤/排序）。
-_SCALAR_PROP_KEYS = ("name", "evidence_level", "score", "coverage", "rank", "log2fc",
-                     "direction", "is_differential", "q_value")
+_SCALAR_PROP_KEYS = (
+    "name",
+    "evidence_level",
+    "score",
+    "coverage",
+    "rank",
+    "fused_score",
+    "fusion_rank",
+    "support_channel_count",
+    "log2fc",
+    "direction",
+    "is_differential",
+    "q_value",
+)
 
 
 def _scalar(value: Any) -> bool:

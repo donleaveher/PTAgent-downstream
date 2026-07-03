@@ -17,6 +17,7 @@ from typing import Any
 from pkg.experiment import (
     AnnotationTargetType,
     ExperimentRepository,
+    FusedCandidate,
     StructureNeighborEvidence,
     StructureSearchRun,
     get_experiment_store,
@@ -71,6 +72,7 @@ def project_experiment_kg(
         run.run_id: run for run in repo.list_structure_search_runs(experiment_id)
     }
     structure_evidence = repo.list_structure_neighbor_evidence(experiment_id)
+    fused_candidates = repo.list_fused_candidates(experiment_id)
     policy = projection_policy or DEFAULT_PROJECTION_POLICY
 
     accession_by_protein_id = {p.protein_id: p.accession for p in proteins}
@@ -301,6 +303,21 @@ def project_experiment_kg(
             },
         )
 
+    # 6) 多 channel 融合候选：候选完整 evidence 留 MySQL，只把高信号 protein neighbor
+    # 投成实验工作区边。非 protein target 暂不投图，等 Domain/Publication 节点建模后再接。
+    for candidate in fused_candidates:
+        _add_fused_candidate_edge(
+            candidate=candidate,
+            query_accession=accession_by_protein_id.get(
+                candidate.query_protein_id, candidate.query_accession
+            ),
+            policy=policy,
+            general_protein=_general_protein,
+            add_edge=_add_edge,
+            skip_projection=_skip_projection,
+            experiment_id=experiment_id,
+        )
+
     node_list = list(nodes.values())
     edge_list = list(edges.values())
     graph.upsert_nodes(node_list)
@@ -328,6 +345,10 @@ def project_experiment_kg(
         ),
         "structure_neighbor_evidence": len(structure_evidence),
         "structural_neighbors_injected": len(structural_neighbors),
+        "fused_candidates": len(fused_candidates),
+        "candidate_neighbors": sum(
+            1 for e in edge_list if e.type is EdgeType.CANDIDATE_NEIGHBOR
+        ),
         "projection_skipped": dict(sorted(skipped_projection.items())),
     }
 
@@ -362,6 +383,59 @@ def _add_structure_evidence_edge(
         taxon_id=evidence.taxon_id,
         relation_id=evidence.relation_id,
         properties=properties,
+    )
+
+
+def _add_fused_candidate_edge(
+    *,
+    candidate: FusedCandidate,
+    query_accession: str,
+    policy: ProjectionPolicy,
+    general_protein: Callable[[str], NodeRef],
+    add_edge: Callable[[GraphEdge], None],
+    skip_projection: Callable[[str], None],
+    experiment_id: str,
+) -> None:
+    if candidate.target_type.lower() != "protein":
+        skip_projection("target_type_not_projected")
+        return
+
+    decision = policy.decide(
+        ProjectionCandidate(
+            channel="fusion",
+            relation_type=candidate.relation_type,
+            fusion_rank=candidate.fusion_rank,
+            fused_score=candidate.fused_score,
+            support_channels=tuple(candidate.support_channels),
+        )
+    )
+    if not decision.projected:
+        skip_projection(decision.reason)
+        return
+
+    query_ref = general_protein(query_accession)
+    target_ref = general_protein(candidate.target_id)
+    add_edge(
+        GraphEdge(
+            type=EdgeType.CANDIDATE_NEIGHBOR,
+            start=query_ref,
+            end=target_ref,
+            key=candidate.candidate_id,
+            scope=GraphScope.EXPERIMENT,
+            experiment_id=experiment_id,
+            properties={
+                "candidate_id": candidate.candidate_id,
+                "relation_type": candidate.relation_type,
+                "fused_score": candidate.fused_score,
+                "fusion_rank": candidate.fusion_rank,
+                "support_channels": list(candidate.support_channels),
+                "support_channel_count": len(set(candidate.support_channels)),
+                "evidence_ids": list(candidate.evidence_ids),
+                "evidence_count": len(candidate.evidence_ids),
+                "projection_reason": decision.reason,
+                "source": "fused_candidate",
+            },
+        )
     )
 
 

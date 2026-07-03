@@ -263,6 +263,30 @@ class StructureNeighborEvidence(StrictModel):
     created_at: datetime = Field(default_factory=_utcnow)
 
 
+class FusedCandidate(StrictModel):
+    """多 channel evidence 融合后的候选关系。
+
+    单 channel 原始结果仍留在各 evidence 表；本对象只描述融合后的候选目标、
+    排名、分数和 evidence 回指，供 KG projection policy 做轻量投影。
+    """
+
+    candidate_id: str = Field(default_factory=lambda: _new_id("fc"), min_length=1)
+    experiment_id: str = Field(min_length=1)
+    query_protein_id: str = Field(min_length=1)
+    query_accession: str = Field(min_length=1)
+    target_type: str = Field(min_length=1)
+    target_id: str = Field(min_length=1)
+    relation_type: str = Field(min_length=1)
+    fused_score: float
+    fusion_rank: int = Field(ge=1)
+    support_channels: list[str] = Field(default_factory=list)
+    evidence_ids: list[str] = Field(default_factory=list)
+    projection_status: str = ""
+    projection_reason: str = ""
+    meta: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=_utcnow)
+
+
 class DifferentialResult(StrictModel):
     differential_id: str = Field(default_factory=lambda: _new_id("diff"))
     experiment_id: str = Field(min_length=1)
@@ -460,11 +484,15 @@ __all__ = [
     "ExperimentRequest",
     "ExperimentSnapshot",
     "ExperimentStatus",
+    "FusedCandidate",
     "GroupRole",
     "MetaAnnotation",
     "PeptideRecord",
     "ProteinQuantification",
     "ProteinRecord",
     "ReportRecord",
+    "StructureEvidenceStatus",
+    "StructureNeighborEvidence",
+    "StructureSearchRun",
     "request_content_hash",
 ]

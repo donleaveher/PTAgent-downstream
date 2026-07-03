@@ -16,6 +16,7 @@ from pkg.experiment import (
     ExperimentBundle,
     ExperimentContext,
     ExperimentGroup,
+    FusedCandidate,
     GroupRole,
     InMemoryExperimentRepository,
     MetaAnnotation,
@@ -154,12 +155,15 @@ def test_projection_builds_two_layer_graph() -> None:
         "ENCODED_BY": 2,
         "ASSOCIATED_WITH": 2,  # 1 基因结论 + 1 蛋白假说
         "STRUCTURAL_NEIGHBOR": 1,
+        "CANDIDATE_NEIGHBOR": 0,
         "DIFFERENTIAL": 2,
     }
     assert summary["general_nodes"] == 7
     assert summary["experiment_nodes"] == 2
     assert summary["structural_neighbors"] == 1
     assert summary["structure_neighbor_evidence"] == 1
+    assert summary["fused_candidates"] == 0
+    assert summary["candidate_neighbors"] == 0
     assert summary["projection_skipped"] == {}
 
     # 两层分离：分组节点 + 差异/假说边在实验工作区；其余在通用 KG
@@ -259,6 +263,57 @@ def test_projection_policy_skips_low_rank_structure_evidence() -> None:
     assert summary["projection_skipped"] == {"rank>5": 1}
     sn = store.neighbors(NodeRef(NodeLabel.PROTEIN, "P2"), EdgeType.STRUCTURAL_NEIGHBOR)
     assert [edge.end.key for edge in sn] == ["P9"]
+
+
+def test_fused_candidate_projects_only_when_policy_significant() -> None:
+    repo = _seed_repo()
+    repo.add_fused_candidates(
+        [
+            FusedCandidate(
+                candidate_id="fc_high",
+                experiment_id=EXP,
+                query_protein_id="prot2",
+                query_accession="P2",
+                target_type="protein",
+                target_id="P_FUSED",
+                relation_type="CANDIDATE_NEIGHBOR",
+                fused_score=0.87,
+                fusion_rank=1,
+                support_channels=["structure", "sequence"],
+                evidence_ids=["sne_high", "seq_1"],
+            ),
+            FusedCandidate(
+                candidate_id="fc_weak",
+                experiment_id=EXP,
+                query_protein_id="prot2",
+                query_accession="P2",
+                target_type="protein",
+                target_id="P_WEAK",
+                relation_type="CANDIDATE_NEIGHBOR",
+                fused_score=0.5,
+                fusion_rank=8,
+                support_channels=["sequence"],
+                evidence_ids=["seq_2"],
+            ),
+        ]
+    )
+    store = InMemoryGraphStore()
+    summary = project_experiment_kg(EXP, repository=repo, store=store)
+
+    assert summary["fused_candidates"] == 2
+    assert summary["candidate_neighbors"] == 1
+    assert summary["projection_skipped"] == {
+        "fusion_rank>5;support_channels<2": 1
+    }
+    edges = store.neighbors(NodeRef(NodeLabel.PROTEIN, "P2"), EdgeType.CANDIDATE_NEIGHBOR)
+    assert len(edges) == 1
+    assert edges[0].scope is GraphScope.EXPERIMENT
+    assert edges[0].end.key == "P_FUSED"
+    assert edges[0].properties["candidate_id"] == "fc_high"
+    assert edges[0].properties["support_channels"] == ["structure", "sequence"]
+    assert edges[0].properties["projection_reason"] == (
+        "fusion_rank<=5;support_channels>=2"
+    )
 
 
 def test_unknown_experiment_raises() -> None:

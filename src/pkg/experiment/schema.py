@@ -183,6 +183,32 @@ MYSQL_EXPERIMENT_SCHEMA: tuple[str, ...] = (
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     """,
     """
+    CREATE TABLE IF NOT EXISTS fused_candidate (
+      candidate_id VARCHAR(64) PRIMARY KEY,
+      experiment_id VARCHAR(64) NOT NULL,
+      query_protein_id VARCHAR(128) NOT NULL,
+      query_accession VARCHAR(128) NOT NULL,
+      target_type VARCHAR(64) NOT NULL,
+      target_id VARCHAR(255) NOT NULL,
+      relation_type VARCHAR(64) NOT NULL,
+      fused_score DOUBLE NOT NULL,
+      fusion_rank INT NOT NULL,
+      support_channels_json JSON NOT NULL,
+      evidence_ids_json JSON NOT NULL,
+      projection_status VARCHAR(32) NOT NULL,
+      projection_reason VARCHAR(255) NOT NULL,
+      meta_json JSON NOT NULL,
+      created_at DATETIME(6) NOT NULL,
+      UNIQUE KEY uq_fused_candidate_target
+        (experiment_id, query_protein_id, relation_type, target_type, target_id),
+      INDEX idx_fused_candidate_query
+        (experiment_id, query_protein_id, relation_type, fusion_rank),
+      INDEX idx_fused_candidate_target (target_type, target_id),
+      CONSTRAINT fk_fused_candidate_protein FOREIGN KEY (experiment_id, query_protein_id)
+        REFERENCES protein(experiment_id, protein_id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    """,
+    """
     CREATE TABLE IF NOT EXISTS peptide (
       experiment_id VARCHAR(64) NOT NULL,
       peptide_id VARCHAR(128) NOT NULL,

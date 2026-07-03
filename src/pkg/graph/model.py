@@ -9,7 +9,8 @@
 - 通用 KG（``GENERAL``）：跨实验复用的"字典"——Protein/Gene/Disease 与
   ``ENCODED_BY``、基因→疾病 ``ASSOCIATED_WITH(CONCLUSION)``、``STRUCTURAL_NEIGHBOR``。
 - 本次实验 KG（``EXPERIMENT``，带 ``experiment_id``）：这次的"故事"——Group、
-  ``DIFFERENTIAL``、以及蛋白级疾病 ``ASSOCIATED_WITH(HYPOTHESIS)``。
+  ``DIFFERENTIAL``、蛋白级疾病 ``ASSOCIATED_WITH(HYPOTHESIS)``、融合候选
+  ``CANDIDATE_NEIGHBOR``。
   删工作区（:meth:`GraphStore.drop_experiment`）只清 ``EXPERIMENT`` 作用域，不动通用 KG。
 
 注：本模块与同包的旧 ``types.py``/``store.py``（PSM/肽序列 KNN，§13 待 deprecate）相互独立。
@@ -40,6 +41,7 @@ class EdgeType(str, Enum):
     ENCODED_BY = "ENCODED_BY"                      # (Protein)->(Gene)，缝合双节点（Q3）
     ASSOCIATED_WITH = "ASSOCIATED_WITH"           # (Gene|Protein)->(Disease)，带 evidence_level
     STRUCTURAL_NEIGHBOR = "STRUCTURAL_NEIGHBOR"   # (Protein)->(Protein)，带 score（Foldseek 假说）
+    CANDIDATE_NEIGHBOR = "CANDIDATE_NEIGHBOR"     # (Protein)->(Protein)，带融合分（实验候选）
     DIFFERENTIAL = "DIFFERENTIAL"                 # (Protein)->(Group)，带 log2fc（L2 差异）
 
 
