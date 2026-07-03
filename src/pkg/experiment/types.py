@@ -204,6 +204,30 @@ class ProteinQuantification(StrictModel):
     meta: dict[str, Any] = Field(default_factory=dict)
 
 
+class StructureEvidenceStatus(StrictModel):
+    """结构证据通道对某个实验蛋白的解析状态。
+
+    该表记录结构通道的可用性和缺失原因，不存 `.cif/.pdb` 大对象。
+    """
+
+    experiment_id: str = Field(min_length=1)
+    protein_id: str = Field(min_length=1)
+    raw_accession: str = Field(min_length=1)
+    normalized_accession: str = ""
+    channel: str = "structure"
+    status: str = Field(min_length=1)
+    reason: str = ""
+    provider: str = "AlphaFoldDB"
+    provider_version: str = ""
+    structure_id: str = ""
+    structure_format: str = ""
+    local_path: str = ""
+    object_uri: str = ""
+    sha256: str = ""
+    meta: dict[str, Any] = Field(default_factory=dict)
+    checked_at: datetime = Field(default_factory=_utcnow)
+
+
 class DifferentialResult(StrictModel):
     differential_id: str = Field(default_factory=lambda: _new_id("diff"))
     experiment_id: str = Field(min_length=1)

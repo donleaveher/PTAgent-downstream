@@ -113,6 +113,31 @@ MYSQL_EXPERIMENT_SCHEMA: tuple[str, ...] = (
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     """,
     """
+    CREATE TABLE IF NOT EXISTS structure_evidence_status (
+      experiment_id VARCHAR(64) NOT NULL,
+      protein_id VARCHAR(128) NOT NULL,
+      raw_accession VARCHAR(255) NOT NULL,
+      normalized_accession VARCHAR(128) NOT NULL,
+      channel VARCHAR(64) NOT NULL,
+      status VARCHAR(32) NOT NULL,
+      reason VARCHAR(255) NOT NULL,
+      provider VARCHAR(128) NOT NULL,
+      provider_version VARCHAR(128) NOT NULL,
+      structure_id VARCHAR(255) NOT NULL,
+      structure_format VARCHAR(32) NOT NULL,
+      local_path TEXT NOT NULL,
+      object_uri TEXT NOT NULL,
+      sha256 VARCHAR(128) NOT NULL,
+      meta_json JSON NOT NULL,
+      checked_at DATETIME(6) NOT NULL,
+      PRIMARY KEY (experiment_id, protein_id, channel),
+      INDEX idx_structure_status (experiment_id, status),
+      INDEX idx_structure_norm_accession (normalized_accession),
+      CONSTRAINT fk_structure_status_protein FOREIGN KEY (experiment_id, protein_id)
+        REFERENCES protein(experiment_id, protein_id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    """,
+    """
     CREATE TABLE IF NOT EXISTS peptide (
       experiment_id VARCHAR(64) NOT NULL,
       peptide_id VARCHAR(128) NOT NULL,

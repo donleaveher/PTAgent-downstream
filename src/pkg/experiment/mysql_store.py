@@ -26,6 +26,7 @@ from .types import (
     ProteinQuantification,
     ProteinRecord,
     ReportRecord,
+    StructureEvidenceStatus,
 )
 
 ConnectionFactory = Callable[[], Any]
@@ -114,6 +115,27 @@ def _quant_from_row(row: dict[str, Any]) -> ProteinQuantification:
         sample_id=row["sample_id"],
         abundance=float(row["abundance"]),
         meta=_json_load(row["meta_json"], {}),
+    )
+
+
+def _structure_status_from_row(row: dict[str, Any]) -> StructureEvidenceStatus:
+    return StructureEvidenceStatus(
+        experiment_id=row["experiment_id"],
+        protein_id=row["protein_id"],
+        raw_accession=row["raw_accession"],
+        normalized_accession=row["normalized_accession"],
+        channel=row["channel"],
+        status=row["status"],
+        reason=row["reason"],
+        provider=row["provider"],
+        provider_version=row["provider_version"],
+        structure_id=row["structure_id"],
+        structure_format=row["structure_format"],
+        local_path=row["local_path"],
+        object_uri=row["object_uri"],
+        sha256=row["sha256"],
+        meta=_json_load(row["meta_json"], {}),
+        checked_at=_from_db_datetime(row["checked_at"]),
     )
 
 
@@ -879,6 +901,70 @@ class MySQLExperimentStore:
                 (experiment_id,),
             )
             return [_quant_from_row(row) for row in cursor.fetchall()]
+
+        return self._read(fetch)
+
+    def add_structure_statuses(self, rows: list[StructureEvidenceStatus]) -> int:
+        if not rows:
+            return 0
+
+        def save(cursor: Any) -> None:
+            cursor.executemany(
+                """
+                INSERT INTO structure_evidence_status
+                  (experiment_id, protein_id, raw_accession, normalized_accession,
+                   channel, status, reason, provider, provider_version,
+                   structure_id, structure_format, local_path, object_uri,
+                   sha256, meta_json, checked_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                  raw_accession=VALUES(raw_accession),
+                  normalized_accession=VALUES(normalized_accession),
+                  status=VALUES(status), reason=VALUES(reason),
+                  provider=VALUES(provider),
+                  provider_version=VALUES(provider_version),
+                  structure_id=VALUES(structure_id),
+                  structure_format=VALUES(structure_format),
+                  local_path=VALUES(local_path), object_uri=VALUES(object_uri),
+                  sha256=VALUES(sha256), meta_json=VALUES(meta_json),
+                  checked_at=VALUES(checked_at)
+                """,
+                [
+                    (
+                        row.experiment_id,
+                        row.protein_id,
+                        row.raw_accession,
+                        row.normalized_accession,
+                        row.channel,
+                        row.status,
+                        row.reason,
+                        row.provider,
+                        row.provider_version,
+                        row.structure_id,
+                        row.structure_format,
+                        row.local_path,
+                        row.object_uri,
+                        row.sha256,
+                        _json_dump(row.meta),
+                        _db_datetime(row.checked_at),
+                    )
+                    for row in rows
+                ],
+            )
+
+        self._write(save)
+        return len(rows)
+
+    def list_structure_statuses(self, experiment_id: str) -> list[StructureEvidenceStatus]:
+        def fetch(cursor: Any) -> list[StructureEvidenceStatus]:
+            cursor.execute(
+                """
+                SELECT * FROM structure_evidence_status
+                WHERE experiment_id=%s ORDER BY protein_id
+                """,
+                (experiment_id,),
+            )
+            return [_structure_status_from_row(row) for row in cursor.fetchall()]
 
         return self._read(fetch)
 

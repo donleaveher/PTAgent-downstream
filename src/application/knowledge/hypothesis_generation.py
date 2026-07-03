@@ -16,6 +16,7 @@ from pkg.experiment import (
     EvidenceLevel,
     ExperimentRepository,
     MetaAnnotation,
+    StructureEvidenceStatus,
     get_experiment_store,
     stable_annotation_id,
 )
@@ -80,6 +81,14 @@ def generate_experiment_hypotheses(
     # 1. 结构近邻（M2）
     query_accessions = sorted({p.accession for p in proteins})
     neighbors_by_acc = structures.search(query_accessions, top_k=top_k)
+    structure_status_rows = _structure_status_rows(
+        experiment_id=experiment_id,
+        proteins=proteins,
+        records=getattr(structures, "last_structure_records", {}),
+        provider_name=getattr(structures, "name", "structure"),
+    )
+    if structure_status_rows:
+        repo.add_structure_statuses(structure_status_rows)
 
     # 2. 近邻 accession → gene
     neighbor_accessions = sorted(
@@ -176,6 +185,53 @@ def generate_experiment_hypotheses(
         "written": written,
         "source": _SOURCE,
     }
+
+
+def _structure_status_rows(
+    *,
+    experiment_id: str,
+    proteins: list[Any],
+    records: dict[str, Any],
+    provider_name: str,
+) -> list[StructureEvidenceStatus]:
+    """Convert provider structure resolution records into repository rows.
+
+    Only non-available statuses are persisted here. Available structure records
+    are already represented by Foldseek neighbors/provenance; missing and
+    unusable records are the important audit trail for degradation.
+    """
+
+    if not records:
+        return []
+    rows: list[StructureEvidenceStatus] = []
+    for protein in proteins:
+        record = records.get(protein.accession)
+        if record is None:
+            continue
+        raw_status = getattr(record, "status", "")
+        status = str(getattr(raw_status, "value", raw_status))
+        if status == "available":
+            continue
+        rows.append(
+            StructureEvidenceStatus(
+                experiment_id=experiment_id,
+                protein_id=protein.protein_id,
+                raw_accession=getattr(record, "raw_accession", "") or protein.accession,
+                normalized_accession=getattr(record, "accession", "") or protein.accession,
+                channel="structure",
+                status=status or "missing",
+                reason=getattr(record, "reason", "") or "structure_unavailable",
+                provider=getattr(record, "source", "") or provider_name,
+                provider_version=getattr(record, "source_version", ""),
+                structure_id=getattr(record, "structure_id", ""),
+                structure_format=getattr(record, "format", ""),
+                local_path=getattr(record, "local_path", ""),
+                object_uri=getattr(record, "object_uri", ""),
+                sha256=getattr(record, "sha256", ""),
+                meta=getattr(record, "provenance", {}) or {},
+            )
+        )
+    return rows
 
 
 __all__ = ["generate_experiment_hypotheses"]

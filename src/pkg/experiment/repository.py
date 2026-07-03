@@ -25,6 +25,7 @@ from .types import (
     ProteinQuantification,
     ProteinRecord,
     ReportRecord,
+    StructureEvidenceStatus,
 )
 
 
@@ -81,6 +82,10 @@ class ExperimentRepository(Protocol):
 
     def list_quantifications(self, experiment_id: str) -> list[ProteinQuantification]: ...
 
+    def add_structure_statuses(self, rows: list[StructureEvidenceStatus]) -> int: ...
+
+    def list_structure_statuses(self, experiment_id: str) -> list[StructureEvidenceStatus]: ...
+
     def add_differentials(self, rows: list[DifferentialResult]) -> int: ...
 
     def list_differentials(self, experiment_id: str) -> list[DifferentialResult]: ...
@@ -119,6 +124,7 @@ class InMemoryExperimentRepository:
         self._artifacts: dict[str, list[ExperimentInputArtifact]] = {}
         self._revisions: dict[str, list[ExperimentContextRevision]] = {}
         self._quantifications: dict[str, dict[str, ProteinQuantification]] = {}
+        self._structure_statuses: dict[str, dict[str, StructureEvidenceStatus]] = {}
         self._differentials: dict[str, dict[str, DifferentialResult]] = {}
         self._enrichments: dict[str, dict[str, EnrichmentRecord]] = {}
         self._snapshots: dict[str, ExperimentSnapshot] = {}
@@ -285,6 +291,17 @@ class InMemoryExperimentRepository:
 
     def list_quantifications(self, experiment_id: str) -> list[ProteinQuantification]:
         rows = self._quantifications.get(experiment_id, {})
+        return [rows[key].model_copy(deep=True) for key in sorted(rows)]
+
+    def add_structure_statuses(self, rows: list[StructureEvidenceStatus]) -> int:
+        for row in rows:
+            bucket = self._structure_statuses.setdefault(row.experiment_id, {})
+            key = f"{row.protein_id}\0{row.channel}"
+            bucket[key] = row.model_copy(deep=True)
+        return len(rows)
+
+    def list_structure_statuses(self, experiment_id: str) -> list[StructureEvidenceStatus]:
+        rows = self._structure_statuses.get(experiment_id, {})
         return [rows[key].model_copy(deep=True) for key in sorted(rows)]
 
     def add_differentials(self, rows: list[DifferentialResult]) -> int:

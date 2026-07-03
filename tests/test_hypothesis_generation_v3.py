@@ -14,6 +14,7 @@ from pkg.experiment import (
     ingest_experiment_payload,
 )
 from pkg.structure import StructuralNeighbor
+from pkg.structure.catalog import StructureCatalogRecord, StructureStatus
 from tests.pkg.test_experiment_models import valid_payload
 
 
@@ -65,6 +66,29 @@ def _deps():
     resolver = InMemoryGeneResolver({"P_HUMAN": "HUMANG"})
     ctd = _FakeCTD({"HUMANG": [_INFLAMMATION]})
     return structure, resolver, ctd
+
+
+class _MissingStructure:
+    name = "Foldseek-AlphaFold"
+    version = "afdb-2024_01"
+
+    def __init__(self) -> None:
+        self.last_structure_records: dict[str, StructureCatalogRecord] = {}
+
+    def search(self, accessions: list[str], *, top_k: int | None = None):
+        self.last_structure_records = {
+            acc: StructureCatalogRecord(
+                accession=acc,
+                raw_accession=acc,
+                source="AlphaFoldDB",
+                source_version=self.version,
+                status=StructureStatus.MISSING,
+                reason="not_found_in_catalog",
+                provenance={"source_form": "plain"},
+            )
+            for acc in accessions
+        }
+        return {acc: [] for acc in accessions}
 
 
 def test_structural_neighbor_borrows_ctd_disease_as_protein_hypothesis() -> None:
@@ -125,6 +149,29 @@ def test_no_hypothesis_when_protein_gene_already_concluded() -> None:
         disease_source=ctd,
     )
     assert result["hypotheses"] == 0
+
+
+def test_missing_structure_status_is_persisted_without_hypothesis() -> None:
+    repo = InMemoryExperimentRepository()
+    ingest_experiment_payload(_payload_with_novel_protein(), repo)
+    structure = _MissingStructure()
+
+    result = generate_experiment_hypotheses(
+        "exp_1",
+        repository=repo,
+        structure_provider=structure,
+        gene_resolver=InMemoryGeneResolver({}),
+        disease_source=_FakeCTD({}),
+    )
+
+    assert result["hypotheses"] == 0
+    statuses = repo.list_structure_statuses("exp_1")
+    by_protein = {row.protein_id: row for row in statuses}
+    assert set(by_protein) == {"prot_1", "prot_2"}
+    assert by_protein["prot_2"].raw_accession == "Q_NOVEL"
+    assert by_protein["prot_2"].status == "missing"
+    assert by_protein["prot_2"].reason == "not_found_in_catalog"
+    assert by_protein["prot_2"].provider == "AlphaFoldDB"
 
 
 def test_hypotheses_are_idempotent() -> None:

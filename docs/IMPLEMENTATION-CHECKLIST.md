@@ -276,7 +276,8 @@
 - ✅ 新增轻量 `StructureCatalog` 模型与本地目录/TSV 实现，记录 `accession`、`structure_id`、`source`、`source_version`、`format`、`local_path/object_uri`、`sha256`、`taxon_id`、`fragment/isoform`、`mean_plddt/coverage`、`status`。
 - ✅ `status` 至少区分 `available/missing/ambiguous/low_confidence`；缺结构是证据通道缺失，不应导致实验管线失败。
 - ✅ Foldseek runner 从 catalog 解析查询结构；不再依赖 `query_structure_dir` 下的模糊文件名匹配作为主路径。
-- 🟨 结构缺失时记录 `reason`（如 `query_structure_dir_not_found`、`not_found_in_catalog`、`accession_unresolved`、`low_confidence`），跳过结构通道；§6 的其他 evidence provider 仍待接入。
+- ✅ 结构缺失时记录 `reason`（如 `query_structure_dir_not_found`、`not_found_in_catalog`、`accession_unresolved`、`low_confidence`），并写入 `structure_evidence_status` 表。
+- 🟨 结构缺失后会跳过结构通道；§6 的其他 evidence provider 仍待接入。
 
 **阶段验收：**
 

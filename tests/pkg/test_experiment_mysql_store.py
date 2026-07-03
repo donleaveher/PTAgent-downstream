@@ -22,6 +22,7 @@ from pkg.experiment import (
     ExperimentSnapshot,
     MetaAnnotation,
     ProteinQuantification,
+    StructureEvidenceStatus,
 )
 from pkg.experiment.mysql_store import MySQLExperimentStore
 from pkg.experiment.schema import MYSQL_EXPERIMENT_SCHEMA
@@ -111,6 +112,7 @@ _PK: dict[str, tuple[str, ...]] = {
     "experiment_context_revision": ("revision_id",),
     "experiment_snapshot": ("snapshot_id",),
     "protein_quantification": ("quantification_id",),
+    "structure_evidence_status": ("experiment_id", "protein_id", "channel"),
     "differential_result": ("differential_id",),
     "enrichment_result": ("enrichment_id",),
 }
@@ -333,6 +335,27 @@ def test_mysql_store_round_trips_quantification() -> None:
     )
     assert store.add_quantifications([quant]) == 1
     assert store.list_quantifications("exp_1") == [quant]
+
+
+def test_mysql_store_round_trips_structure_status() -> None:
+    store = _round_trip_store()
+    store.save_bundle(ExperimentBundle.model_validate(valid_payload()))
+    status = StructureEvidenceStatus(
+        experiment_id="exp_1",
+        protein_id="prot_1",
+        raw_accession="P12345-2",
+        normalized_accession="P12345",
+        status="missing",
+        reason="not_found_in_catalog",
+        provider="AlphaFoldDB",
+        provider_version="v6",
+        meta={"source_form": "isoform"},
+    )
+
+    assert store.add_structure_statuses([status]) == 1
+    loaded = store.list_structure_statuses("exp_1")
+    assert loaded == [status]
+    assert loaded[0].checked_at.tzinfo == timezone.utc
 
 
 def test_mysql_store_round_trips_differential_with_and_without_pvalues() -> None:
