@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+from config import StructureSettings
 from pkg.structure import (
+    CatalogFoldseekRunner,
     FoldseekStructureSearchProvider,
+    StaticStructureSearchProvider,
     StructuralNeighbor,
+    StructureStatus,
+    build_structure_search_provider,
     parse_foldseek_output,
     select_neighbors,
 )
@@ -82,8 +87,64 @@ def test_provider_cross_species_rat_to_human() -> None:
     assert top.rank == 1
 
 
+def test_provider_normalizes_query_but_preserves_raw_result_key() -> None:
+    runner = _FakeRunner(_SAMPLE_TSV)
+    provider = FoldseekStructureSearchProvider(
+        runner, version="afdb-2024_01", top_k=10, min_score=0.5, exclude_self=True
+    )
+    raw = "AF-Q9RAT9-F1-model_v4.cif.gz"
+    result = provider.search([raw])
+
+    assert runner.calls == [["Q9RAT9"]]
+    assert list(result) == [raw]
+    assert [n.target_accession for n in result[raw]] == ["P40763"]
+
+
 def test_provider_empty_input_returns_empty() -> None:
     runner = _FakeRunner(_SAMPLE_TSV)
     provider = FoldseekStructureSearchProvider(runner)
     assert provider.search([]) == {}
     assert runner.calls == []
+
+
+def test_catalog_foldseek_runner_missing_structure_degrades_without_binary(tmp_path) -> None:
+    cfg = StructureSettings(
+        query_structure_dir=str(tmp_path / "missing-structures"),
+        foldseek_binary="foldseek-not-installed-for-test",
+    )
+    runner = CatalogFoldseekRunner(cfg)
+    provider = FoldseekStructureSearchProvider(runner)
+
+    result = provider.search(["UNKNOWN123"])
+
+    assert result == {"UNKNOWN123": []}
+    record = provider.last_structure_records["UNKNOWN123"]
+    assert record.status is StructureStatus.MISSING
+    assert record.reason == "query_structure_dir_not_found"
+
+
+def test_provider_switch_defaults_to_foldseek() -> None:
+    provider = build_structure_search_provider(StructureSettings())
+    assert isinstance(provider, FoldseekStructureSearchProvider)
+
+
+def test_provider_switch_static_tsv(tmp_path) -> None:
+    fixture = tmp_path / "neighbors.tsv"
+    fixture.write_text(_SAMPLE_TSV, encoding="utf-8")
+    cfg = StructureSettings(
+        provider="static",
+        static_neighbors_file=str(fixture),
+        version="static-dev",
+        min_score=0.5,
+    )
+
+    provider = build_structure_search_provider(cfg)
+    assert isinstance(provider, StaticStructureSearchProvider)
+
+    result = provider.search(["Q9RAT9"])
+    assert [n.target_accession for n in result["Q9RAT9"]] == ["P40763"]
+    assert result["Q9RAT9"][0].provenance["db_version"] == "static-dev"
+
+    raw = "AF-Q9RAT9-F1-model_v4.cif.gz"
+    raw_result = provider.search([raw])
+    assert [n.target_accession for n in raw_result[raw]] == ["P40763"]

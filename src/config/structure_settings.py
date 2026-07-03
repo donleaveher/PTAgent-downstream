@@ -2,22 +2,37 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
 class StructureSettings(BaseModel):
     """Foldseek 结构近邻检索的运行与筛选约定。"""
 
+    provider: Literal["foldseek", "static"] = Field(
+        "foldseek",
+        description="结构近邻 provider：foldseek 为生产默认；static 用本地 TSV fixture 做开发联调。",
+    )
     foldseek_binary: str = Field("foldseek", min_length=1, description="foldseek 可执行文件名或路径。")
     alphafold_db: str = Field(
-        "data/alphafold/afdb",
+        "data/alphafold/afdb/alphafold_swissprot",
         min_length=1,
-        description="预构建的 Foldseek 目标库（AlphaFold DB）路径。",
+        description="预构建的 Foldseek 目标库（AlphaFold DB）前缀路径。",
     )
     query_structure_dir: str = Field(
         "data/structures",
         min_length=1,
         description="本地查询结构（实验蛋白的 AlphaFold 模型）目录。",
+    )
+    structure_catalog_file: str = Field(
+        "",
+        description="可选的轻量结构 catalog TSV；为空时扫描 query_structure_dir。",
+    )
+    static_neighbors_file: str = Field(
+        "data/structure/static_neighbors.tsv",
+        min_length=1,
+        description="provider=static 时读取的结构近邻 TSV；列序同 format_columns。",
     )
     top_k: int = Field(20, ge=1, le=1000, description="每个查询保留的结构近邻数量。")
     min_score: float = Field(0.0, ge=0.0, le=1.0, description="近邻 prob 阈值（结构相似度）。")

@@ -268,9 +268,19 @@
 - ⬜ 增加 fake provider 单元测试和小型 Foldseek 集成测试。
 - ⬜ 验证至少一个大鼠→人结构近邻案例。
 
+### 5.3 StructureCatalog 与缺结构降级
+
+> **设计补充**：AlphaFold/Foldseek DB 继续作为结构检索大库；下游不另建“大结构数据库”，而是新增轻量 `StructureCatalog`（MySQL/SQLite/TSV 均可）管理 `accession -> structure_id/local_path/status/provenance`。`.cif.gz/.pdb` 大文件留在文件系统或对象存储，MySQL/Neo4j 只保存路径、版本、checksum 和轻量关系。
+
+- ✅ 新增 accession 标准化层：`sp|P40763|STAT3_HUMAN`、`P40763-2`、`AF-P40763-F1-model_v6` 等统一归一到主 accession，并保留 raw/isoform。
+- ✅ 新增轻量 `StructureCatalog` 模型与本地目录/TSV 实现，记录 `accession`、`structure_id`、`source`、`source_version`、`format`、`local_path/object_uri`、`sha256`、`taxon_id`、`fragment/isoform`、`mean_plddt/coverage`、`status`。
+- ✅ `status` 至少区分 `available/missing/ambiguous/low_confidence`；缺结构是证据通道缺失，不应导致实验管线失败。
+- ✅ Foldseek runner 从 catalog 解析查询结构；不再依赖 `query_structure_dir` 下的模糊文件名匹配作为主路径。
+- 🟨 结构缺失时记录 `reason`（如 `query_structure_dir_not_found`、`not_found_in_catalog`、`accession_unresolved`、`low_confidence`），跳过结构通道；§6 的其他 evidence provider 仍待接入。
+
 **阶段验收：**
 
-- ⬜ 输入差异蛋白 accession，可得到版本明确、参数完整、可复现的 top-k 结构近邻。
+- ⬜ 输入差异蛋白 accession，可得到版本明确、参数完整、可复现的 top-k 结构近邻；若结构缺失，可得到可审计的缺失状态并继续降级流程。
 
 ---
 
@@ -302,6 +312,17 @@
 - ⬜ 只对实验背景相关疾病/通路优先展开，同时保留查询策略。
 - ⬜ 将假说幂等写入 MySQL，并创建后续 deep-search 任务。
 - ⬜ 增加纯函数测试、Repository 测试和小型端到端 MVP 测试。
+
+### 6.3 多通道近邻融合与证据降级
+
+> **设计补充**：项目价值不应绑定在 AlphaFold/Foldseek 单一路径上。结构近邻只是一个高价值 channel；当结构不可用时，应自动降级到 sequence、domain、metadata、ortholog、pathway、literature 等 provider。当前 `pkg.retrieval.HybridRetriever`/`rrf` 与 `pkg.structure.rerank.extra_channels` 已提供基础件，但尚未并入主假说流程。
+
+- ⬜ 抽象统一 `NeighborProvider` / `ProteinNeighborCandidate`：各 provider 输出 `query_accession`、`target_accession`、`channel`、`rank`、`raw_score`、`evidence`、`provider_version`。
+- ⬜ 接入候选通道：`structure`(Foldseek)、`sequence`(FASTA/MMseqs2/BLAST/k-mer/embedding)、`domain`(InterPro/Pfam)、`metadata`(GO/EC/keyword/pathway)、`ortholog`(OrthoDB/eggNOG/Ensembl Compara/OMA)、`literature`(DeepXiv/PubMed 等)。
+- ⬜ 用 weighted RRF 融合多路 ranked targets，优先按名次融合异构分数；结构缺失时重分配权重而不是失败。
+- ⬜ 融合后的相似蛋白再进入 evidence transfer：`neighbor accession -> gene -> CTD disease`；目标 accession/gene 自身直接证据为 `CONCLUSION`，homolog/ortholog/domain/pathway/literature 迁移证据为 `HYPOTHESIS`。
+- ⬜ 避免循环论证：疾病标签本身不参与“相似蛋白检索”的打分；CTD/疾病库只用于检索后证据转移和报告溯源。
+- ⬜ 对完全无法解析 accession/gene/sequence/ortholog 的蛋白记录 `unresolved`，不生成结论或假说。
 
 **MVP 验收：**
 
