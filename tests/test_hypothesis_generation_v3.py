@@ -121,6 +121,18 @@ def test_structural_neighbor_borrows_ctd_disease_as_protein_hypothesis() -> None
     assert hyp.derivation["neighbors"][0]["accession"] == "P_HUMAN"
     assert hyp.derivation["neighbors"][0]["taxon_id"] == 9606  # 跨物种：大鼠→人
 
+    runs = repo.list_structure_search_runs("exp_1")
+    assert len(runs) == 1
+    assert runs[0].provider == "Foldseek-AlphaFold"
+    assert runs[0].status == "completed"
+    evidence = repo.list_structure_neighbor_evidence("exp_1")
+    assert len(evidence) == 1
+    assert evidence[0].run_id == runs[0].run_id
+    assert evidence[0].query_protein_id == "prot_2"
+    assert evidence[0].query_accession == "Q_NOVEL"
+    assert evidence[0].target_accession == "P_HUMAN"
+    assert evidence[0].score == 0.9
+
 
 def test_no_hypothesis_when_protein_gene_already_concluded() -> None:
     repo = InMemoryExperimentRepository()
@@ -172,6 +184,10 @@ def test_missing_structure_status_is_persisted_without_hypothesis() -> None:
     assert by_protein["prot_2"].status == "missing"
     assert by_protein["prot_2"].reason == "not_found_in_catalog"
     assert by_protein["prot_2"].provider == "AlphaFoldDB"
+    runs = repo.list_structure_search_runs("exp_1")
+    assert len(runs) == 1
+    assert runs[0].status == "skipped_no_query_structures"
+    assert repo.list_structure_neighbor_evidence("exp_1") == []
 
 
 def test_hypotheses_are_idempotent() -> None:

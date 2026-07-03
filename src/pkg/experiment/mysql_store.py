@@ -27,6 +27,8 @@ from .types import (
     ProteinRecord,
     ReportRecord,
     StructureEvidenceStatus,
+    StructureNeighborEvidence,
+    StructureSearchRun,
 )
 
 ConnectionFactory = Callable[[], Any]
@@ -136,6 +138,41 @@ def _structure_status_from_row(row: dict[str, Any]) -> StructureEvidenceStatus:
         sha256=row["sha256"],
         meta=_json_load(row["meta_json"], {}),
         checked_at=_from_db_datetime(row["checked_at"]),
+    )
+
+
+def _structure_run_from_row(row: dict[str, Any]) -> StructureSearchRun:
+    return StructureSearchRun(
+        run_id=row["run_id"],
+        experiment_id=row["experiment_id"],
+        provider=row["provider"],
+        provider_version=row["provider_version"],
+        db_version=row["db_version"],
+        params_hash=row["params_hash"],
+        params=_json_load(row["params_json"], {}),
+        status=row["status"],
+        started_at=_from_db_datetime(row["started_at"]),
+        finished_at=_from_db_datetime(row["finished_at"]),
+        meta=_json_load(row["meta_json"], {}),
+    )
+
+
+def _structure_neighbor_from_row(row: dict[str, Any]) -> StructureNeighborEvidence:
+    return StructureNeighborEvidence(
+        evidence_id=row["evidence_id"],
+        run_id=row["run_id"],
+        experiment_id=row["experiment_id"],
+        query_protein_id=row["query_protein_id"],
+        query_accession=row["query_accession"],
+        target_accession=row["target_accession"],
+        rank=int(row["neighbor_rank"]),
+        score=float(row["score"]),
+        coverage=float(row["coverage"]),
+        taxon_id=row.get("taxon_id"),
+        taxon_name=row["taxon_name"],
+        relation_id=row["relation_id"],
+        provenance=_json_load(row["provenance_json"], {}),
+        created_at=_from_db_datetime(row["created_at"]),
     )
 
 
@@ -965,6 +1002,118 @@ class MySQLExperimentStore:
                 (experiment_id,),
             )
             return [_structure_status_from_row(row) for row in cursor.fetchall()]
+
+        return self._read(fetch)
+
+    def save_structure_search_run(self, row: StructureSearchRun) -> None:
+        def save(cursor: Any) -> None:
+            cursor.execute(
+                """
+                INSERT INTO structure_search_run
+                  (run_id, experiment_id, provider, provider_version, db_version,
+                   params_hash, params_json, status, started_at, finished_at,
+                   meta_json)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                  provider=VALUES(provider),
+                  provider_version=VALUES(provider_version),
+                  db_version=VALUES(db_version),
+                  params_hash=VALUES(params_hash),
+                  params_json=VALUES(params_json),
+                  status=VALUES(status),
+                  started_at=VALUES(started_at),
+                  finished_at=VALUES(finished_at),
+                  meta_json=VALUES(meta_json)
+                """,
+                (
+                    row.run_id,
+                    row.experiment_id,
+                    row.provider,
+                    row.provider_version,
+                    row.db_version,
+                    row.params_hash,
+                    _json_dump(row.params),
+                    row.status,
+                    _db_datetime(row.started_at),
+                    _db_datetime(row.finished_at),
+                    _json_dump(row.meta),
+                ),
+            )
+
+        self._write(save)
+
+    def list_structure_search_runs(self, experiment_id: str) -> list[StructureSearchRun]:
+        def fetch(cursor: Any) -> list[StructureSearchRun]:
+            cursor.execute(
+                """
+                SELECT * FROM structure_search_run
+                WHERE experiment_id=%s ORDER BY started_at, run_id
+                """,
+                (experiment_id,),
+            )
+            return [_structure_run_from_row(row) for row in cursor.fetchall()]
+
+        return self._read(fetch)
+
+    def add_structure_neighbor_evidence(self, rows: list[StructureNeighborEvidence]) -> int:
+        if not rows:
+            return 0
+
+        def save(cursor: Any) -> None:
+            cursor.executemany(
+                """
+                INSERT INTO structure_neighbor_evidence
+                  (evidence_id, run_id, experiment_id, query_protein_id,
+                   query_accession, target_accession, neighbor_rank, score,
+                   coverage, taxon_id, taxon_name, relation_id,
+                   provenance_json, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                  query_accession=VALUES(query_accession),
+                  target_accession=VALUES(target_accession),
+                  neighbor_rank=VALUES(neighbor_rank),
+                  score=VALUES(score), coverage=VALUES(coverage),
+                  taxon_id=VALUES(taxon_id), taxon_name=VALUES(taxon_name),
+                  relation_id=VALUES(relation_id),
+                  provenance_json=VALUES(provenance_json),
+                  created_at=VALUES(created_at)
+                """,
+                [
+                    (
+                        row.evidence_id,
+                        row.run_id,
+                        row.experiment_id,
+                        row.query_protein_id,
+                        row.query_accession,
+                        row.target_accession,
+                        row.rank,
+                        row.score,
+                        row.coverage,
+                        row.taxon_id,
+                        row.taxon_name,
+                        row.relation_id,
+                        _json_dump(row.provenance),
+                        _db_datetime(row.created_at),
+                    )
+                    for row in rows
+                ],
+            )
+
+        self._write(save)
+        return len(rows)
+
+    def list_structure_neighbor_evidence(
+        self, experiment_id: str
+    ) -> list[StructureNeighborEvidence]:
+        def fetch(cursor: Any) -> list[StructureNeighborEvidence]:
+            cursor.execute(
+                """
+                SELECT * FROM structure_neighbor_evidence
+                WHERE experiment_id=%s ORDER BY query_protein_id, neighbor_rank, evidence_id
+                """,
+                (experiment_id,),
+            )
+            return [_structure_neighbor_from_row(row) for row in cursor.fetchall()]
 
         return self._read(fetch)
 

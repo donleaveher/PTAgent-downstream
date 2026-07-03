@@ -248,25 +248,25 @@
 ## 5. AlphaFold/Foldseek 结构近邻
 
 > **进展（结构检索引擎已落地，对标 UniProt/CTD 链；离线/假源已测）**：新建独立包 `pkg/structure/`——`StructureSearchProvider` 协议 + `StructuralNeighbor`（score/coverage/rank/taxon/relation_id/版本）+ `parse_foldseek_output` + `select_neighbors`（去自身/阈值/top-k/排名）+ `FoldseekStructureSearchProvider`（runner 可注入）+ `StructureSettings`。**不复用旧序列 KNN**。
-> 已离线验证**跨物种 大鼠→人** 近邻案例。**"仅差异蛋白"编排已落地**（管线 `restrict_to_differential` 默认开，依赖 L2 差异先落库）。**仍 ⬜**：真实 Foldseek 二进制 + AlphaFold DB 索引/查询结构、检索摘要持久化/`STRUCTURAL_NEIGHBOR` 图投影（依赖 §7）、物种过滤选项。
+> 已离线验证**跨物种 大鼠→人** 近邻案例。**"仅差异蛋白"编排已落地**（管线 `restrict_to_differential` 默认开，依赖 L2 差异先落库）。**StructureCatalog + 结构缺失状态持久化已落地**：缺结构/不可用结构写入 `structure_evidence_status`，不再中断管线。**成功结构检索摘要持久化已落地**：`structure_search_run` + `structure_neighbor_evidence` 记录 run 参数、版本和 top-k neighbor evidence。**仍 ⬜**：真实 Foldseek 二进制 + AlphaFold DB 索引/查询结构联调、`STRUCTURAL_NEIGHBOR` 从库投影（依赖 §7）、物种过滤选项。
 
 ### 5.1 Provider 与运行环境
 
-- ⬜ 定义 `StructureSearchProvider` 协议。
-- ⬜ 实现 Foldseek provider；不得复用旧肽序列 KNN 作为正式实现。
+- ✅ 定义 `StructureSearchProvider` 协议。
+- ✅ 实现 Foldseek provider；不得复用旧肽序列 KNN 作为正式实现。
 - ⬜ 准备 AlphaFold DB/Foldseek 索引并记录版本、checksum 和构建参数。
-- ⬜ 定义 accession → AlphaFold structure ID 映射。
-- ⬜ 处理结构缺失、多结构、低置信结构和查询失败。
-- ⬜ 配置 top-k、相似度阈值、覆盖度阈值和物种过滤选项。
+- ✅ 定义 accession → AlphaFold structure ID 映射（`StructureCatalog`：本地目录扫描/TSV catalog；记录 raw、normalized、isoform、status/provenance）。
+- 🟨 处理结构缺失、多结构、低置信结构和查询失败：缺失/ambiguous/low_confidence 状态已建模并可落库；低置信度判定阈值与真实 AlphaFold 质量字段联调仍待做。
+- 🟨 配置 top-k、相似度阈值和覆盖度阈值已完成；物种过滤选项仍待做。
 
 ### 5.2 检索与持久化
 
 - ✅ 仅对差异蛋白执行结构检索（结构检索在 M3 假说生成内进行，管线 `restrict_to_differential` 默认开 → 只喂差异蛋白集）。
-- ⬜ 输出 query protein、neighbor protein、score、coverage、rank、taxon 和数据库版本。
-- ⬜ 将原始检索摘要写 MySQL/cache，不把大结构文件写入 Neo4j。
-- ⬜ 为 `STRUCTURAL_NEIGHBOR` 图投影准备稳定关系 ID。
-- ⬜ 增加 fake provider 单元测试和小型 Foldseek 集成测试。
-- ⬜ 验证至少一个大鼠→人结构近邻案例。
+- ✅ 输出 query protein、neighbor protein、score、coverage、rank、taxon 和数据库版本。
+- ✅ 将成功结构检索摘要写 MySQL/cache，不把大结构文件写入 Neo4j（`structure_search_run`/`structure_neighbor_evidence`；缺结构状态写入 `structure_evidence_status`）。
+- ✅ 为 `STRUCTURAL_NEIGHBOR` 图投影准备稳定关系 ID（`StructuralNeighbor.relation_id`，默认 `query->target`；KG 投影可回退到 `query|STRUCTURAL_NEIGHBOR|target`）。
+- 🟨 增加 fake provider 单元测试和小型 Foldseek 集成测试：离线 fake/static provider 测试已覆盖；真实 Foldseek 小型集成测试仍待外部环境。
+- ✅ 验证至少一个大鼠→人结构近邻案例（离线 Foldseek TSV fixture）。
 
 ### 5.3 StructureCatalog 与缺结构降级
 
@@ -281,7 +281,7 @@
 
 **阶段验收：**
 
-- ⬜ 输入差异蛋白 accession，可得到版本明确、参数完整、可复现的 top-k 结构近邻；若结构缺失，可得到可审计的缺失状态并继续降级流程。
+- 🟨 输入差异蛋白 accession，可得到版本明确、参数完整、可复现的 top-k 结构近邻；若结构缺失，可得到可审计的缺失状态并继续降级流程。**离线 provider/catalog/缺失状态/neighbor evidence 持久化已测；真实 Foldseek DB 联调和 KG 从库投影仍待做。**
 
 ---
 
@@ -302,17 +302,17 @@
 > **"仅差异蛋白"编排已落地**：管线 `_step_hypothesis` 在 `restrict_to_differential`（默认开）下由 `list_differentials` 取 `is_differential` 蛋白集传 `protein_ids`；deep_search(L4) 只验证 HYPOTHESIS 注释，随之自动收窄。无差异（如未提交定量）→ 不出假说。
 > **仍 ⬜**：创建后续 deep-search 任务（§8）、背景疾病/通路优先级、把更多召回路（序列/向量）真正接成 `extra_channels`。
 
-- ⬜ 停止使用旧“肽序列近邻→借 GO/EC”作为新版假说链。
-- ⬜ 定义结构邻居疾病证据输入模型。
+- ✅ 停止使用旧“肽序列近邻→借 GO/EC”作为新版假说链（M3 当前走结构近邻 → gene → CTD disease）。
+- ✅ 定义结构邻居疾病证据输入模型：`StructuralNeighbor`、`StructureEvidenceStatus`、`StructureSearchRun`、`StructureNeighborEvidence` 已存在。
 - ✅ 对每个差异蛋白读取结构近邻（管线只传差异蛋白集；离线假源已测，真实 Foldseek 二进制见 §5）。
-- ⬜ 查询近邻 protein→gene→CTD disease 直接关系。
-- ⬜ 将借来的疾病关联生成 Protein 级 `MetaAnnotation(HYPOTHESIS)`。
-- ⬜ derivation 必须保存所有支持近邻、score、via gene、CTD relation 和版本。
-- ⬜ 定义多近邻共识、最高分、覆盖度和置信度算法。
-- ⬜ 防止目标蛋白已有 CTD 直接证据时重复生成假说。
+- ✅ 查询近邻 protein→gene→CTD disease 直接关系。
+- ✅ 将借来的疾病关联生成 Protein 级 `MetaAnnotation(HYPOTHESIS)`。
+- ✅ derivation 必须保存所有支持近邻、score、via gene、CTD relation 和版本。
+- ✅ 定义多近邻共识、最高分、覆盖度和置信度算法（结构最高分 confidence + RRF `score/coverage` 融合重排）。
+- ✅ 防止目标蛋白已有 CTD 直接证据时重复生成假说。
 - ⬜ 只对实验背景相关疾病/通路优先展开，同时保留查询策略。
-- ⬜ 将假说幂等写入 MySQL，并创建后续 deep-search 任务。
-- ⬜ 增加纯函数测试、Repository 测试和小型端到端 MVP 测试。
+- 🟨 将假说幂等写入 MySQL，并创建后续 deep-search 任务：假说幂等写入已完成；deep-search 任务创建仍待 §8。
+- ✅ 增加纯函数测试、Repository 测试和小型端到端 MVP 测试。
 
 ### 6.3 多通道近邻融合与证据降级
 

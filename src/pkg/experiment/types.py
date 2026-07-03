@@ -228,6 +228,41 @@ class StructureEvidenceStatus(StrictModel):
     checked_at: datetime = Field(default_factory=_utcnow)
 
 
+class StructureSearchRun(StrictModel):
+    """一次结构检索运行的可复现摘要。"""
+
+    run_id: str = Field(default_factory=lambda: _new_id("strun"), min_length=1)
+    experiment_id: str = Field(min_length=1)
+    provider: str = Field(min_length=1)
+    provider_version: str = ""
+    db_version: str = ""
+    params_hash: str = Field(min_length=1)
+    params: dict[str, Any] = Field(default_factory=dict)
+    status: str = Field(min_length=1)
+    started_at: datetime = Field(default_factory=_utcnow)
+    finished_at: datetime = Field(default_factory=_utcnow)
+    meta: dict[str, Any] = Field(default_factory=dict)
+
+
+class StructureNeighborEvidence(StrictModel):
+    """一条结构近邻 evidence；大结构文件不入库，只存轻量检索结果。"""
+
+    evidence_id: str = Field(default_factory=lambda: _new_id("sne"), min_length=1)
+    run_id: str = Field(min_length=1)
+    experiment_id: str = Field(min_length=1)
+    query_protein_id: str = Field(min_length=1)
+    query_accession: str = Field(min_length=1)
+    target_accession: str = Field(min_length=1)
+    rank: int = Field(ge=0)
+    score: float
+    coverage: float
+    taxon_id: int | None = Field(default=None, gt=0)
+    taxon_name: str = ""
+    relation_id: str = ""
+    provenance: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=_utcnow)
+
+
 class DifferentialResult(StrictModel):
     differential_id: str = Field(default_factory=lambda: _new_id("diff"))
     experiment_id: str = Field(min_length=1)

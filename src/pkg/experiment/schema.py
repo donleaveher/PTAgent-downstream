@@ -138,6 +138,51 @@ MYSQL_EXPERIMENT_SCHEMA: tuple[str, ...] = (
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     """,
     """
+    CREATE TABLE IF NOT EXISTS structure_search_run (
+      run_id VARCHAR(64) PRIMARY KEY,
+      experiment_id VARCHAR(64) NOT NULL,
+      provider VARCHAR(128) NOT NULL,
+      provider_version VARCHAR(128) NOT NULL,
+      db_version VARCHAR(128) NOT NULL,
+      params_hash CHAR(64) NOT NULL,
+      params_json JSON NOT NULL,
+      status VARCHAR(32) NOT NULL,
+      started_at DATETIME(6) NOT NULL,
+      finished_at DATETIME(6) NOT NULL,
+      meta_json JSON NOT NULL,
+      INDEX idx_structure_run_experiment (experiment_id, started_at),
+      INDEX idx_structure_run_hash (experiment_id, provider, params_hash),
+      CONSTRAINT fk_structure_run_experiment FOREIGN KEY (experiment_id)
+        REFERENCES experiment_context(experiment_id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS structure_neighbor_evidence (
+      evidence_id VARCHAR(64) PRIMARY KEY,
+      run_id VARCHAR(64) NOT NULL,
+      experiment_id VARCHAR(64) NOT NULL,
+      query_protein_id VARCHAR(128) NOT NULL,
+      query_accession VARCHAR(128) NOT NULL,
+      target_accession VARCHAR(128) NOT NULL,
+      neighbor_rank INT NOT NULL,
+      score DOUBLE NOT NULL,
+      coverage DOUBLE NOT NULL,
+      taxon_id BIGINT NULL,
+      taxon_name VARCHAR(255) NOT NULL,
+      relation_id VARCHAR(255) NOT NULL,
+      provenance_json JSON NOT NULL,
+      created_at DATETIME(6) NOT NULL,
+      UNIQUE KEY uq_structure_neighbor_run
+        (run_id, query_protein_id, target_accession),
+      INDEX idx_structure_neighbor_query (experiment_id, query_protein_id),
+      INDEX idx_structure_neighbor_target (target_accession),
+      CONSTRAINT fk_structure_neighbor_run FOREIGN KEY (run_id)
+        REFERENCES structure_search_run(run_id) ON DELETE CASCADE,
+      CONSTRAINT fk_structure_neighbor_protein FOREIGN KEY (experiment_id, query_protein_id)
+        REFERENCES protein(experiment_id, protein_id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    """,
+    """
     CREATE TABLE IF NOT EXISTS peptide (
       experiment_id VARCHAR(64) NOT NULL,
       peptide_id VARCHAR(128) NOT NULL,

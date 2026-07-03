@@ -7,7 +7,10 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from collections.abc import Iterable
+from datetime import datetime, timezone
 from typing import Any
 
 from pkg.disease import GeneDiseaseSource, GeneResolver, get_disease_source, get_gene_resolver
@@ -17,6 +20,8 @@ from pkg.experiment import (
     ExperimentRepository,
     MetaAnnotation,
     StructureEvidenceStatus,
+    StructureNeighborEvidence,
+    StructureSearchRun,
     get_experiment_store,
     stable_annotation_id,
 )
@@ -89,6 +94,18 @@ def generate_experiment_hypotheses(
     )
     if structure_status_rows:
         repo.add_structure_statuses(structure_status_rows)
+    search_run, neighbor_evidence = _structure_evidence_rows(
+        experiment_id=experiment_id,
+        proteins=proteins,
+        neighbors_by_acc=neighbors_by_acc,
+        provider_name=getattr(structures, "name", "structure"),
+        provider_version=getattr(structures, "version", ""),
+        top_k=top_k,
+        structure_status_records=getattr(structures, "last_structure_records", {}),
+    )
+    repo.save_structure_search_run(search_run)
+    if neighbor_evidence:
+        repo.add_structure_neighbor_evidence(neighbor_evidence)
 
     # 2. 近邻 accession → gene
     neighbor_accessions = sorted(
@@ -232,6 +249,98 @@ def _structure_status_rows(
             )
         )
     return rows
+
+
+def _structure_evidence_rows(
+    *,
+    experiment_id: str,
+    proteins: list[Any],
+    neighbors_by_acc: dict[str, list[Any]],
+    provider_name: str,
+    provider_version: str,
+    top_k: int | None,
+    structure_status_records: dict[str, Any],
+) -> tuple[StructureSearchRun, list[StructureNeighborEvidence]]:
+    query_accessions = sorted({p.accession for p in proteins})
+    neighbor_count = sum(len(neighbors_by_acc.get(acc, [])) for acc in query_accessions)
+    available_structures = sum(
+        1
+        for record in structure_status_records.values()
+        if str(getattr(getattr(record, "status", ""), "value", getattr(record, "status", "")))
+        == "available"
+    )
+    params = {
+        "query_accessions": query_accessions,
+        "top_k": top_k,
+        "provider": provider_name,
+        "provider_version": provider_version,
+    }
+    params_hash = _stable_hash(params)
+    run_id = f"strun_{params_hash[:32]}"
+    now = datetime.now(timezone.utc)
+    status = "completed" if neighbor_count else "no_neighbors"
+    if structure_status_records and available_structures == 0:
+        status = "skipped_no_query_structures"
+
+    run = StructureSearchRun(
+        run_id=run_id,
+        experiment_id=experiment_id,
+        provider=provider_name,
+        provider_version=provider_version,
+        db_version=provider_version,
+        params_hash=params_hash,
+        params=params,
+        status=status,
+        started_at=now,
+        finished_at=now,
+        meta={
+            "query_count": len(query_accessions),
+            "neighbor_count": neighbor_count,
+            "available_query_structures": available_structures,
+        },
+    )
+
+    protein_by_acc = {p.accession: p for p in proteins}
+    rows: list[StructureNeighborEvidence] = []
+    for query_accession in query_accessions:
+        protein = protein_by_acc[query_accession]
+        for neighbor in neighbors_by_acc.get(query_accession, []):
+            relation_id = (
+                neighbor.relation_id
+                or f"{neighbor.query_accession}|STRUCTURAL_NEIGHBOR|{neighbor.target_accession}"
+            )
+            evidence_payload = {
+                "run_id": run_id,
+                "experiment_id": experiment_id,
+                "query_protein_id": protein.protein_id,
+                "query_accession": neighbor.query_accession,
+                "target_accession": neighbor.target_accession,
+                "relation_id": relation_id,
+            }
+            rows.append(
+                StructureNeighborEvidence(
+                    evidence_id=f"sne_{_stable_hash(evidence_payload)[:32]}",
+                    run_id=run_id,
+                    experiment_id=experiment_id,
+                    query_protein_id=protein.protein_id,
+                    query_accession=neighbor.query_accession,
+                    target_accession=neighbor.target_accession,
+                    rank=neighbor.rank,
+                    score=neighbor.score,
+                    coverage=neighbor.coverage,
+                    taxon_id=neighbor.taxon_id,
+                    taxon_name=neighbor.taxon_name,
+                    relation_id=relation_id,
+                    provenance=neighbor.provenance,
+                    created_at=now,
+                )
+            )
+    return run, rows
+
+
+def _stable_hash(payload: dict[str, Any]) -> str:
+    canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 __all__ = ["generate_experiment_hypotheses"]

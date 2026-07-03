@@ -26,6 +26,8 @@ from .types import (
     ProteinRecord,
     ReportRecord,
     StructureEvidenceStatus,
+    StructureNeighborEvidence,
+    StructureSearchRun,
 )
 
 
@@ -86,6 +88,16 @@ class ExperimentRepository(Protocol):
 
     def list_structure_statuses(self, experiment_id: str) -> list[StructureEvidenceStatus]: ...
 
+    def save_structure_search_run(self, row: StructureSearchRun) -> None: ...
+
+    def list_structure_search_runs(self, experiment_id: str) -> list[StructureSearchRun]: ...
+
+    def add_structure_neighbor_evidence(self, rows: list[StructureNeighborEvidence]) -> int: ...
+
+    def list_structure_neighbor_evidence(
+        self, experiment_id: str
+    ) -> list[StructureNeighborEvidence]: ...
+
     def add_differentials(self, rows: list[DifferentialResult]) -> int: ...
 
     def list_differentials(self, experiment_id: str) -> list[DifferentialResult]: ...
@@ -125,6 +137,8 @@ class InMemoryExperimentRepository:
         self._revisions: dict[str, list[ExperimentContextRevision]] = {}
         self._quantifications: dict[str, dict[str, ProteinQuantification]] = {}
         self._structure_statuses: dict[str, dict[str, StructureEvidenceStatus]] = {}
+        self._structure_runs: dict[str, StructureSearchRun] = {}
+        self._structure_neighbors: dict[str, dict[str, StructureNeighborEvidence]] = {}
         self._differentials: dict[str, dict[str, DifferentialResult]] = {}
         self._enrichments: dict[str, dict[str, EnrichmentRecord]] = {}
         self._snapshots: dict[str, ExperimentSnapshot] = {}
@@ -302,6 +316,29 @@ class InMemoryExperimentRepository:
 
     def list_structure_statuses(self, experiment_id: str) -> list[StructureEvidenceStatus]:
         rows = self._structure_statuses.get(experiment_id, {})
+        return [rows[key].model_copy(deep=True) for key in sorted(rows)]
+
+    def save_structure_search_run(self, row: StructureSearchRun) -> None:
+        self._structure_runs[row.run_id] = row.model_copy(deep=True)
+
+    def list_structure_search_runs(self, experiment_id: str) -> list[StructureSearchRun]:
+        rows = [
+            row.model_copy(deep=True)
+            for row in self._structure_runs.values()
+            if row.experiment_id == experiment_id
+        ]
+        return sorted(rows, key=lambda row: (row.started_at, row.run_id))
+
+    def add_structure_neighbor_evidence(self, rows: list[StructureNeighborEvidence]) -> int:
+        for row in rows:
+            bucket = self._structure_neighbors.setdefault(row.experiment_id, {})
+            bucket[row.evidence_id] = row.model_copy(deep=True)
+        return len(rows)
+
+    def list_structure_neighbor_evidence(
+        self, experiment_id: str
+    ) -> list[StructureNeighborEvidence]:
+        rows = self._structure_neighbors.get(experiment_id, {})
         return [rows[key].model_copy(deep=True) for key in sorted(rows)]
 
     def add_differentials(self, rows: list[DifferentialResult]) -> int:

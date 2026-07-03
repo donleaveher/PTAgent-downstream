@@ -23,6 +23,8 @@ from pkg.experiment import (
     MetaAnnotation,
     ProteinQuantification,
     StructureEvidenceStatus,
+    StructureNeighborEvidence,
+    StructureSearchRun,
 )
 from pkg.experiment.mysql_store import MySQLExperimentStore
 from pkg.experiment.schema import MYSQL_EXPERIMENT_SCHEMA
@@ -113,6 +115,8 @@ _PK: dict[str, tuple[str, ...]] = {
     "experiment_snapshot": ("snapshot_id",),
     "protein_quantification": ("quantification_id",),
     "structure_evidence_status": ("experiment_id", "protein_id", "channel"),
+    "structure_search_run": ("run_id",),
+    "structure_neighbor_evidence": ("evidence_id",),
     "differential_result": ("differential_id",),
     "enrichment_result": ("enrichment_id",),
 }
@@ -356,6 +360,45 @@ def test_mysql_store_round_trips_structure_status() -> None:
     loaded = store.list_structure_statuses("exp_1")
     assert loaded == [status]
     assert loaded[0].checked_at.tzinfo == timezone.utc
+
+
+def test_mysql_store_round_trips_structure_run_and_neighbor_evidence() -> None:
+    store = _round_trip_store()
+    store.save_bundle(ExperimentBundle.model_validate(valid_payload()))
+    run = StructureSearchRun(
+        run_id="strun_1",
+        experiment_id="exp_1",
+        provider="Foldseek-AlphaFold",
+        provider_version="afdb-v6",
+        db_version="afdb-v6",
+        params_hash="a" * 64,
+        params={"top_k": 20},
+        status="completed",
+        meta={"neighbor_count": 1},
+    )
+    evidence = StructureNeighborEvidence(
+        evidence_id="sne_1",
+        run_id="strun_1",
+        experiment_id="exp_1",
+        query_protein_id="prot_1",
+        query_accession="P12345",
+        target_accession="P40763",
+        rank=1,
+        score=0.98,
+        coverage=0.92,
+        taxon_id=9606,
+        taxon_name="Homo sapiens",
+        relation_id="P12345->P40763",
+        provenance={"evalue": "1e-30"},
+    )
+
+    store.save_structure_search_run(run)
+    assert store.add_structure_neighbor_evidence([evidence]) == 1
+
+    assert store.list_structure_search_runs("exp_1") == [run]
+    loaded = store.list_structure_neighbor_evidence("exp_1")
+    assert loaded == [evidence]
+    assert loaded[0].created_at.tzinfo == timezone.utc
 
 
 def test_mysql_store_round_trips_differential_with_and_without_pvalues() -> None:
