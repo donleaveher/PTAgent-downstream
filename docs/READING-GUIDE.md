@@ -3,7 +3,8 @@
 > **给谁看**：负责"下游知识层"的人，想**读懂已写的代码**（不是规划下一步）。
 > **核心原则**：**按数据的旅程读，不按清单的 ⬜ 读。** `IMPLEMENTATION-CHECKLIST.md` 的 ⬜
 > 是"还要建什么"（很多是未来/卡外部的活），**不是**已有代码的地图。
-> **配套**：[architecture.svg](architecture.svg)（结构图）、[evidence-model.svg](evidence-model.svg)（证据分级）、
+> **配套**：[architecture.svg](architecture.svg)（总览）、[evidence-model.svg](evidence-model.svg)（证据分级）、
+> [neighbor-provider-architecture.svg](neighbor-provider-architecture.svg)（neighbor provider / evidence / fusion 边界）、
 > [INPUT-CONTRACT.md](INPUT-CONTRACT.md)（输入契约）。
 
 ---
@@ -29,7 +30,9 @@ pkg/             领域模型 + 纯引擎 + 存储实现（不依赖 application
    → 差异分析(谁变了)
    → 富集(变的蛋白扎堆在哪些疾病)
    → 基础注释 + CTD 疾病结论(公共事实)
-   → 结构类比假说(跨物种借疾病)
+   → neighbor search(结构/序列/domain/ortholog provider 并列检索)
+   → fusion/RRF(多 channel 候选融合为 FusedCandidate)
+   → 近邻迁移假说(候选 accession → gene → CTD disease)
    → deep-search(文献验证假说 → 升结论/降伪理)
    → 投影成知识图谱
    → 冻结成只读快照
@@ -43,7 +46,7 @@ pkg/             领域模型 + 纯引擎 + 存储实现（不依赖 application
 | 级别 | 含义 | 谁产生 |
 |---|---|---|
 | `CONCLUSION` | 公共事实/直接证据 | UniProt 基础注释、CTD 基因→疾病直接命中 |
-| `HYPOTHESIS` | 推导猜测 | 结构类比"借"来的疾病关联 |
+| `HYPOTHESIS` | 推导猜测 | 融合近邻（结构/序列/domain/ortholog 等）迁移来的疾病关联 |
 | `REFUTED` | 已被反驳的伪理 | deep-search 找到反证 |
 
 **"认知态跃迁"** = deep-search 把 `HYPOTHESIS` → `CONCLUSION`（找到支持）或 → `REFUTED`（找到反证）。
@@ -63,7 +66,7 @@ pkg/             领域模型 + 纯引擎 + 存储实现（不依赖 application
 ### 1.1 你的文件（本指南覆盖的全部）
 
 - `pkg/experiment/`：模型 + 仓库 + schema + 摄入（**地基**）
-- `pkg/analysis/`、`pkg/disease/`、`pkg/structure/`、`pkg/graph/`、`pkg/deep_search/`：各步的纯引擎
+- `pkg/analysis/`、`pkg/disease/`、`pkg/structure/`、`pkg/retrieval/`、`pkg/graph/`、`pkg/deep_search/`：各步的纯引擎和 provider 抽象
 - `application/{experiment,analysis,knowledge,graph,report,orchestration}/`：应用服务
 - `router/downstream.py`：HTTP 入口
 
@@ -85,8 +88,8 @@ pkg/             领域模型 + 纯引擎 + 存储实现（不依赖 application
 
 | # | 文件 | 读什么 / 注意什么 |
 |---|---|---|
-| 1 | [types.py](../src/pkg/experiment/types.py) | **所有名词。** 每个数据形状：`ExperimentBundle`、`ProteinQuantification`、`DifferentialResult`、`MetaAnnotation`（带 `evidence_level`）、`AnnotationHistory`、`ExperimentSnapshot`、`ReportRecord`。这是全系统的词汇表。注意 `StrictModel`（`extra=forbid` + `str_strip_whitespace`）。 |
-| 2 | [pipeline.py](../src/application/orchestration/pipeline.py) | **所有动词 + 顺序。** 看 `STEP_ORDER` 和十个 `_step_*` 函数 —— 每个就 ~5 行，调一个服务。这一个文件就是整条流程的目录。 |
+| 1 | [types.py](../src/pkg/experiment/types.py) | **所有名词。** 每个数据形状：`ExperimentBundle`、`ProteinQuantification`、`DifferentialResult`、`MetaAnnotation`（带 `evidence_level`）、`NeighborSearchRun` / `NeighborEvidence` / `NeighborEvidenceStatus`、`FusedCandidate`、`AnnotationHistory`、`ExperimentSnapshot`、`ReportRecord`。这是全系统的词汇表。注意 `StrictModel`（`extra=forbid` + `str_strip_whitespace`）。 |
+| 2 | [pipeline.py](../src/application/orchestration/pipeline.py) | **所有动词 + 顺序。** 看 `STEP_ORDER`、`_EXECUTION_ORDER` 和各个 `_step_*` 函数 —— 每个就 ~5 行，调一个服务。这一个文件就是整条流程的目录。标准顺序是 `neighbor_search → hypothesis → kg_projection`；`structure_search` 只作为显式指定时可跑的预计算/回填入口。 |
 
 > 只读这两个文件，你就能在脑子里跑通整条流程。下面只是逐站深入。
 
@@ -104,17 +107,18 @@ pkg/             领域模型 + 纯引擎 + 存储实现（不依赖 application
 | 5 | [quantification_ingest.py](../src/application/experiment/quantification_ingest.py) | 定量摄入：校验每行 `protein_id`/`group_id` 属于该实验 → 整批原子 → 幂等 upsert。 |
 | 6 | [downstream.py](../src/router/downstream.py) | 所有 HTTP 端点。每个都很薄：`_require` 查实验存在 → 调一个服务 → 包成 JSON。先扫一遍有哪些端点。 |
 
-### 阶段 3 · 顺着管线走十步（**正餐**）
+### 阶段 3 · 顺着管线走（**正餐**）
 
-每一步 = `pipeline.py` 里一个 `_step_*` → 一个应用服务。按顺序读服务文件：
+每一步 = `pipeline.py` 里一个 `_step_*` → 一个应用服务。按标准 `STEP_ORDER` 读服务文件：
 
 | 步 | 服务文件 | 读什么（输入 → 输出 + 关键点） |
 |---|---|---|
-| `differential` | [differential_analysis.py](../src/application/analysis/differential_analysis.py) | 读 `list_quantifications`+`list_groups`（按 role 自动选 case/control）→ 调引擎 [pkg/analysis/differential.py](../src/pkg/analysis/differential.py)（log2FC + Welch t + BH，无重复退化为 fold-change）→ 写 `DifferentialResult`。**无定量 → 无差异 → 后面假说也空。** |
-| `enrichment` | [enrichment_analysis.py](../src/application/analysis/enrichment_analysis.py) | study = 差异蛋白基因，**背景 = 全部鉴定蛋白基因（Q1）**，基因集取自已落库的 CTD 结论 → 调 [pkg/analysis/enrichment.py](../src/pkg/analysis/enrichment.py)（超几何 + BH）→ 写 `EnrichmentRecord`（带 study/background checksum，可复现）。 |
 | `base_annotation` | [protein_enrichment.py](../src/application/knowledge/protein_enrichment.py) | **全部**蛋白 → UniProt 源（`pkg/annotation`）→ 写 `MetaAnnotation(CONCLUSION, target=protein)`。 |
 | `ctd_disease` | [disease_annotation.py](../src/application/knowledge/disease_annotation.py) | **全部**蛋白对应基因 → CTD 源（`pkg/disease`）直接命中 → 写 `MetaAnnotation(CONCLUSION, target=gene)`。与上一步对称（Q3 双节点：蛋白属性 vs 基因疾病）。 |
-| `hypothesis` | [hypothesis_generation.py](../src/application/knowledge/hypothesis_generation.py) | **仅差异蛋白**（Q2）：结构近邻(M2, `pkg/structure` Foldseek) → 近邻 gene（gene resolver）→ 近邻 gene 的 CTD 疾病(M1) → **借**过来 → 写 `MetaAnnotation(HYPOTHESIS, target=protein)`。跨物种由结构近邻天然完成；RRF 融合重排（结构分+覆盖度）。蛋白自身已有直接结论的疾病不重复出假说。 |
+| `differential` | [differential_analysis.py](../src/application/analysis/differential_analysis.py) | 读 `list_quantifications`+`list_groups`（按 role 自动选 case/control）→ 调引擎 [pkg/analysis/differential.py](../src/pkg/analysis/differential.py)（log2FC + Welch t + BH，无重复退化为 fold-change）→ 写 `DifferentialResult`。**无定量 → 无差异 → 后面假说也空。** |
+| `enrichment` | [enrichment_analysis.py](../src/application/analysis/enrichment_analysis.py) | study = 差异蛋白基因，**背景 = 全部鉴定蛋白基因（Q1）**，基因集取自已落库的 CTD 结论 → 调 [pkg/analysis/enrichment.py](../src/pkg/analysis/enrichment.py)（超几何 + BH）→ 写 `EnrichmentRecord`（带 study/background checksum，可复现）。 |
+| `neighbor_search` | [neighbor_search.py](../src/application/knowledge/neighbor_search.py) | **仅差异蛋白**（Q2）：按 `neighbor_provider_names` 从 registry 构建统一 `NeighborProvider` 列表（含结构、序列、domain、ortholog 等）→ provider 返回 `NeighborProviderResult(candidates, runs, evidence, statuses)` → `NeighborEvidencePersistenceAdapter` 写通用 `neighbor_search_run/neighbor_evidence/neighbor_evidence_status` → RRF 融合 → 写 `FusedCandidate`；不查疾病库、不投图。结构 channel 默认由 [pkg/retrieval/providers/structure.py](../src/pkg/retrieval/providers/structure.py) 的 `StructureSearchNeighborProvider` 执行 Foldseek/AlphaFold，并额外由 `StructureEvidencePersistenceAdapter` 写旧 structure 表以兼容结构投影；sequence MVP 在 [pkg/retrieval/providers/sequence.py](../src/pkg/retrieval/providers/sequence.py)；[structure_search.py](../src/application/knowledge/structure_search.py) 仅作为可选预计算/回填入口。 |
+| `hypothesis` | [hypothesis_generation.py](../src/application/knowledge/hypothesis_generation.py) | 只读 `FusedCandidate`：候选 accession → gene resolver → 近邻 gene 的 CTD 疾病(M1) → **借**过来 → 写 `MetaAnnotation(HYPOTHESIS, target=protein)`。蛋白自身已有直接结论的疾病不重复出假说；不直接调用 Foldseek/MMseqs/BLAST 等 provider。 |
 | `kg_projection` | [project_kg.py](../src/application/graph/project_kg.py) | 读蛋白/基因/注释/差异 → 投成两层图（通用 KG + 实验工作区）经 `GraphStore`（`pkg/graph`）。节点带 `mysql_ref`，边带 `evidence_level`。幂等可重投。 |
 | `deep_search` | [deep_search.py](../src/application/knowledge/deep_search.py) | 对每条 `HYPOTHESIS` 注释建检索任务 → 文献源 → `decide_verdict`（[pkg/deep_search/verdict.py](../src/pkg/deep_search/verdict.py) 纯状态机）→ 支持升 `CONCLUSION`/反证降 `REFUTED`/无证据留 `HYPOTHESIS`；追加 `AnnotationHistory`（确定性 id，幂等可回放）。还有 `override_hypothesis_verdict`（人工覆盖）。 |
 
@@ -122,7 +126,7 @@ pkg/             领域模型 + 纯引擎 + 存储实现（不依赖 application
 
 | # | 文件 | 读什么 |
 |---|---|---|
-| `freeze` | [freeze.py](../src/application/experiment/freeze.py) | 冻结前检查（每条蛋白级假说须已被 deep-search 处理过）→ 从仓库拼**确定性 manifest**（上下文/计数/证据分布/全量注释+历史+差异+富集/图摘要/版本/请求 hash）→ 稳定 SHA-256 → `ExperimentSnapshot(FINAL)`。版本唯一双重阻止覆盖。`verify_snapshot_integrity` 重算 checksum 防篡改。 |
+| `freeze` | [freeze.py](../src/application/experiment/freeze.py) | 冻结前检查（每条蛋白级假说须已被 deep-search 处理过）→ 从仓库拼**确定性 manifest**（上下文/计数/证据分布/全量注释+历史+差异+富集/完整图节点边+GNN 导出/版本/请求 hash）→ 稳定 SHA-256 → `ExperimentSnapshot(FINAL)`。版本唯一双重阻止覆盖。`verify_snapshot_integrity` 重算 checksum 防篡改。 |
 | `report` | [layered_report.py](../src/application/report/layered_report.py) | `generate_experiment_report`：**只读 `snapshot.manifest`** → 校验完整性 → 渲染分层 Markdown（设计/差异/富集/结论/假说/伪理/未决 + 附录），每条带 `annotation_id`+来源+版本。`persist_experiment_report`：落库 `ReportRecord`（幂等 upsert，checksum 自洽）。 |
 
 读完阶段 3+4，你已经看完整个知识层。
@@ -135,7 +139,7 @@ pkg/             领域模型 + 纯引擎 + 存储实现（不依赖 application
 
 2. **幂等无处不在**：`stable_annotation_id`（[identity.py](../src/pkg/experiment/identity.py)）、`stable_history_id`、确定性 `report_id`、仓库 upsert。**同一事实重跑不产生重复行** —— 这就是管线能断点续跑/重放的原因。看到 `stable_*` 就知道"这是为了重跑不重复"。
 
-3. **依赖注入（DI）**：每个服务都接一个可注入的源（`annotation_source`/`disease_source`/`structure_provider`/`gene_resolver`/`literature_source`/`graph_store`），默认 `get_*()`。**测试注入内存/假源，生产注入真实源 —— 同一份代码两用。** 这就是为什么能离线全绿却还没连真库。
+3. **依赖注入（DI）**：每个服务都接一个可注入的源或 registry（`annotation_source`/`disease_source`/`structure_provider`/`neighbor_provider_names`/`neighbor_provider_registry`/`neighbor_persistence_adapters`/`gene_resolver`/`literature_source`/`graph_store`），默认 `get_*()` 或默认 registry。**测试注入内存/假源，生产注入真实源 —— 同一份代码两用。** 这就是为什么能离线全绿却还没连真库。
 
 4. **来源 + 版本 + checksum**：注释带 `provenance`（来源库版本）；富集带集合 checksum；快照带 manifest checksum；报告 `sha256(content)==checksum`。一切为**可复现 + 可审计 + 防篡改**。
 
@@ -146,10 +150,11 @@ pkg/             领域模型 + 纯引擎 + 存储实现（不依赖 application
 ## 4. 怎么真正读完（可执行的三轮计划）
 
 - **第 1 轮（~1 小时，骨架）**：阶段 0 两个锚文件 + 阶段 1 仓库 Protocol。读完能复述整条流程和所有数据形状。
-- **第 2 轮（~2 小时，正餐）**：阶段 3 十步，每步**配着它的测试一起读**（测试是能跑的示例）：
+- **第 2 轮（~2 小时，正餐）**：阶段 3 每步**配着它的测试一起读**（测试是能跑的示例）：
   - `differential` → [test_differential_v3.py](../tests/test_differential_v3.py)
   - `enrichment` → [test_enrichment_v3.py](../tests/test_enrichment_v3.py)
   - `hypothesis` → [test_hypothesis_generation_v3.py](../tests/test_hypothesis_generation_v3.py)
+  - `neighbor_search` → [test_neighbor_fusion_v3.py](../tests/test_neighbor_fusion_v3.py)、[test_neighbor_sequence_provider.py](../tests/pkg/test_neighbor_sequence_provider.py)
   - `deep_search` → [test_deep_search_v3.py](../tests/test_deep_search_v3.py)
   - 整条管线 → [test_pipeline_v3.py](../tests/test_pipeline_v3.py)（`_seed()` 是最好的"输入长什么样"样例）
 - **第 3 轮（~1 小时，输出 + 边界）**：阶段 4 freeze+report（配 [test_layered_report_v3.py](../tests/test_layered_report_v3.py)）+ 阶段 2 输入/API（配 [test_downstream_api_v3.py](../tests/test_downstream_api_v3.py)）。

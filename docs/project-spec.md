@@ -146,7 +146,7 @@ MetaAnnotation {
   attribute:       str                      # 如 "disease:脑缺血" / "domain:SH2" / "tissue:brain"
   value:           any
   evidence_level:  CONCLUSION | HYPOTHESIS | REFUTED
-  source:          "UniProt" | "CTD" | "Foldseek-KNN" | "deep-search"
+  source:          "UniProt" | "CTD" | "NeighborFusion" | "deep-search"
   derivation:      obj                      # 假说: {neighbors:[accession...], via_gene, scores}；结论: {ref}
   provenance:      {ts, query, db_version, general_kg_ref}
 }

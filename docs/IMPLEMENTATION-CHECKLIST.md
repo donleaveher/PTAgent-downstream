@@ -1,9 +1,9 @@
 # PTAgent 统一实施清单
 
 > **用途**：本文件集中记录当前下游知识层从代码、数据、外部服务到交付验收的全部工作；后续实施进度只在这里勾选，避免散落在多个 TODO。
-> **规格依据**：机制与字段以 [`project-spec.md`](project-spec.md) 为准；背景与范围以 [`PROJECT-STATUS.md`](PROJECT-STATUS.md) 为准。
-> **更新日期**：2026-06-23。
-> **当前基线**：`215 passed, 1 skipped`；真实 MySQL、UniProt MCP、CTD、Foldseek、Neo4j 实例、文献检索工具尚未完成端到端联调。MVP 三件（M1/M2/M3）代码 + 离线闭环已完成；M3 默认 gene 解析器（UniProt MCP）已接好；L2 差异分析 + 富集引擎/服务已落地（离线测试）；**CTD 真实数据已下载/过滤/加载验证**（2.9GB→2.6MB，34,253 直接事实）；**L3 本次实验 KG 纯代码核心已落地**（双节点 GraphStore 端口 + 内存/Neo4j 实现 + MySQL→图投影 + 离线测试），真连 Neo4j 实例待 B 组；**L4 deep-search 认知态跃迁纯代码核心已落地**（任务/证据/可注入源 + 纯状态机 + 回写 evidence_level/追加 AnnotationHistory，幂等可回放 + 人工覆盖），真实文献检索源待接；**L5 实验冻结归档纯代码核心已落地**（冻结前检查 + 内容 manifest + 稳定 checksum + FINAL 只读/阻止覆盖/版本化 + 篡改检测，离线测试），隔离 Neo4j 导出/真库并发待 B 组；**富集结果持久化已落地**（`enrichment_result` 表 + Repository + `run_disease_enrichment` 写全量结果 + study/background checksum，并入冻结 manifest）；**L6 分层报告纯代码核心已落地**（只读冻结快照 manifest → 分层 Markdown：设计/差异/富集/结论/假说/伪理/未决 + 附录，每条带 annotation_id/来源/版本，确定性 + 防篡改 + **报告 artifact 落库**到 `experiment_report` 表，checksum 自洽）；**下游定量摄入入口已落地**（下游自定义契约 §6：`POST/GET …/quantifications`，校验属于实验 + 整批原子 + 幂等 upsert）；**下游管线编排（§11.2）已落地**（把上述服务按依赖序串成端到端流程；提供两种编排：纯 Python 线性 runner + **LangGraph 主图**——StateGraph 复用同一批 step + 冻结前人审批条件边 + audit log；失败隔离 + 幂等重跑 + 断点续跑 + 状态查询，离线 e2e 通过）；**对外 API（§11.1）已落地**（FastAPI 路由：实验创建/查询、跑管线、查注释/差异/富集/历史、定量录入/查询、查 KG 证据路径、冻结/快照/报告 artifact，DI 可注入，TestClient 离线测试通过）。**A 组（纯代码）+ §11 编排与 API 已全部完成**，鉴权/审计已接（JWT gate + 审计日志，env 开关）；剩余主要为 B 组外部联调。
+> **规格依据**：机制与字段以 [`project-spec.md`](project-spec.md) 为准；背景与范围以 [`PROJECT-STATUS.md`](PROJECT-STATUS.md) 为准；neighbor provider 边界见 [`neighbor-provider-architecture.svg`](neighbor-provider-architecture.svg)。
+> **更新日期**：2026-07-08。
+> **当前基线**：`250 passed, 1 skipped, 1 warning`；warning 为 FastAPI/Starlette `TestClient` 兼容路径 deprecation，与 neighbor provider 重构无关。真实 MySQL、UniProt MCP、CTD、Foldseek、Neo4j 实例、文献检索工具尚未完成端到端联调。MVP 三件（M1/M2/M3）代码 + 离线闭环已完成；M3 默认 gene 解析器（UniProt MCP）已接好；**Neighbor Search / Fusion 已重构为统一 provider 层**：`NeighborProvider` / `NeighborProviderResult` / `NeighborProviderRegistry`、通用 `neighbor_search_run/neighbor_evidence/neighbor_evidence_status` schema、`ProviderPersistenceAdapter`、结构 provider 与 sequence provider 并列接入、RRF 写 `FusedCandidate`，`hypothesis_generation` 只消费 `FusedCandidate`，不直接调用任何 provider。L2 差异分析 + 富集引擎/服务已落地（离线测试）；**CTD 真实数据已下载/过滤/加载验证**（2.9GB→2.6MB，34,253 直接事实）；**L3 本次实验 KG 纯代码核心已落地**（双节点 GraphStore 端口 + 内存/Neo4j 实现 + MySQL→图投影 + 离线测试），真连 Neo4j 实例待 B 组；**L4 deep-search 认知态跃迁纯代码核心已落地**（任务/证据/可注入源 + 纯状态机 + 回写 evidence_level/追加 AnnotationHistory，幂等可回放 + 人工覆盖），真实文献源待接；**L5 实验冻结归档纯代码核心已落地**；**L6 分层报告纯代码核心已落地**；**下游定量摄入入口、管线编排、对外 API、鉴权/审计均已接入**。剩余主要为 B 组外部联调和更多真实 provider（MMseqs2/BLAST、domain、ortholog）。
 
 ## 状态符号
 
@@ -16,14 +16,14 @@
 
 ## ⏭️ 剩余工作速览（下一步做什么）
 
-> **已完成（代码 + 离线测试）**：S1 输入域 + MySQL 事实库、L1 UniProt 链、M1 CTD（**真实数据已就绪**）、L2 差异+富集、M2 Foldseek 引擎、M3 结构类比假说、MVP 离线闭环。
+> **已完成（代码 + 离线测试）**：S1 输入域 + MySQL 事实库、L1 UniProt 链、M1 CTD（**真实数据已就绪**）、L2 差异+富集、M2 Foldseek 引擎、M3 neighbor search/fusion/近邻迁移假说、MVP 离线闭环。
 > 下面按「纯代码可立刻推进 / 卡外部资源 / 细化暂缓」分组；勾选与细节见对应章节。
 
 ### A · 纯代码可立刻推进（不卡外部依赖）
 
 - 🟨 **L3 · Neo4j 通用 KG + 本次实验 KG**（§7）：把 MySQL 事实投影成**双节点**图——`Protein`/`Gene`（`ENCODED_BY`）+ `Disease`，边带 `evidence_level`、`STRUCTURAL_NEIGHBOR`、`DIFFERENTIAL`，节点带 `mysql_ref`。**纯代码核心已落地**（端口 + 内存/Neo4j 实现 + 投影 + 离线测试）；真连 Neo4j 实例（B 组）、版本化重建、deep-search 回写、Domain/Tissue 等扩展节点仍 ⬜。
 - 🟨 **deep-search 认知态跃迁**（§8）：假说 +直接证据→结论 / +反证→伪理 / 冲突·无→保持，回写 `evidence_level` + 追加 `AnnotationHistory`。**纯代码核心已落地**（可注入检索源 + 纯状态机 + 幂等可回放 + 人工覆盖）；真实文献检索源（DeepXiv/MCP）、失败/超时重试仍 ⬜。
-- 🟨 **实验冻结归档**（§9）：本次 KG → 只读版本化快照。**纯代码核心已落地**（`freeze_experiment` 冻结前检查 + 内容 manifest + 稳定 checksum + FINAL 只读/版本化 + `verify_snapshot_integrity` 篡改检测）；隔离 Neo4j 导出、SUPERSEDED 编排、真库版本并发仍 ⬜。
+- ✅ **实验冻结归档**（§9）：本次 KG → 只读版本化快照。`freeze_experiment` 保存完整确定性图 manifest、图 checksum 与 GNN 导出，并由快照 checksum 整体覆盖；Neo4j 重建 dry-run 已与冻结图 checksum 实测一致。SUPERSEDED 编排已落地；真库版本并发仍是独立增强项。
 - ✅ **分层报告**（§10）：`generate_experiment_report` 从冻结快照按 结论/假说/伪理/未决 出 Markdown，绑定 `snapshot_version`，只读快照 + 确定性 + 防篡改；**报告 artifact 落库已落地**（`experiment_report` 表 + Repository + 管线 report 步幂等 upsert，`content`/`checksum`/`snapshot_id` 绑定，artifact 自洽）。
 - ✅ **富集结果持久化**（§4.3）：`enrichment_result` 表 + `EnrichmentRecord` 模型 + Repository（端口/内存/MySQL）；`run_disease_enrichment` 幂等写**全量**结果，记录 study/background checksum 与基因集来源版本，并入冻结 manifest（§9）。
 
@@ -39,10 +39,10 @@
 - ⬜ **#3 输入修订/重存策略**：`save_bundle` upsert 会留孤儿子行——倾向「整实验替换(a)」，待定后落代码。
 - ⬜ NCBI GeneID 精确映射（现按 gene symbol 大小写归一）。
 - ⬜ Disease 同义词归一、CTD 版本升级策略。
-- ⬜ §11 API/编排/产品接入（pipeline 串联、对外接口）——晚于知识管线。
+- ✅ §11 API/编排/产品接入（pipeline 串联、对外接口）已落地；真实外部源 e2e 仍归 B 组。
 - 🟨 免疫维度（§12 / Q6）：暂用 UniProt GO + CTD；schema 预留扩展通道。
 
-> **A 组（纯代码）已全部完成 + 下游管线编排（§11.2）已落地**：L3 两层知识图谱 → L4 deep-search → L5 冻结归档 → L6 分层报告，外加 §4.1 定量摄入入口、§4.3 富集持久化、§10 报告 artifact 落库，并由下游管线编排串成端到端流程（纯 Python runner + LangGraph 主图两种），再经 **FastAPI 对外 API（§11.1）** 暴露（离线 e2e + TestClient 通过，`215 passed, 1 skipped`）。**下一步**：B 组外部联调（真连 MySQL/Neo4j/UniProt MCP/Foldseek/文献检索源）、LangGraph checkpointer/streaming 接线（鉴权/审计已接 JWT gate + 审计日志）。各 L 的真库/外部部分见对应章节 ⬜。
+> **A 组（纯代码）已全部完成 + 下游管线编排（§11.2）已落地**：L3 两层知识图谱 → L4 deep-search → L5 冻结归档 → L6 分层报告，外加 §4.1 定量摄入入口、§4.3 富集持久化、§10 报告 artifact 落库，并由下游管线编排串成端到端流程（纯 Python runner + LangGraph 主图两种），再经 **FastAPI 对外 API（§11.1）** 暴露（离线 e2e + TestClient 通过，`250 passed, 1 skipped, 1 warning`）。**下一步**：B 组外部联调（真连 MySQL/Neo4j/UniProt MCP/Foldseek/文献检索源）、LangGraph checkpointer/streaming 接线，以及接入真实 MMseqs2/BLAST、domain、ortholog provider。各 L 的真库/外部部分见对应章节 ⬜。
 
 ---
 
@@ -59,7 +59,7 @@
 ### 0.2 已确定决策
 
 - ✅ Q1：富集背景集使用本次鉴定蛋白池，不使用全基因组。
-- ✅ Q2：全部蛋白做基础注释；差异蛋白才做富集、Foldseek、假说、deep-search 和重点报告。
+- ✅ Q2：全部蛋白做基础注释；差异蛋白才做富集、neighbor search（含 Foldseek/sequence/domain/ortholog provider）、假说、deep-search 和重点报告。
 - ✅ Q3：同时使用 `Protein` 和 `Gene` 节点，以 `ENCODED_BY` 缝合。
 - ✅ Q4：公共实体/稳定事实引用通用 KG；实验判断保存在本次实验 KG；完成后冻结归档。
 - ✅ Q5：MySQL 是事实唯一来源；Neo4j 负责关系遍历，通过 `GraphStore` 抽象访问。
@@ -227,7 +227,7 @@
 - ⬜ 计算 log2FC、p-value、BH q-value 和 direction。
 - ⬜ 明确默认显著性阈值，并允许实验级配置。
 - ⬜ 将全量结果写入 `differential_result`，而不只保存显著项。
-- ✅ “仅差异蛋白”供给 Foldseek/deep-search：管线 `restrict_to_differential`（默认开）由 `list_differentials` 过滤 `is_differential`，把差异蛋白集喂给 hypothesis(M2/M3)/deep_search(L4)；`GET …/differentials?only_significant=true` 亦可查询。
+- ✅ “仅差异蛋白”供给 neighbor search / hypothesis / deep-search：管线 `restrict_to_differential`（默认开）由 `list_differentials` 过滤 `is_differential`，把差异蛋白集喂给 `neighbor_search`、`hypothesis`、`deep_search`；`GET …/differentials?only_significant=true` 亦可查询。
 - ⬜ 处理缺失值、极端值和零值。
 - ⬜ 增加已知小数据集的数值正确性测试。
 
@@ -247,8 +247,8 @@
 
 ## 5. AlphaFold/Foldseek 结构近邻
 
-> **进展（结构检索引擎已落地，对标 UniProt/CTD 链；离线/假源已测）**：新建独立包 `pkg/structure/`——`StructureSearchProvider` 协议 + `StructuralNeighbor`（score/coverage/rank/taxon/relation_id/版本）+ `parse_foldseek_output` + `select_neighbors`（去自身/阈值/top-k/排名）+ `FoldseekStructureSearchProvider`（runner 可注入）+ `StructureSettings`。**不复用旧序列 KNN**。
-> 已离线验证**跨物种 大鼠→人** 近邻案例。**"仅差异蛋白"编排已落地**（管线 `restrict_to_differential` 默认开，依赖 L2 差异先落库）。**StructureCatalog + 结构缺失状态持久化已落地**：缺结构/不可用结构写入 `structure_evidence_status`，不再中断管线。**成功结构检索摘要持久化已落地**：`structure_search_run` + `structure_neighbor_evidence` 记录 run 参数、版本和 top-k neighbor evidence。**KG projection policy 已落地**：`STRUCTURAL_NEIGHBOR` 从持久化 evidence 读取，并只投影 rank 显著的关系。**仍 ⬜**：真实 Foldseek 二进制 + AlphaFold DB 索引/查询结构联调、物种过滤选项。
+> **进展（结构检索引擎 + provider 适配已落地；离线/假源已测）**：`pkg/structure/` 提供 Foldseek/AlphaFold 的底层结构检索能力：`StructureSearchProvider` 协议 + `StructuralNeighbor`（score/coverage/rank/taxon/relation_id/版本）+ `parse_foldseek_output` + `select_neighbors`（去自身/阈值/top-k/排名）+ `FoldseekStructureSearchProvider`（runner 可注入）+ `StructureSettings`。结构检索现在通过 `pkg/retrieval/providers/structure.py` 适配为 `NeighborProvider`：`StructureSearchNeighborProvider` 负责 live Foldseek/AlphaFold，`StructureEvidenceNeighborProvider` 负责读取已落库结构 evidence，二者都输出统一 `NeighborProviderResult`。**不复用旧肽序列 KNN**。
+> 已离线验证**跨物种 大鼠→人** 近邻案例。**"仅差异蛋白"编排已落地**（管线 `restrict_to_differential` 默认开，依赖 L2 差异先落库）。**StructureCatalog + 结构缺失状态持久化已落地**：缺结构/不可用结构写入状态，不再中断管线。**结构 evidence 双写已落地**：默认 persistence adapter 同时写通用 `neighbor_search_run/neighbor_evidence/neighbor_evidence_status` 和兼容旧投影的 `structure_search_run/structure_neighbor_evidence/structure_evidence_status`。**KG projection policy 已落地**：`STRUCTURAL_NEIGHBOR` 从持久化 structure evidence 读取，`CANDIDATE_NEIGHBOR` 从 `FusedCandidate` 读取，均按 policy 只投影高信号轻量关系。**仍 ⬜**：真实 Foldseek 二进制 + AlphaFold DB 索引/查询结构联调、物种过滤选项。
 
 ### 5.1 Provider 与运行环境
 
@@ -261,9 +261,9 @@
 
 ### 5.2 检索与持久化
 
-- ✅ 仅对差异蛋白执行结构检索（结构检索在 M3 假说生成内进行，管线 `restrict_to_differential` 默认开 → 只喂差异蛋白集）。
+- ✅ 仅对差异蛋白执行结构检索（结构检索由 `neighbor_search` 的 structure provider 执行，管线 `restrict_to_differential` 默认开 → 只喂差异蛋白集；`structure_search` 仅是显式指定时可跑的预计算/回填入口）。
 - ✅ 输出 query protein、neighbor protein、score、coverage、rank、taxon 和数据库版本。
-- ✅ 将成功结构检索摘要写 MySQL/cache，不把大结构文件写入 Neo4j（`structure_search_run`/`structure_neighbor_evidence`；缺结构状态写入 `structure_evidence_status`）。
+- ✅ 将成功结构检索摘要写 MySQL/cache，不把大结构文件写入 Neo4j（通用 `neighbor_*` evidence + 兼容 `structure_search_run`/`structure_neighbor_evidence`；缺结构状态写入 status 表）。
 - ✅ 为 `STRUCTURAL_NEIGHBOR` 图投影准备稳定关系 ID，并从持久化 `structure_neighbor_evidence` 经 projection policy 投影（默认 `rank<=5`；边回指 `evidence_id/run_id`）。
 - 🟨 增加 fake provider 单元测试和小型 Foldseek 集成测试：离线 fake/static provider 测试已覆盖；真实 Foldseek 小型集成测试仍待外部环境。
 - ✅ 验证至少一个大鼠→人结构近邻案例（离线 Foldseek TSV fixture）。
@@ -277,15 +277,15 @@
 - ✅ `status` 至少区分 `available/missing/ambiguous/low_confidence`；缺结构是证据通道缺失，不应导致实验管线失败。
 - ✅ Foldseek runner 从 catalog 解析查询结构；不再依赖 `query_structure_dir` 下的模糊文件名匹配作为主路径。
 - ✅ 结构缺失时记录 `reason`（如 `query_structure_dir_not_found`、`not_found_in_catalog`、`accession_unresolved`、`low_confidence`），并写入 `structure_evidence_status` 表。
-- 🟨 结构缺失后会跳过结构通道；§6 的其他 evidence provider 仍待接入。
+- 🟨 结构缺失后会跳过结构通道；§6 的 `sequence.kmer` MVP 已可兜底，真实 MMseqs2/BLAST、domain、ortholog provider 待接。
 
 **阶段验收：**
 
-- 🟨 输入差异蛋白 accession，可得到版本明确、参数完整、可复现的 top-k 结构近邻；若结构缺失，可得到可审计的缺失状态并继续降级流程。**离线 provider/catalog/缺失状态/neighbor evidence 持久化/KG policy 投影已测；真实 Foldseek DB 联调仍待做。**
+- 🟨 输入差异蛋白 accession，可通过 structure provider 得到版本明确、参数完整、可复现的 top-k 结构近邻；若结构缺失，可得到可审计的缺失状态并继续降级到其它 provider。**离线 provider/catalog/缺失状态/通用 neighbor evidence/structure evidence/KG policy 投影已测；真实 Foldseek DB 联调仍待做。**
 
 ---
 
-## 6. 结构近邻疾病假说与证据分级
+## 6. 多通道近邻疾病假说与证据分级
 
 ### 6.1 基础设施
 
@@ -296,19 +296,19 @@
 
 ### 6.2 新版假说生成
 
-> **进展（M3 已落地；离线/假源 MVP 闭环已测）**：`application/knowledge/hypothesis_generation.py`——每蛋白 取结构近邻(M2) → 解析近邻 gene(`GeneResolver`) → 查近邻 gene 的 CTD 疾病(M1) → 借为 **Protein 级 `MetaAnnotation(HYPOTHESIS)`**；derivation 存全部支持近邻/score/taxon/via_gene/CTD relation，confidence=最高近邻分；**蛋白自身 gene 已有直接结论的疾病不重复出假说**；幂等。
+> **进展（M3 已落地；离线/假源 MVP 闭环已测）**：`application/knowledge/hypothesis_generation.py` 已收敛为 `FusedCandidate` 消费者：读取融合候选 → 解析近邻 gene(`GeneResolver`) → 查近邻 gene 的 CTD 疾病(M1) → 借为 **Protein 级 `MetaAnnotation(HYPOTHESIS)`**；derivation 存全部支持近邻、fusion rank/score、support channels、evidence 回指、via_gene/CTD relation，confidence=最佳 channel 分；**蛋白自身 gene 已有直接结论的疾病不重复出假说**；幂等。没有融合候选时只记录 `no_candidate_neighbors` 等 unresolved summary，不回退到旧结构检索路径。
 > `get_gene_resolver` **已实现**（复用师兄的 UniProt MCP，见 `UniProtMCPGeneResolver`）——M3 默认装配不再有 `NotImplementedError`，仅待真实 MCP 联调。
-> **多路融合重排（接入 `pkg.retrieval`）**：结构近邻不再只按 Foldseek 单路 `score` 排，而经 `pkg/structure/rerank.py::rerank_neighbors`——用 RRF（`pkg.retrieval.rrf`）融合 `score` + `coverage` 两路（并留 `extra_channels` 口子接序列/向量/属性召回），支持近邻按融合分重排；`confidence` 仍取最高结构分（保持兼容），新增 `rerank_confidence`/`fused_score`/`ranking`。可 `rerank=False` 退回纯 score。
-> **"仅差异蛋白"编排已落地**：管线 `_step_hypothesis` 在 `restrict_to_differential`（默认开）下由 `list_differentials` 取 `is_differential` 蛋白集传 `protein_ids`；deep_search(L4) 只验证 HYPOTHESIS 注释，随之自动收窄。无差异（如未提交定量）→ 不出假说。
-> **仍 ⬜**：创建后续 deep-search 任务（§8）、背景疾病/通路优先级、把更多召回路（序列/向量）真正接成 `extra_channels`。
+> **多路融合重排（接入 `pkg.retrieval`）**：`application/knowledge/neighbor_search.py` 运行统一 `NeighborProvider` 列表并用 RRF 生成 `FusedCandidate`；`pkg/retrieval/providers/structure.py` 中的 `StructureSearchNeighborProvider` 是结构 channel 的 provider 实现，负责执行 Foldseek/AlphaFold 并返回结构 evidence bundle；`StructureEvidenceNeighborProvider` 保留用于读取已落库结构 evidence。fusion 不知道 structure/sequence/domain/ortholog 证据如何产生，只看统一候选。
+> **"仅差异蛋白"编排已落地**：管线 `_step_neighbor_search` / `_step_hypothesis` 在 `restrict_to_differential`（默认开）下由 `list_differentials` 取 `is_differential` 蛋白集传 `protein_ids`；deep_search(L4) 只验证 HYPOTHESIS 注释，随之自动收窄。无差异（如未提交定量）→ 不出假说。
+> **仍 ⬜**：创建后续 deep-search 任务（§8）、背景疾病/通路优先级、真实 MMseqs2/BLAST、domain、ortholog provider。
 
-- ✅ 停止使用旧“肽序列近邻→借 GO/EC”作为新版假说链（M3 当前走结构近邻 → gene → CTD disease）。
-- ✅ 定义结构邻居疾病证据输入模型：`StructuralNeighbor`、`StructureEvidenceStatus`、`StructureSearchRun`、`StructureNeighborEvidence` 已存在。
-- ✅ 对每个差异蛋白读取结构近邻（管线只传差异蛋白集；离线假源已测，真实 Foldseek 二进制见 §5）。
+- ✅ 停止使用旧“肽序列近邻→借 GO/EC”作为新版假说链（M3 当前走融合近邻 → gene → CTD disease；结构是默认 channel，sequence.kmer 是 MVP 兜底）。
+- ✅ 定义结构邻居与通用 neighbor evidence 输入模型：`StructuralNeighbor`、`StructureEvidenceStatus`、`StructureSearchRun`、`StructureNeighborEvidence`，以及 `NeighborSearchRun`、`NeighborEvidence`、`NeighborEvidenceStatus` 已存在。
+- ✅ 对每个差异蛋白通过 `neighbor_search` 统一运行 providers 并融合候选；结构检索只是 provider 之一，`hypothesis_generation` 不直接调用任何 provider。
 - ✅ 查询近邻 protein→gene→CTD disease 直接关系。
 - ✅ 将借来的疾病关联生成 Protein 级 `MetaAnnotation(HYPOTHESIS)`。
 - ✅ derivation 必须保存所有支持近邻、score、via gene、CTD relation 和版本。
-- ✅ 定义多近邻共识、最高分、覆盖度和置信度算法（结构最高分 confidence + RRF `score/coverage` 融合重排）。
+- ✅ 定义多近邻共识、最高分和置信度算法（最佳 channel score 作为 confidence；RRF/fusion rank 作为候选排序依据）。
 - ✅ 防止目标蛋白已有 CTD 直接证据时重复生成假说。
 - ⬜ 只对实验背景相关疾病/通路优先展开，同时保留查询策略。
 - 🟨 将假说幂等写入 MySQL，并创建后续 deep-search 任务：假说幂等写入已完成；deep-search 任务创建仍待 §8。
@@ -316,15 +316,17 @@
 
 ### 6.3 多通道近邻融合与证据降级
 
-> **设计补充**：项目价值不应绑定在 AlphaFold/Foldseek 单一路径上。结构近邻只是一个高价值 channel；当结构不可用时，应自动降级到 sequence、domain、metadata、ortholog、pathway、literature 等 provider。当前 `pkg.retrieval.HybridRetriever`/`rrf` 与 `pkg.structure.rerank.extra_channels` 已提供基础件。**融合候选中间层已落地**：`FusedCandidate` + `fused_candidate` 表 + Repository/MySQL 往返 + KG `CANDIDATE_NEIGHBOR` policy 投影；真实多 channel provider/fusion engine 仍待接入。
+> **设计补充**：项目价值不应绑定在 AlphaFold/Foldseek 单一路径上。结构近邻只是一个高价值 channel；当结构不可用时，应自动降级到 sequence、domain、ortholog 等 provider。边界图见 [`neighbor-provider-architecture.svg`](neighbor-provider-architecture.svg)。**融合候选中间层已落地**：`FusedCandidate` + `fused_candidate` 表 + Repository/MySQL 往返 + KG `CANDIDATE_NEIGHBOR` policy 投影。**evidence-backed provider search 已落地**：`NeighborProvider` 统一返回 `NeighborProviderResult(candidates, runs, evidence, statuses)`，`NeighborEvidencePersistenceAdapter` 统一写 `neighbor_search_run/neighbor_evidence/neighbor_evidence_status`，provider-specific adapter 只负责额外兼容表；`NeighborSearchService` 再融合；provider 可由 `neighbor_provider_names` 经 registry 构建，结构 provider 和其它 provider 并列执行，单 provider 失败不会阻断其它 provider 兜底；`generate_fused_neighbor_candidates` 保留为兼容 wrapper；真实 MMseqs2/BLAST 与更多 provider 待接。
 
-- ⬜ 抽象统一 `NeighborProvider` / `ProteinNeighborCandidate`：各 provider 输出 `query_accession`、`target_accession`、`channel`、`rank`、`raw_score`、`evidence`、`provider_version`。
-- ⬜ 接入候选通道：`structure`(Foldseek)、`sequence`(FASTA/MMseqs2/BLAST/k-mer/embedding)、`domain`(InterPro/Pfam)、`metadata`(GO/EC/keyword/pathway)、`ortholog`(OrthoDB/eggNOG/Ensembl Compara/OMA)、`literature`(DeepXiv/PubMed 等)。
-- 🟨 用 weighted RRF 融合多路 ranked targets，优先按名次融合异构分数；结构缺失时重分配权重而不是失败：融合结果承载模型 `FusedCandidate`/表 `fused_candidate` 已完成，实际 fusion engine 待接。
+- ✅ 抽象统一 `NeighborProvider` / `NeighborProviderResult` / `NeighborCandidate` / `NeighborProviderRegistry`：各 provider 输出 `query_accession`、`target_accession`、`channel`、`rank`、`score`、`evidence_id`、`provider_version`，并可附带 run/evidence/status rows 由 persistence adapter 落库。
+- ✅ 通用 evidence schema：`NeighborSearchRun` / `NeighborEvidence` / `NeighborEvidenceStatus` + MySQL 表 `neighbor_search_run` / `neighbor_evidence` / `neighbor_evidence_status`，sequence/domain/ortholog 后续可直接共用。
+- ✅ 抽象 `ProviderPersistenceAdapter`：`neighbor_search` 不再判断 structure row 类型；`StructureEvidencePersistenceAdapter` 封装 structure run/evidence/status 的落库逻辑。
+- 🟨 接入候选通道：`structure`(Foldseek evidence) + `sequence`(k-mer MVP) 已可融合并写通用 evidence；`sequence` 的真实 FASTA/MMseqs2/BLAST、`domain`(InterPro/Pfam)、`ortholog`(OrthoDB/eggNOG/Ensembl Compara/OMA) 待接。
+- ✅ 用 RRF 融合多路 ranked targets，优先按名次融合异构分数；结构缺失时其他 provider 可继续输出候选。当前 `run_neighbor_search` 已进入 pipeline，权重化待接。
 - ✅ `FusedCandidate` 进入 KG 前必须过 projection policy：默认 `CANDIDATE_NEIGHBOR` 需 `fusion_rank<=5` 且至少两个 support channels；未通过只留 MySQL。
-- ⬜ 融合后的相似蛋白再进入 evidence transfer：`neighbor accession -> gene -> CTD disease`；目标 accession/gene 自身直接证据为 `CONCLUSION`，homolog/ortholog/domain/pathway/literature 迁移证据为 `HYPOTHESIS`。
-- ⬜ 避免循环论证：疾病标签本身不参与“相似蛋白检索”的打分；CTD/疾病库只用于检索后证据转移和报告溯源。
-- ⬜ 对完全无法解析 accession/gene/sequence/ortholog 的蛋白记录 `unresolved`，不生成结论或假说。
+- ✅ 融合后的相似蛋白再进入 evidence transfer：`neighbor accession -> gene -> CTD disease`；目标 accession/gene 自身直接证据为 `CONCLUSION`，homolog/ortholog/domain/pathway/literature 迁移证据为 `HYPOTHESIS`。
+- ✅ 避免循环论证：疾病标签本身不参与“相似蛋白检索”的打分；CTD/疾病库只用于检索后 evidence transfer 和报告溯源。
+- 🟨 对完全无法解析 accession/gene/sequence/ortholog 的蛋白记录 `unresolved`：当前 hypothesis summary 已记录 `no_candidate_neighbors`、`unresolved_gene`、`no_ctd_disease`，neighbor provider status 可记录 `no_neighbors`/缺结构；更细的 ortholog/domain unresolved 需等对应 provider 接入。
 
 **MVP 验收：**
 
@@ -334,13 +336,14 @@
 
 ## 7. Neo4j 通用 KG 与本次实验 KG
 
-> **进展（L3 纯代码核心已落地；离线测试通过）**：新建独立的双节点知识图谱层，与旧 PSM/肽 KNN 图（§13 待 deprecate）完全隔离。
+> **进展（L3 真实 Neo4j 联调已通过）**：新建独立的双节点知识图谱层，与旧 PSM/肽 KNN 图（§13 待 deprecate）完全隔离。2026-07-13 的
+> `scripts/smoke/neo4j_kg_mysql_smoke.py` 已用本机 MySQL + Neo4j 验证建约束、双实验投影、遍历、幂等重投影及工作区隔离清理。
 > `pkg/graph/model.py`——节点/边模型（`NodeLabel` Protein/Gene/Disease/Group、`EdgeType` ENCODED_BY/ASSOCIATED_WITH/STRUCTURAL_NEIGHBOR/CANDIDATE_NEIGHBOR/DIFFERENTIAL、`GraphScope` GENERAL/EXPERIMENT、`DiseaseLink`），节点带 `mysql_ref`、EXPERIMENT 作用域强制带 `experiment_id`。
 > `pkg/graph/port.py`——`GraphStore` 端口（Protocol）+ `InMemoryGraphStore`（幂等 upsert/合并、一跳 `neighbors`、跨 `ENCODED_BY` 缝合的 `protein_diseases`、`drop_experiment` 只清工作区、带过滤的 `count_*`）。
 > `pkg/graph/neo4j_store.py`——`Neo4jGraphStore`（按 label/relType 分组 MERGE、`mysql_ref`/`props_json` JSON 编码、查询标量提升、`session(database=…)`、`get_kg_store` 单例；neo4j 延迟加载）。
 > `application/graph/project_kg.py`——`project_experiment_kg`：读仓库蛋白/基因、CTD 基因结论、蛋白级假说、L2 差异、`structure_neighbor_evidence`、`fused_candidate`，按 Q3/Q4 投影成两层图，幂等可重投；结构近邻已改为从持久化 evidence 投影，融合候选按 policy 投为实验作用域 `CANDIDATE_NEIGHBOR`。
 > `application/graph/projection_policy.py`——KG 不承载所有检索 channel 明细；多 channel/Fusion 结果应先落 MySQL evidence，只有满足 projection policy（如 rank 显著、融合 rank 靠前、多 channel 共识）的轻量关系才进入 KG，并在边上回指 `evidence_id/run_id`。
-> **仍 ⬜（B 组/后续）**：真连 Neo4j 实例集成测试、事务/重试、版本化重建与过期清理、deep-search 回写、Domain/Tissue/Taxon 等扩展节点与 HAS_DOMAIN/EXPRESSED_IN/BELONGS_TO/IN_GROUP/HAS_ANNOTATION 等扩展边。
+> **仍 ⬜（B 组/后续）**：事务/重试、版本化重建与过期清理、deep-search 回写、Domain/Tissue/Taxon 等扩展节点与 HAS_DOMAIN/EXPRESSED_IN/BELONGS_TO/IN_GROUP/HAS_ANNOTATION 等扩展边。
 
 ### 7.1 GraphStore 重构
 
@@ -348,8 +351,8 @@
 - ✅ 新双节点层与旧 PSM/肽 KNN 图（`store/types/cypher`）隔离，旧图 §13 待 deprecate。
 - ✅ 将 `GraphStore` 拆为应用端口（`port.GraphStore`）与 `Neo4jGraphStore` 实现（另含 `InMemoryGraphStore` 测试实现）。
 - ✅ 所有业务访问经过端口（`project_kg` 只调端口方法，不拼 Cypher）。
-- 🟨 Neo4j session 使用配置中的 database（`session(database=…)`）；namespace/多库隔离待真实部署验证。
-- 🟨 批写（按 label/relType 分组 UNWIND）与连接关闭已实现；事务、重试、连接验证待补。
+- ✅ Neo4j session 使用配置中的 database（`session(database=…)`）；已在本机真实部署验证。namespace/多库隔离仍待企业版或独立实例验证。
+- 🟨 批写（按 label/relType 分组 UNWIND）、连接关闭和真实连接验证已完成；事务、重试待补。
 
 ### 7.2 通用 KG
 
@@ -367,11 +370,11 @@
 - ✅ 公共实体通过 canonical key 引用，不复制成可修改公共事实（疾病节点 GENERAL，假说性仅落在 EXPERIMENT 边）。
 - ✅ 实验判断绑定 `experiment_id` 且作用域为 EXPERIMENT，不同实验互不污染（`drop_experiment` 隔离已测）。
 - ⬜ deep-search 只更新实验 Annotation/历史，不直接修改公共关系（deep-search 见 §8）。
-- 🟨 Cypher 结构测试已加（不连库验形状）；真实 Neo4j 集成测试待 B 组。
+- ✅ Cypher 结构测试及真实 Neo4j 集成 smoke 已通过；事务/重试仍待补。
 
 **阶段验收：**
 
-- 🟨 能从 MySQL 投影出通用 KG + 一个实验工作区，删除工作区不影响通用 KG，图节点经 `mysql_ref` 回指 MySQL；结构近邻从持久化 evidence 读取，并按 rank 显著性筛边；融合候选按 `fusion_rank/support_channels` 投 `CANDIDATE_NEIGHBOR`：**离线（内存图库）已通过**（`test_project_kg_v3.py`/`test_graph_projection_policy.py`）；真实 Neo4j 重建/隔离联调待做。
+- ✅ 能从 MySQL 投影出通用 KG + 一个实验工作区，删除工作区不影响通用 KG，图节点经 `mysql_ref` 回指 MySQL；结构近邻从持久化 evidence 读取，并按 rank 显著性筛边；融合候选按 `fusion_rank/support_channels` 投 `CANDIDATE_NEIGHBOR`：离线测试及本机真实 MySQL/Neo4j smoke 均已通过。版本化重建和过期投影清理待做。
 
 ---
 
@@ -408,7 +411,7 @@
 
 ## 9. 实验数据库冻结归档
 
-> **进展（L5 纯代码核心已落地；离线测试通过）**：`application/experiment/freeze.py`——`freeze_experiment`：冻结前检查（每条蛋白级疾病假说须已被 deep-search 处理，否则报 `FreezePreconditionError`，可显式放行）→ 从仓库构建**确定性内容 manifest**（输入/上下文、计数、证据等级分布、全量 Meta+历史+差异+富集内容、图投影摘要、来源/pipeline/model/params 版本、request/附件 hash）→ `compute_manifest_checksum` 稳定 SHA-256 → 建 `ExperimentSnapshot(FINAL)`，版本唯一由仓库 + DDL `UNIQUE` 双重阻止覆盖。`verify_snapshot_integrity` 重算 checksum 做篡改检测。
+> **进展（L5 已落地并完成真库联调）**：`application/experiment/freeze.py`——`freeze_experiment`：冻结前检查 → 从仓库构建确定性内容 manifest（含完整图节点/边、schema v2 checksum 与 GNN 导出）→ `compute_manifest_checksum` → `ExperimentSnapshot(FINAL)`。重建工具已验证 MySQL 重投影与冻结图 checksum 一致。
 > 为承载冻结内容给 `ExperimentSnapshot`（模型 + DDL `manifest_json` + MySQL 存取）加了 `manifest` 字段；deep-search 之后再改事实，旧快照读回（`get_snapshot`）仍不变。
 > **仍 ⬜（B 组/后续）**：冻结实验 KG 到隔离 Neo4j database/namespace 的可恢复导出物、`SUPERSEDED` 编排、跨实验 canonical ID 对齐、真库版本并发。
 
@@ -476,12 +479,12 @@
 
 ### 11.2 Pipeline
 
-> **进展（下游管线编排已落地；离线 e2e 通过）**：新建独立包 `application/orchestration/`——`run_downstream_pipeline` 按依赖序串 `import → base_annotation → ctd_disease → differential → enrichment → hypothesis → kg_projection → deep_search → freeze → report`；`DownstreamPipelineConfig` 注入外部源/参数，`PipelineResult`/`StepResult` 为独立状态（不复用旧 `ExecutionResults`）。每步独立 try/except（失败隔离 + `stop_on_error`），freeze 版本已存在则跳过（幂等重跑/断点续跑），`steps=` 可只跑子集，`pipeline_status` 派生进度。与旧 Mock LangGraph 主图隔离。
+> **进展（下游管线编排已落地；离线 e2e 通过）**：新建独立包 `application/orchestration/`——`run_downstream_pipeline` 按依赖序串 `import → base_annotation → ctd_disease → differential → enrichment → neighbor_search → hypothesis → kg_projection → deep_search → freeze → report`；`DownstreamPipelineConfig` 注入外部源/参数，`PipelineResult`/`StepResult` 为独立状态（不复用旧 `ExecutionResults`）。每步独立 try/except（失败隔离 + `stop_on_error`），freeze 版本已存在则跳过（幂等重跑/断点续跑），`steps=` 可只跑子集，`pipeline_status` 派生进度。与旧 Mock LangGraph 主图隔离。
 > **另提供 LangGraph 主图**（`orchestration/graph.py`，旧主图风格的新实现）：`StateGraph` + 下游专用共享状态 `DownstreamState`（非旧 `ExecutionResults`）+ 节点复用同一批 `execute_step`（业务逻辑不重复）+ **冻结前 `human_approval` 条件边**（approve→freeze / modify→END / reject→END）+ audit log 逐步留痕；节点级失败隔离（下游 no-op，条件边收敛 END）。当前内存 `invoke`；接 checkpointer + `interrupt_before` 即得暂停/恢复式人在回路。
 > **仍 ⬜**：旧 Mock 主线（`application/pipeline/` 的 planner/scheduler/findings/report 节点）下线（§13）、真实外部源的端到端集成（B 组）、LangGraph checkpointer/streaming 接线。
 
 - ✅ 新版下游流程定义独立状态（`PipelineResult`/`StepResult`），不复用旧 `ExecutionResults`。
-- ✅ 节点顺序：import → base annotation → CTD → differential → enrichment → hypothesis → workspace KG → deep-search → freeze → report。
+- ✅ 节点顺序：import → base annotation → CTD → differential → enrichment → neighbor search → hypothesis → workspace KG → deep-search → freeze → report。
 - ✅ 节点支持幂等重跑、断点恢复（freeze 跳过 + `steps` 子集）、失败隔离和状态查询。
 - ✅ 新管线独立于旧 Mock（planner/scheduler/findings/evidence/report）；旧 Mock 主线 `application/pipeline/` 已标记 deprecated（运行时 `DeprecationWarning` + 文档，§13），待整体移除。
 - ✅ 提供 LangGraph 主图（`run_downstream_graph`，旧风格新实现）：复用同一批 step + 冻结前人审批条件边 + audit log，与纯 Python runner 共存。
@@ -524,7 +527,7 @@
 - ✅ CTD parser（直接证据过滤/大小写匹配）与基因疾病结论服务（全量/幂等/未知实验）测试。
 - ✅ CTD 预处理脚本测试（过滤为直接证据精简 CSV + manifest，且产物可被生产 parser 读回；含 .gz）。
 - ✅ Foldseek 结构近邻测试（解析/去自身/阈值/top-k/排名 + 跨物种 大鼠→人 假源案例）。
-- ✅ M3 结构类比假说测试（借 CTD/跨物种/去重已结论/幂等）+ MVP 闭环测试（结论与假说同现、可追溯）。
+- ✅ M3 近邻迁移假说测试（借 CTD/跨物种/去重已结论/幂等）+ MVP 闭环测试（结论与假说同现、可追溯）。
 - ✅ UniProt MCP gene 解析测试（多返回形态/分号取首/跳过无 gene/去重批处理）。
 - ✅ L2 差异分析测试（log2FC/方向/BH/无重复退化 + 服务自动选组持久化）与富集测试（超几何显著性/背景裁剪 + 疾病富集服务接线）。
 - ✅ 定量摄入测试（§4.1）：契约校验通过/坏引用整批拦截/`experiment_id` 不匹配/缺字段(422)/幂等 upsert/未知实验，含 API 录入查询往返。
@@ -533,20 +536,20 @@
 - ✅ L5 冻结归档测试：FINAL 快照 + manifest/checksum、冻结前检查、只读/阻止覆盖、版本化（旧版不变）、篡改检测。
 - ✅ 富集持久化测试：服务写全量结果 + study/background checksum + 幂等重跑 + MySQL 往返。
 - ✅ L6 分层报告测试：分层章节/可追溯陈述、确定性、只读冻结快照、防篡改、未知版本、**报告落库往返/幂等 upsert/checksum 自洽（防 strip）/生成不落库**。
-- ✅ 下游管线编排测试：纯 runner 端到端 9 步全过、幂等重跑（freeze 跳过）、失败隔离、子集执行、状态查询。
+- ✅ 下游管线编排测试：纯 runner 端到端标准 `STEP_ORDER` 全过、幂等重跑（freeze 跳过）、失败隔离、子集执行、状态查询。
 - ✅ 下游 LangGraph 主图测试：approve 全流程、reject/modify 冻结前停、失败隔离、人审批路由单测、图可编译。
 - ✅ 下游对外 API 测试：创建/校验(422)/查询、定量录入/查询往返、跑管线、KG 证据路径、快照/报告 artifact 列表、未知实验(404)、重复冻结(409)。
-- ✅ M3 结构近邻 RRF 融合重排测试：rerank_neighbors（覆盖度可反超 score / 额外通道 / 降序）+ M3 支持近邻按融合分重排、confidence 兼容、rerank=False 退回。
-- ✅ 当前全量测试：`215 passed, 1 skipped`。
+- ✅ M3 近邻融合测试：`rerank_neighbors` 覆盖结构内部排序工具；`neighbor_search` 覆盖 provider registry / provider failure isolation / persistence adapter injection / generic neighbor evidence → RRF → `FusedCandidate`；`hypothesis_generation` 覆盖只读 fused candidate 的 evidence transfer 与 unresolved summary。
+- ✅ 当前全量测试：`268 passed, 1 skipped, 1 warning`。
 
 ### 14.2 待补测试
 
-- ⬜ 真实 MySQL 集成测试。
+- ✅ 真实 MySQL 集成 smoke：深检索证据、真实 PubMed、全链路和 Neo4j KG 投影均已验证。
 - ⬜ 真实 UniProt MCP 集成测试。
 - ⬜ CTD parser/版本/证据过滤测试。
 - ⬜ 差异统计数值正确性测试。
 - ⬜ Foldseek 小数据库集成测试。
-- 🟨 新 Neo4j Schema/事务/隔离测试：内存图库 + Cypher 形状测试已过；真实 Neo4j 集成测试 ⬜。
+- 🟨 新 Neo4j Schema/事务/隔离测试：内存图库 + Cypher 形状 + 真实 Neo4j 投影/隔离 smoke 已过；事务与重试测试待补。
 - 🟨 deep-search 状态机与幂等测试：离线（内存源）已过；真实文献检索源集成测试 ⬜。
 - 🟨 快照只读、版本、checksum 和恢复测试：离线已过（manifest/checksum/只读/版本化/篡改）；真库版本并发 ⬜。
 - ⬜ 从真实三件套到冻结报告的端到端测试。
@@ -591,13 +594,13 @@
 
 - 🟨 差异蛋白集合可查询：差异引擎+服务可产出并由 `list_differentials` 派生差异集；真实定量联调后转 ✅。
 - 🟨 Foldseek 结构近邻可复现：引擎+离线测试完成；真实 Foldseek/AF DB 联调后转 ✅。
-- 🟨 结构近邻借 CTD 生成假说：代码 + 离线闭环测试完成；真实数据联调后转 ✅。
+- 🟨 近邻迁移借 CTD 生成假说：代码 + 离线闭环测试完成；真实数据联调后转 ✅。
 - 🟨 输出结论/假说 Meta 表并通过案例验收：离线 MVP 闭环已过；真实案例待联调。
 
 ### Milestone D：知识图谱工作区
 
-- 🟨 通用 KG 和本次实验 KG 可从 MySQL 重建：投影服务 + 离线（内存图库）已通过；真实 Neo4j 重建联调 ⬜。
-- 🟨 公共知识与实验判断隔离：GENERAL/EXPERIMENT 两层 + `drop_experiment` 隔离已测；真库验证 ⬜。
+- 🟨 通用 KG 和本次实验 KG 可从 MySQL 重建：投影服务、离线内存图库及真实 Neo4j smoke 已通过；版本化重建待做。
+- ✅ 公共知识与实验判断隔离：GENERAL/EXPERIMENT 两层 + `drop_experiment` 隔离已在真实库验证。
 - ⬜ 前端/API 可查询证据路径（端口已有 `protein_diseases`/`neighbors` 遍历；API 见 §11）。
 
 ### Milestone E：闭环交付
@@ -615,12 +618,13 @@
 2. 🟨 CTD parser、直接证据过滤和 gene-disease Meta：代码完成；真实文件下载/联调 ⬜。
 3. ⬜ 完成定量/差异 Repository 与差异蛋白选择。
 4. 🟨 Foldseek `StructureSearchProvider`：引擎+解析/筛选/假源测试完成；真实二进制/AF DB 联调 ⬜。
-5. 🟨 新版结构疾病假说 + 最小 Meta 闭环：代码完成（离线 MVP 闭环测试通过）；真实数据联调 ⬜。
-6. 🟨 重构 `GraphStore` 并构建通用 KG/实验工作区：端口 + 内存/Neo4j 实现 + 投影服务 + 离线测试完成；真连 Neo4j 联调 ⬜。
-7. 🟨 接入 deep-search 状态机：任务/证据/可注入源 + 纯状态机 + 回写/历史/幂等/人工覆盖 + 离线测试完成；真实文献检索源联调 ⬜。
-8. 🟨 实现冻结归档和版本管理：冻结前检查 + manifest + checksum + FINAL 只读/版本化 + 篡改检测 + 离线测试完成；隔离 Neo4j 导出/真库并发 ⬜。
-9. 🟨 实现分层报告与 API/Pipeline 集成：分层报告（从冻结快照出可审计 Markdown）+ 报告落库 + API/Pipeline 集成 + 离线测试完成；PDF ⬜。
-10. ⬜ 清理旧上游和旧 KNN 代码路径，完成生产质量验证。
+5. 🟨 新版近邻迁移疾病假说 + 最小 Meta 闭环：代码完成（离线 MVP 闭环测试通过）；真实数据联调 ⬜。
+6. 🟨 真实 MMseqs2/BLAST、domain、ortholog provider：统一 provider/evidence 架构已完成；真实数据源接入 ⬜。
+7. 🟨 重构 `GraphStore` 并构建通用 KG/实验工作区：端口 + 内存/Neo4j 实现 + 投影服务 + 离线测试完成；真连 Neo4j 联调 ⬜。
+8. 🟨 接入 deep-search 状态机：任务/证据/可注入源 + 纯状态机 + 回写/历史/幂等/人工覆盖 + 离线测试完成；真实文献检索源联调 ⬜。
+9. 🟨 实现冻结归档和版本管理：冻结前检查 + manifest + checksum + FINAL 只读/版本化 + 篡改检测 + 离线测试完成；隔离 Neo4j 导出/真库并发 ⬜。
+10. 🟨 实现分层报告与 API/Pipeline 集成：分层报告（从冻结快照出可审计 Markdown）+ 报告落库 + API/Pipeline 集成 + 离线测试完成；PDF ⬜。
+11. ⬜ 清理旧上游和旧 KNN 代码路径，完成生产质量验证。
 
 ---
 
@@ -674,11 +678,19 @@
 - ✅ [`src/application/experiment/quantification_ingest.py`](../src/application/experiment/quantification_ingest.py)：定量摄入服务（校验 protein/group 属于实验 + 整批原子 + 幂等 upsert，§4.1）。
 - 🧪 [`tests/test_differential_v3.py`](../tests/test_differential_v3.py)、[`tests/test_enrichment_v3.py`](../tests/test_enrichment_v3.py)、[`tests/test_enrichment_persist_v3.py`](../tests/test_enrichment_persist_v3.py)、[`tests/test_quantification_ingest.py`](../tests/test_quantification_ingest.py)。
 
-### M3 · 结构类比假说
+### M3 · Neighbor Search / 近邻迁移假说
 
 - ✅ [`src/pkg/disease/gene_resolver.py`](../src/pkg/disease/gene_resolver.py)：accession→gene 解析协议与内存实现。
-- ✅ [`src/application/knowledge/hypothesis_generation.py`](../src/application/knowledge/hypothesis_generation.py)：结构类比假说服务（M3）。
-- 🧪 [`tests/test_hypothesis_generation_v3.py`](../tests/test_hypothesis_generation_v3.py)、[`tests/test_mvp_evidence_closure.py`](../tests/test_mvp_evidence_closure.py)、[`tests/pkg/test_uniprot_gene_resolver.py`](../tests/pkg/test_uniprot_gene_resolver.py)。
+- ✅ [`docs/neighbor-provider-architecture.svg`](neighbor-provider-architecture.svg)：neighbor provider / evidence / fusion / hypothesis / KG projection 边界图。
+- ✅ [`src/pkg/retrieval/neighbors.py`](../src/pkg/retrieval/neighbors.py)：多 channel neighbor 协议、`NeighborProviderResult`、provider registry。
+- ✅ [`src/pkg/retrieval/persistence.py`](../src/pkg/retrieval/persistence.py)：provider result 持久化协议 `ProviderPersistenceAdapter` + 通用 `NeighborEvidencePersistenceAdapter`。
+- ✅ [`src/pkg/experiment/types.py`](../src/pkg/experiment/types.py)：通用 neighbor evidence 模型 `NeighborSearchRun` / `NeighborEvidence` / `NeighborEvidenceStatus`。
+- ✅ [`src/pkg/retrieval/providers/sequence.py`](../src/pkg/retrieval/providers/sequence.py)：sequence channel 的 `NeighborProvider` MVP 实现（k-mer recall + identity rerank）。
+- ✅ [`src/application/knowledge/structure_search.py`](../src/application/knowledge/structure_search.py)：结构检索 provider 执行与 evidence/status 持久化（可选预计算/回填入口）。
+- ✅ [`src/pkg/retrieval/providers/structure.py`](../src/pkg/retrieval/providers/structure.py)：结构 channel 的 `NeighborProvider` 实现（live Foldseek/AlphaFold + precomputed evidence）和 `StructureEvidencePersistenceAdapter`。
+- ✅ [`src/application/knowledge/neighbor_search.py`](../src/application/knowledge/neighbor_search.py)：统一 provider 编排 + 多 channel RRF 融合 → `FusedCandidate`；结构检索通过 pkg provider 与其它 provider 并列接入。
+- ✅ [`src/application/knowledge/hypothesis_generation.py`](../src/application/knowledge/hypothesis_generation.py)：只消费 `FusedCandidate` 的近邻迁移假说服务（M3）。
+- 🧪 [`tests/test_hypothesis_generation_v3.py`](../tests/test_hypothesis_generation_v3.py)、[`tests/test_neighbor_fusion_v3.py`](../tests/test_neighbor_fusion_v3.py)、[`tests/test_mvp_evidence_closure.py`](../tests/test_mvp_evidence_closure.py)、[`tests/pkg/test_neighbor_sequence_provider.py`](../tests/pkg/test_neighbor_sequence_provider.py)、[`tests/pkg/test_uniprot_gene_resolver.py`](../tests/pkg/test_uniprot_gene_resolver.py)。
 
 ### L3 · 本次实验 KG（Neo4j GraphStore）
 
@@ -708,7 +720,7 @@
 
 ### §11.2 · 下游管线编排
 
-- ✅ [`src/application/orchestration/pipeline.py`](../src/application/orchestration/pipeline.py)：纯 Python 线性 runner `run_downstream_pipeline`（9 步依赖序 + 失败隔离 + 幂等/断点 + 状态查询）+ 共用 `execute_step` + `pipeline_status`。
+- ✅ [`src/application/orchestration/pipeline.py`](../src/application/orchestration/pipeline.py)：纯 Python 线性 runner `run_downstream_pipeline`（标准 `STEP_ORDER`：`import → base_annotation → ctd_disease → differential → enrichment → neighbor_search → hypothesis → kg_projection → deep_search → freeze → report`；另注册可选 `structure_search` 回填步骤）+ 失败隔离 + 幂等/断点 + 状态查询 + 共用 `execute_step` + `pipeline_status`。
 - ✅ [`src/application/orchestration/graph.py`](../src/application/orchestration/graph.py)：LangGraph 主图 `build_downstream_graph` / `run_downstream_graph`（共享状态 + 冻结前人审批条件边 + audit log，复用 `execute_step`）。
 - 🧪 [`tests/test_pipeline_v3.py`](../tests/test_pipeline_v3.py)、[`tests/test_pipeline_graph_v3.py`](../tests/test_pipeline_graph_v3.py)。
 
