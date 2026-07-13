@@ -10,6 +10,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from .annotation_settings import AnnotationSettings
 from .ctd_settings import CtdSettings
 from .database_settings import DatabaseSettings, ExperimentDatabaseSettings
+from .deep_search_settings import DeepSearchSettings
 from .graph_settings import GraphSettings
 from .mcp_settings import MCPSettings
 from .structure_settings import StructureSettings
@@ -62,6 +63,10 @@ class AppSettings(BaseSettings):
     ctd: CtdSettings = Field(
         default_factory=CtdSettings,
         description="CTD 基因-疾病直接证据；环境变量前缀 PTAGENT_CTD__",
+    )
+    deep_search: DeepSearchSettings = Field(
+        default_factory=DeepSearchSettings,
+        description="文献 deep-search MCP；环境变量前缀 PTAGENT_DEEP_SEARCH__",
     )
     structure: StructureSettings = Field(
         default_factory=StructureSettings,

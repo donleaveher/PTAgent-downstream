@@ -1,8 +1,6 @@
 """L4 deep-search 纯状态机 + 检索源契约测试。"""
 from __future__ import annotations
 
-import pytest
-
 from pkg.deep_search import (
     DeepSearchTask,
     DeepSearchVerdict,
@@ -10,6 +8,8 @@ from pkg.deep_search import (
     EvidenceStance,
     InMemoryLiteratureSource,
     LiteratureSearchSource,
+    MCPLiteratureSearchSource,
+    PubMedLiteratureSearchSource,
     decide_verdict,
     get_literature_search_source,
 )
@@ -80,6 +80,7 @@ def test_inmemory_source_returns_by_disease_and_satisfies_port() -> None:
     assert src.search(miss) == []
 
 
-def test_production_source_factory_refuses_mock() -> None:
-    with pytest.raises(NotImplementedError):
-        get_literature_search_source()
+def test_production_source_factory_builds_real_mcp_adapter() -> None:
+    source = get_literature_search_source()
+    assert isinstance(source, PubMedLiteratureSearchSource)
+    assert isinstance(source, LiteratureSearchSource)

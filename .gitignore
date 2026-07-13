@@ -18,6 +18,8 @@ data/uploads/
 data/ctd/
 data/alphafold/
 data/structures/
+data/foldseek_tmp/
+data/runtime/
 
 # Environment & secrets（保留 .env.example 供模板提交）
 .env

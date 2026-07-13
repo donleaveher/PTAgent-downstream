@@ -2,7 +2,12 @@
 
 from pkg.deep_search.source import (
     InMemoryLiteratureSource,
+    LiteratureMCPError,
+    MCPLiteratureSearchSource,
+    PubMedLiteratureSearchSource,
     get_literature_search_source,
+    parse_literature_mcp_result,
+    parse_pubmed_fetch_result,
 )
 from pkg.deep_search.types import (
     DeepSearchTask,
@@ -18,8 +23,13 @@ __all__ = [
     "EvidenceRecord",
     "EvidenceStance",
     "InMemoryLiteratureSource",
+    "LiteratureMCPError",
     "LiteratureSearchSource",
+    "MCPLiteratureSearchSource",
+    "PubMedLiteratureSearchSource",
     "VerdictOutcome",
     "decide_verdict",
     "get_literature_search_source",
+    "parse_literature_mcp_result",
+    "parse_pubmed_fetch_result",
 ]

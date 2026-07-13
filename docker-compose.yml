@@ -16,5 +16,47 @@ services:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
 
+  pubmed-mcp:
+    build:
+      context: ./data/runtime/pubmed-mcp-server
+      dockerfile: Dockerfile
+    image: ptagent-pubmed-mcp:v2.9.8
+    container_name: ptagent-pubmed-mcp
+    restart: unless-stopped
+    environment:
+      MCP_HTTP_PORT: 3010
+      MCP_SESSION_MODE: stateless
+      MCP_LOG_LEVEL: info
+      MCP_FORCE_CONSOLE_LOGGING: "true"
+      NCBI_TOOL_IDENTIFIER: ptagent-pubmed-mcp
+      NCBI_API_KEY: ${NCBI_API_KEY:-}
+      NCBI_ADMIN_EMAIL: ${NCBI_ADMIN_EMAIL:-}
+      EUROPEPMC_ENABLED: "true"
+      EUROPEPMC_EMAIL: ${EUROPEPMC_EMAIL:-}
+      UNPAYWALL_EMAIL: ${UNPAYWALL_EMAIL:-}
+    ports:
+      - "127.0.0.1:3010:3010"
+
+  neo4j:
+    image: neo4j:5.26.28-community
+    container_name: ptagent-neo4j
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: neo4j/${PTAGENT_GRAPH__PASSWORD:?请先在.env设置密码}
+    ports:
+      - "127.0.0.1:7474:7474"   # 浏览器管理界面
+      - "127.0.0.1:7687:7687"   # Bolt，代码连接用
+    volumes:
+      - ptagent_neo4j_data:/data
+      - ptagent_neo4j_logs:/logs
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
 volumes:
   ptagent_mysql_data:
+  ptagent_neo4j_data:
+  ptagent_neo4j_logs:
