@@ -1,0 +1,3 @@
+# query	target	fident	qcov	tcov	prob	evalue	bits	taxid	taxname
+AF-Q9RAT9-F1-model_v6.cif.gz	AF-P40763-F1-model_v6.cif.gz	0.42	0.95	0.92	0.98	1e-30	320	9606	Homo sapiens
+AF-Q9RAT9-F1-model_v6.cif.gz	AF-LOWHIT-F1-model_v6.cif.gz	0.20	0.50	0.30	0.40	1e-3	80	10090	Mus musculus

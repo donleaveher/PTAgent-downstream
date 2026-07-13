@@ -1,16 +1,8 @@
-"""结构近邻借 CTD 疾病 → 蛋白级假说（M3：把 M1 CTD 与 M2 Foldseek 接起来）。
-
-对每个（差异）蛋白：取结构近邻(M2) → 解析近邻 gene → 查近邻 gene 的 CTD 疾病(M1)
-→ 借过来生成 Protein 级 `MetaAnnotation(HYPOTHESIS)`。跨物种由结构近邻天然完成
-（大鼠蛋白的近邻常含人源蛋白）。蛋白自身 gene 已有 CTD 直接结论的疾病不再出假说。
-"""
+"""Generate protein-level hypotheses from persisted fused neighbor candidates."""
 
 from __future__ import annotations
 
-import hashlib
-import json
 from collections.abc import Iterable
-from datetime import datetime, timezone
 from typing import Any
 
 from pkg.disease import GeneDiseaseSource, GeneResolver, get_disease_source, get_gene_resolver
@@ -18,38 +10,34 @@ from pkg.experiment import (
     AnnotationTargetType,
     EvidenceLevel,
     ExperimentRepository,
+    FusedCandidate,
     MetaAnnotation,
-    StructureEvidenceStatus,
-    StructureNeighborEvidence,
-    StructureSearchRun,
     get_experiment_store,
     stable_annotation_id,
 )
-from pkg.structure import (
-    StructureSearchProvider,
-    get_structure_search_provider,
-    rerank_neighbors,
-)
 
-_SOURCE = "Foldseek-KNN"
+_SOURCE = "NeighborFusion"
 
 
 def generate_experiment_hypotheses(
     experiment_id: str,
     *,
     repository: ExperimentRepository | None = None,
-    structure_provider: StructureSearchProvider | None = None,
     gene_resolver: GeneResolver | None = None,
     disease_source: GeneDiseaseSource | None = None,
     protein_ids: Iterable[str] | None = None,
     top_k: int | None = None,
-    rerank: bool = True,
-    rrf_k: int = 60,
 ) -> dict[str, Any]:
-    """生成蛋白级结构类比假说，幂等落库。
+    """Generate protein-level hypotheses from persisted `FusedCandidate` rows.
 
-    `protein_ids` 限定处理范围（L2 落地后传差异蛋白；默认全部蛋白）。
+    Neighbor retrieval and fusion must already have been run by the neighbor
+    search layer. This function only performs evidence transfer:
+
+    fused target accession -> gene resolver -> CTD disease -> HYPOTHESIS.
     """
+
+    if top_k is not None and top_k < 1:
+        raise ValueError("top_k must be positive")
 
     repo = repository or get_experiment_store()
     context = repo.get_context(experiment_id)
@@ -59,22 +47,13 @@ def generate_experiment_hypotheses(
     proteins = repo.list_proteins(experiment_id)
     if protein_ids is not None:
         wanted = set(protein_ids)
-        proteins = [p for p in proteins if p.protein_id in wanted]
+        proteins = [protein for protein in proteins if protein.protein_id in wanted]
     if not proteins:
-        return {
-            "experiment_id": experiment_id,
-            "proteins": 0,
-            "proteins_with_hypotheses": 0,
-            "hypotheses": 0,
-            "written": 0,
-            "source": _SOURCE,
-        }
+        return _empty_summary(experiment_id, proteins=0)
 
-    structures = structure_provider or get_structure_search_provider()
     resolver = gene_resolver or get_gene_resolver()
     diseases = disease_source or get_disease_source()
 
-    # 蛋白自身 gene 已有的 CTD 直接结论 (gene, disease_id) → 不重复出假说
     concluded = {
         (ann.target, ann.value.get("disease_id"))
         for ann in repo.list_annotations(experiment_id)
@@ -83,81 +62,59 @@ def generate_experiment_hypotheses(
         and isinstance(ann.value, dict)
     }
 
-    # 1. 结构近邻（M2）
-    query_accessions = sorted({p.accession for p in proteins})
-    neighbors_by_acc = structures.search(query_accessions, top_k=top_k)
-    structure_status_rows = _structure_status_rows(
-        experiment_id=experiment_id,
-        proteins=proteins,
-        records=getattr(structures, "last_structure_records", {}),
-        provider_name=getattr(structures, "name", "structure"),
-    )
-    if structure_status_rows:
-        repo.add_structure_statuses(structure_status_rows)
-    search_run, neighbor_evidence = _structure_evidence_rows(
-        experiment_id=experiment_id,
-        proteins=proteins,
-        neighbors_by_acc=neighbors_by_acc,
-        provider_name=getattr(structures, "name", "structure"),
-        provider_version=getattr(structures, "version", ""),
+    candidates_by_protein = _fused_candidates_by_protein(
+        repo.list_fused_candidates(experiment_id),
+        protein_ids={protein.protein_id for protein in proteins},
         top_k=top_k,
-        structure_status_records=getattr(structures, "last_structure_records", {}),
     )
-    repo.save_structure_search_run(search_run)
-    if neighbor_evidence:
-        repo.add_structure_neighbor_evidence(neighbor_evidence)
+    candidate_rows = [
+        candidate for candidates in candidates_by_protein.values() for candidate in candidates
+    ]
+    unresolved_reasons: dict[str, int] = {}
+    _count_unresolved(
+        unresolved_reasons,
+        "no_candidate_neighbors",
+        sum(1 for protein in proteins if protein.protein_id not in candidates_by_protein),
+    )
+    if not candidate_rows:
+        summary = _empty_summary(experiment_id, proteins=len(proteins))
+        summary["unresolved_reasons"] = unresolved_reasons
+        return summary
 
-    # 2. 近邻 accession → gene
-    neighbor_accessions = sorted(
-        {n.target_accession for ns in neighbors_by_acc.values() for n in ns}
-    )
+    neighbor_accessions = sorted({candidate.target_id for candidate in candidate_rows})
     gene_by_acc = resolver.resolve(neighbor_accessions) if neighbor_accessions else {}
-
-    # 3. 近邻 gene → CTD 疾病（M1）
-    neighbor_genes = sorted({g for g in gene_by_acc.values() if g})
+    neighbor_genes = sorted({gene for gene in gene_by_acc.values() if gene})
     disease_by_gene = diseases.fetch(neighbor_genes) if neighbor_genes else {}
 
-    # 4. 每蛋白聚合借来的疾病 → 蛋白级假说
     annotations: dict[str, MetaAnnotation] = {}
     proteins_with_hypotheses = 0
     for protein in proteins:
-        prot_neighbors = neighbors_by_acc.get(protein.accession, [])
-        # 多路融合重排（结构相似 + 覆盖度），把单路 score 升级为 RRF 融合分
-        fused_by_acc = (
-            {n.target_accession: fs for n, fs in rerank_neighbors(prot_neighbors, rrf_k=rrf_k)}
-            if rerank
-            else {}
-        )
+        candidates = candidates_by_protein.get(protein.protein_id, [])
         support: dict[str, dict[str, Any]] = {}
-        for neighbor in prot_neighbors:
-            gene = gene_by_acc.get(neighbor.target_accession)
+        for candidate in candidates:
+            gene = gene_by_acc.get(candidate.target_id)
             if not gene:
+                _count_unresolved(unresolved_reasons, "unresolved_gene")
                 continue
-            for fact in disease_by_gene.get(gene, []):
+            facts = disease_by_gene.get(gene, [])
+            if not facts:
+                _count_unresolved(unresolved_reasons, "no_ctd_disease")
+                continue
+            for fact in facts:
                 if (protein.gene, fact.disease_id) in concluded:
-                    continue  # 蛋白自身 gene 已有直接结论 → 不重复出假说
+                    continue
                 entry = support.setdefault(
                     fact.disease_id,
                     {"disease_name": fact.disease_name, "neighbors": []},
                 )
-                entry["neighbors"].append(
-                    {
-                        "accession": neighbor.target_accession,
-                        "gene": gene,
-                        "score": neighbor.score,
-                        "coverage": neighbor.coverage,
-                        "taxon_id": neighbor.taxon_id,
-                        "ctd_relation_id": fact.relation_id,
-                        "fused_score": fused_by_acc.get(neighbor.target_accession, neighbor.score),
-                    }
-                )
+                entry["neighbors"].append(_support_row(candidate, gene, fact.relation_id))
 
         if support:
             proteins_with_hypotheses += 1
         for disease_id, entry in support.items():
-            # 按融合分重排支持近邻（同分回退结构 score）
             sup = sorted(
-                entry["neighbors"], key=lambda s: (s["fused_score"], s["score"]), reverse=True
+                entry["neighbors"],
+                key=lambda row: (-row["fused_score"], row["fusion_rank"], row["accession"]),
             )
             value = {"disease_id": disease_id, "disease_name": entry["disease_name"]}
             attribute = f"disease:{disease_id}"
@@ -180,167 +137,111 @@ def generate_experiment_hypotheses(
                 source=_SOURCE,
                 derivation={
                     "neighbors": sup,
-                    "via_genes": sorted({s["gene"] for s in sup}),
-                    "confidence": max(s["score"] for s in sup),  # 最高结构相似分（兼容）
-                    "rerank_confidence": max(s["fused_score"] for s in sup),  # 融合重排最高分
+                    "via_genes": sorted({row["gene"] for row in sup}),
+                    "confidence": max(row["score"] for row in sup),
+                    "fused_confidence": max(row["fused_score"] for row in sup),
                     "support_count": len(sup),
-                    "ranking": "rrf(score,coverage)" if rerank else "score",
+                    "support_channels": sorted(
+                        {channel for row in sup for channel in row["support_channels"]}
+                    ),
+                    "ranking": "fused_candidate",
+                    "candidate_source": "fused_candidate",
                 },
                 provenance={
-                    "structure_version": structures.version,
+                    "neighbor_source": "fused_candidate",
                     "ctd_version": diseases.version,
                 },
             )
 
     rows = [annotations[key] for key in sorted(annotations)]
-    written = repo.add_annotations(rows)
+    written = repo.add_annotations(rows) if rows else 0
     return {
         "experiment_id": experiment_id,
         "proteins": len(proteins),
         "proteins_with_hypotheses": proteins_with_hypotheses,
+        "candidate_neighbors": len(candidate_rows),
         "hypotheses": len(rows),
         "written": written,
         "source": _SOURCE,
+        "unresolved_reasons": dict(sorted(unresolved_reasons.items())),
     }
 
 
-def _structure_status_rows(
+def _fused_candidates_by_protein(
+    candidates: list[FusedCandidate],
     *,
-    experiment_id: str,
-    proteins: list[Any],
-    records: dict[str, Any],
-    provider_name: str,
-) -> list[StructureEvidenceStatus]:
-    """Convert provider structure resolution records into repository rows.
-
-    Only non-available statuses are persisted here. Available structure records
-    are already represented by Foldseek neighbors/provenance; missing and
-    unusable records are the important audit trail for degradation.
-    """
-
-    if not records:
-        return []
-    rows: list[StructureEvidenceStatus] = []
-    for protein in proteins:
-        record = records.get(protein.accession)
-        if record is None:
-            continue
-        raw_status = getattr(record, "status", "")
-        status = str(getattr(raw_status, "value", raw_status))
-        if status == "available":
-            continue
-        rows.append(
-            StructureEvidenceStatus(
-                experiment_id=experiment_id,
-                protein_id=protein.protein_id,
-                raw_accession=getattr(record, "raw_accession", "") or protein.accession,
-                normalized_accession=getattr(record, "accession", "") or protein.accession,
-                channel="structure",
-                status=status or "missing",
-                reason=getattr(record, "reason", "") or "structure_unavailable",
-                provider=getattr(record, "source", "") or provider_name,
-                provider_version=getattr(record, "source_version", ""),
-                structure_id=getattr(record, "structure_id", ""),
-                structure_format=getattr(record, "format", ""),
-                local_path=getattr(record, "local_path", ""),
-                object_uri=getattr(record, "object_uri", ""),
-                sha256=getattr(record, "sha256", ""),
-                meta=getattr(record, "provenance", {}) or {},
-            )
-        )
-    return rows
-
-
-def _structure_evidence_rows(
-    *,
-    experiment_id: str,
-    proteins: list[Any],
-    neighbors_by_acc: dict[str, list[Any]],
-    provider_name: str,
-    provider_version: str,
+    protein_ids: set[str],
     top_k: int | None,
-    structure_status_records: dict[str, Any],
-) -> tuple[StructureSearchRun, list[StructureNeighborEvidence]]:
-    query_accessions = sorted({p.accession for p in proteins})
-    neighbor_count = sum(len(neighbors_by_acc.get(acc, [])) for acc in query_accessions)
-    available_structures = sum(
-        1
-        for record in structure_status_records.values()
-        if str(getattr(getattr(record, "status", ""), "value", getattr(record, "status", "")))
-        == "available"
-    )
-    params = {
-        "query_accessions": query_accessions,
-        "top_k": top_k,
-        "provider": provider_name,
-        "provider_version": provider_version,
+) -> dict[str, list[FusedCandidate]]:
+    out: dict[str, list[FusedCandidate]] = {}
+    for candidate in candidates:
+        if candidate.query_protein_id not in protein_ids:
+            continue
+        if candidate.target_type.lower() != "protein":
+            continue
+        if candidate.relation_type != "CANDIDATE_NEIGHBOR":
+            continue
+        if top_k is not None and candidate.fusion_rank > top_k:
+            continue
+        out.setdefault(candidate.query_protein_id, []).append(candidate)
+    for protein_id, rows in list(out.items()):
+        out[protein_id] = sorted(
+            rows,
+            key=lambda row: (row.fusion_rank, -row.fused_score, row.target_id),
+        )
+    return out
+
+
+def _support_row(candidate: FusedCandidate, gene: str, ctd_relation_id: str) -> dict[str, Any]:
+    channel_evidence = list(candidate.meta.get("channel_evidence", []))
+    best = _best_channel_summary(channel_evidence)
+    return {
+        "accession": candidate.target_id,
+        "gene": gene,
+        "fused_score": candidate.fused_score,
+        "fusion_rank": candidate.fusion_rank,
+        "support_channels": list(candidate.support_channels),
+        "evidence_ids": list(candidate.evidence_ids),
+        "candidate_id": candidate.candidate_id,
+        "ctd_relation_id": ctd_relation_id,
+        "score": best["score"],
+        "coverage": best.get("coverage"),
+        "taxon_id": best.get("taxon_id"),
+        "channel_evidence": channel_evidence,
     }
-    params_hash = _stable_hash(params)
-    run_id = f"strun_{params_hash[:32]}"
-    now = datetime.now(timezone.utc)
-    status = "completed" if neighbor_count else "no_neighbors"
-    if structure_status_records and available_structures == 0:
-        status = "skipped_no_query_structures"
-
-    run = StructureSearchRun(
-        run_id=run_id,
-        experiment_id=experiment_id,
-        provider=provider_name,
-        provider_version=provider_version,
-        db_version=provider_version,
-        params_hash=params_hash,
-        params=params,
-        status=status,
-        started_at=now,
-        finished_at=now,
-        meta={
-            "query_count": len(query_accessions),
-            "neighbor_count": neighbor_count,
-            "available_query_structures": available_structures,
-        },
-    )
-
-    protein_by_acc = {p.accession: p for p in proteins}
-    rows: list[StructureNeighborEvidence] = []
-    for query_accession in query_accessions:
-        protein = protein_by_acc[query_accession]
-        for neighbor in neighbors_by_acc.get(query_accession, []):
-            relation_id = (
-                neighbor.relation_id
-                or f"{neighbor.query_accession}|STRUCTURAL_NEIGHBOR|{neighbor.target_accession}"
-            )
-            evidence_payload = {
-                "run_id": run_id,
-                "experiment_id": experiment_id,
-                "query_protein_id": protein.protein_id,
-                "query_accession": neighbor.query_accession,
-                "target_accession": neighbor.target_accession,
-                "relation_id": relation_id,
-            }
-            rows.append(
-                StructureNeighborEvidence(
-                    evidence_id=f"sne_{_stable_hash(evidence_payload)[:32]}",
-                    run_id=run_id,
-                    experiment_id=experiment_id,
-                    query_protein_id=protein.protein_id,
-                    query_accession=neighbor.query_accession,
-                    target_accession=neighbor.target_accession,
-                    rank=neighbor.rank,
-                    score=neighbor.score,
-                    coverage=neighbor.coverage,
-                    taxon_id=neighbor.taxon_id,
-                    taxon_name=neighbor.taxon_name,
-                    relation_id=relation_id,
-                    provenance=neighbor.provenance,
-                    created_at=now,
-                )
-            )
-    return run, rows
 
 
-def _stable_hash(payload: dict[str, Any]) -> str:
-    canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+def _best_channel_summary(channel_evidence: list[dict[str, Any]]) -> dict[str, Any]:
+    if not channel_evidence:
+        return {"score": 0.0}
+    structure_rows = [row for row in channel_evidence if row.get("channel") == "structure"]
+    rows = structure_rows or channel_evidence
+    best = max(rows, key=lambda row: float(row.get("score") or 0.0))
+    meta = best.get("meta") if isinstance(best.get("meta"), dict) else {}
+    return {
+        "score": float(best.get("score") or 0.0),
+        "coverage": meta.get("coverage"),
+        "taxon_id": meta.get("taxon_id"),
+    }
+
+
+def _count_unresolved(reasons: dict[str, int], reason: str, count: int = 1) -> None:
+    if count <= 0:
+        return
+    reasons[reason] = reasons.get(reason, 0) + count
+
+
+def _empty_summary(experiment_id: str, *, proteins: int) -> dict[str, Any]:
+    return {
+        "experiment_id": experiment_id,
+        "proteins": proteins,
+        "proteins_with_hypotheses": 0,
+        "candidate_neighbors": 0,
+        "hypotheses": 0,
+        "written": 0,
+        "source": _SOURCE,
+        "unresolved_reasons": {},
+    }
 
 
 __all__ = ["generate_experiment_hypotheses"]

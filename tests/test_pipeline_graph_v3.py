@@ -6,11 +6,11 @@ from application.orchestration.graph import (
     run_downstream_graph,
 )
 from application.orchestration.graph import _route_after_approval  # noqa: PLC2701
-from tests.test_pipeline_v3 import EXP, _full_config, _seed
+from tests.test_pipeline_v3 import EXP, _FailingLiteratureSource, _full_config, _seed
 
 _STEP_NODES = {
     "import", "base_annotation", "ctd_disease", "differential", "enrichment",
-    "hypothesis", "kg_projection", "deep_search", "freeze", "report",
+    "neighbor_search", "hypothesis", "kg_projection", "deep_search", "freeze", "report",
 }
 
 
@@ -55,9 +55,12 @@ def test_graph_modify_stops_before_freeze() -> None:
 
 def test_graph_failure_is_isolated() -> None:
     repo = _seed()
-    # deep_search 无文献源 → 失败；下游 human_approval/freeze/report 跳过
+    # 显式失败源 → 失败；下游 human_approval/freeze/report 跳过
     result = run_downstream_graph(
-        EXP, repository=repo, config=_full_config(literature_source=None), human_action="approve"
+        EXP,
+        repository=repo,
+        config=_full_config(literature_source=_FailingLiteratureSource()),
+        human_action="approve",
     )
     assert result.completed is False
     assert result.failed_step == "deep_search"

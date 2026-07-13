@@ -10,6 +10,7 @@ from __future__ import annotations
 from application.knowledge import (
     annotate_experiment_diseases,
     generate_experiment_hypotheses,
+    run_neighbor_search,
 )
 from pkg.disease import GeneDiseaseFact, InMemoryGeneResolver
 from pkg.experiment import (
@@ -18,6 +19,7 @@ from pkg.experiment import (
     InMemoryExperimentRepository,
     ingest_experiment_payload,
 )
+from pkg.retrieval.providers import StructureSearchNeighborProvider
 from pkg.structure import StructuralNeighbor
 from tests.pkg.test_experiment_models import valid_payload
 
@@ -70,11 +72,15 @@ def test_mvp_produces_both_conclusion_and_hypothesis() -> None:
 
     # 任务一/M1：全量基因 CTD 直接命中 → 结论
     conc = annotate_experiment_diseases("exp_1", repository=repo, source=ctd)
-    # M2+M3：结构近邻借 CTD → 假说
+    # M2/M3：neighbor_search 内部运行结构 provider 并融合；hypothesis 只读 FusedCandidate。
+    run_neighbor_search(
+        "exp_1",
+        repository=repo,
+        providers=[StructureSearchNeighborProvider(repo, "exp_1", _FakeStructure())],
+    )
     hyp = generate_experiment_hypotheses(
         "exp_1",
         repository=repo,
-        structure_provider=_FakeStructure(),
         gene_resolver=InMemoryGeneResolver({"P_HUMAN": "HUMANG"}),
         disease_source=ctd,
     )
@@ -99,6 +105,6 @@ def test_mvp_produces_both_conclusion_and_hypothesis() -> None:
     assert hypothesis.target_type is AnnotationTargetType.PROTEIN
     assert hypothesis.target == "prot_2"
     assert hypothesis.attribute == "disease:MESH:D007249"
-    assert hypothesis.source == "Foldseek-KNN"
+    assert hypothesis.source == "NeighborFusion"
     assert hypothesis.derivation["neighbors"][0]["taxon_id"] == 9606
     assert hypothesis.derivation["confidence"] == 0.93

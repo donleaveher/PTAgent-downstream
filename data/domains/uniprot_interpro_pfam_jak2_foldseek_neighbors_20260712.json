@@ -1,0 +1,1655 @@
+{
+  "accessions": [
+    "O60674",
+    "O19064",
+    "Q5RB23",
+    "Q75R65",
+    "Q09178",
+    "P55245",
+    "P13388",
+    "Q60553",
+    "O18735",
+    "P0CY46",
+    "Q17R13"
+  ],
+  "dataset_id": "uniprot_interpro_pfam_jak2_foldseek_neighbors_20260712",
+  "domain_annotations": {
+    "O18735": [
+      {
+        "domain_id": "IPR000494",
+        "entry_name": "Rcpt_L-dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR000719",
+        "entry_name": "Prot_kinase_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR001245",
+        "entry_name": "Ser-Thr/Tyr_kinase_cat_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR006211",
+        "entry_name": "Furin-like_Cys-rich_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR006212",
+        "entry_name": "Furin_repeat",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR008266",
+        "entry_name": "Tyr_kinase_AS",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR009030",
+        "entry_name": "Growth_fac_rcpt_cys_sf",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR011009",
+        "entry_name": "Kinase-like_dom_sf",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR016245",
+        "entry_name": "Tyr_kinase_EGF/ERB/XmrK_rcpt",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR017441",
+        "entry_name": "Protein_kinase_ATP_BS",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR020635",
+        "entry_name": "Tyr_kinase_cat_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR032778",
+        "entry_name": "GF_recep_IV",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR036941",
+        "entry_name": "Rcpt_L-dom_sf",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR049328",
+        "entry_name": "TM_ErbB1",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR050122",
+        "entry_name": "RTK",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "PF00757",
+        "entry_name": "Furin-like",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF01030",
+        "entry_name": "Recep_L_domain",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF07714",
+        "entry_name": "PK_Tyr_Ser-Thr",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF14843",
+        "entry_name": "GF_recep_IV",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF21314",
+        "entry_name": "TM_ErbB1",
+        "source": "Pfam"
+      }
+    ],
+    "O19064": [
+      {
+        "domain_id": "IPR000299",
+        "entry_name": "FERM_domain",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR000719",
+        "entry_name": "Prot_kinase_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR000980",
+        "entry_name": "SH2",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR001245",
+        "entry_name": "Ser-Thr/Tyr_kinase_cat_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR008266",
+        "entry_name": "Tyr_kinase_AS",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR011009",
+        "entry_name": "Kinase-like_dom_sf",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR011993",
+        "entry_name": "PH-like_dom_sf",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR016251",
+        "entry_name": "Tyr_kinase_non-rcpt_Jak/Tyk2",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR017441",
+        "entry_name": "Protein_kinase_ATP_BS",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR019748",
+        "entry_name": "FERM_central",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR019749",
+        "entry_name": "Band_41_domain",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR020635",
+        "entry_name": "Tyr_kinase_cat_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR020693",
+        "entry_name": "Tyr_kinase_non-rcpt_Jak2",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR035588",
+        "entry_name": "PTK_Jak2_rpt1",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR035589",
+        "entry_name": "PTKc_Jak2_rpt2",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR035860",
+        "entry_name": "JAK2_SH2",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR035963",
+        "entry_name": "FERM_2",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR036860",
+        "entry_name": "SH2_dom_sf",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR037838",
+        "entry_name": "JAK2_FERM_C-lobe",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR041046",
+        "entry_name": "FERM_F2",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR041155",
+        "entry_name": "FERM_F1",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR041381",
+        "entry_name": "JAK1-3/TYK2_PHL_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR051286",
+        "entry_name": "JAK",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "PF07714",
+        "entry_name": "PK_Tyr_Ser-Thr",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF17887",
+        "entry_name": "Jak1_Phl",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF18377",
+        "entry_name": "FERM_F2",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF18379",
+        "entry_name": "FERM_F1",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF21990",
+        "entry_name": "SH2_1",
+        "source": "Pfam"
+      }
+    ],
+    "O60674": [
+      {
+        "domain_id": "IPR000299",
+        "entry_name": "FERM_domain",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR000719",
+        "entry_name": "Prot_kinase_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR000980",
+        "entry_name": "SH2",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR001245",
+        "entry_name": "Ser-Thr/Tyr_kinase_cat_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR008266",
+        "entry_name": "Tyr_kinase_AS",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR011009",
+        "entry_name": "Kinase-like_dom_sf",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR011993",
+        "entry_name": "PH-like_dom_sf",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR016251",
+        "entry_name": "Tyr_kinase_non-rcpt_Jak/Tyk2",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR017441",
+        "entry_name": "Protein_kinase_ATP_BS",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR019748",
+        "entry_name": "FERM_central",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR019749",
+        "entry_name": "Band_41_domain",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR020635",
+        "entry_name": "Tyr_kinase_cat_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR020693",
+        "entry_name": "Tyr_kinase_non-rcpt_Jak2",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR035588",
+        "entry_name": "PTK_Jak2_rpt1",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR035589",
+        "entry_name": "PTKc_Jak2_rpt2",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR035860",
+        "entry_name": "JAK2_SH2",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR035963",
+        "entry_name": "FERM_2",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR036860",
+        "entry_name": "SH2_dom_sf",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR037838",
+        "entry_name": "JAK2_FERM_C-lobe",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR041046",
+        "entry_name": "FERM_F2",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR041155",
+        "entry_name": "FERM_F1",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR041381",
+        "entry_name": "JAK1-3/TYK2_PHL_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR051286",
+        "entry_name": "JAK",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "PF07714",
+        "entry_name": "PK_Tyr_Ser-Thr",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF17887",
+        "entry_name": "Jak1_Phl",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF18377",
+        "entry_name": "FERM_F2",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF18379",
+        "entry_name": "FERM_F1",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF21990",
+        "entry_name": "SH2_1",
+        "source": "Pfam"
+      }
+    ],
+    "P0CY46": [
+      {
+        "domain_id": "IPR000494",
+        "entry_name": "Rcpt_L-dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR000719",
+        "entry_name": "Prot_kinase_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR001245",
+        "entry_name": "Ser-Thr/Tyr_kinase_cat_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR006211",
+        "entry_name": "Furin-like_Cys-rich_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR006212",
+        "entry_name": "Furin_repeat",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR008266",
+        "entry_name": "Tyr_kinase_AS",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR009030",
+        "entry_name": "Growth_fac_rcpt_cys_sf",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR011009",
+        "entry_name": "Kinase-like_dom_sf",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR016245",
+        "entry_name": "Tyr_kinase_EGF/ERB/XmrK_rcpt",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR017441",
+        "entry_name": "Protein_kinase_ATP_BS",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR020635",
+        "entry_name": "Tyr_kinase_cat_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR032778",
+        "entry_name": "GF_recep_IV",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR036941",
+        "entry_name": "Rcpt_L-dom_sf",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR050122",
+        "entry_name": "RTK",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "PF00757",
+        "entry_name": "Furin-like",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF01030",
+        "entry_name": "Recep_L_domain",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF07714",
+        "entry_name": "PK_Tyr_Ser-Thr",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF14843",
+        "entry_name": "GF_recep_IV",
+        "source": "Pfam"
+      }
+    ],
+    "P13388": [
+      {
+        "domain_id": "IPR000494",
+        "entry_name": "Rcpt_L-dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR000719",
+        "entry_name": "Prot_kinase_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR001245",
+        "entry_name": "Ser-Thr/Tyr_kinase_cat_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR006211",
+        "entry_name": "Furin-like_Cys-rich_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR006212",
+        "entry_name": "Furin_repeat",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR008266",
+        "entry_name": "Tyr_kinase_AS",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR009030",
+        "entry_name": "Growth_fac_rcpt_cys_sf",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR011009",
+        "entry_name": "Kinase-like_dom_sf",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR016245",
+        "entry_name": "Tyr_kinase_EGF/ERB/XmrK_rcpt",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR017441",
+        "entry_name": "Protein_kinase_ATP_BS",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR020635",
+        "entry_name": "Tyr_kinase_cat_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR032778",
+        "entry_name": "GF_recep_IV",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR036941",
+        "entry_name": "Rcpt_L-dom_sf",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR044912",
+        "entry_name": "Egfr_JX_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR049328",
+        "entry_name": "TM_ErbB1",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR050122",
+        "entry_name": "RTK",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "PF00757",
+        "entry_name": "Furin-like",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF01030",
+        "entry_name": "Recep_L_domain",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF07714",
+        "entry_name": "PK_Tyr_Ser-Thr",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF14843",
+        "entry_name": "GF_recep_IV",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF21314",
+        "entry_name": "TM_ErbB1",
+        "source": "Pfam"
+      }
+    ],
+    "P55245": [
+      {
+        "domain_id": "IPR000494",
+        "entry_name": "Rcpt_L-dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR000719",
+        "entry_name": "Prot_kinase_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR001245",
+        "entry_name": "Ser-Thr/Tyr_kinase_cat_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR006211",
+        "entry_name": "Furin-like_Cys-rich_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR006212",
+        "entry_name": "Furin_repeat",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR008266",
+        "entry_name": "Tyr_kinase_AS",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR009030",
+        "entry_name": "Growth_fac_rcpt_cys_sf",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR011009",
+        "entry_name": "Kinase-like_dom_sf",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR016245",
+        "entry_name": "Tyr_kinase_EGF/ERB/XmrK_rcpt",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR017441",
+        "entry_name": "Protein_kinase_ATP_BS",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR020635",
+        "entry_name": "Tyr_kinase_cat_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR032778",
+        "entry_name": "GF_recep_IV",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR036941",
+        "entry_name": "Rcpt_L-dom_sf",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR049328",
+        "entry_name": "TM_ErbB1",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR050122",
+        "entry_name": "RTK",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "PF00757",
+        "entry_name": "Furin-like",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF01030",
+        "entry_name": "Recep_L_domain",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF07714",
+        "entry_name": "PK_Tyr_Ser-Thr",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF14843",
+        "entry_name": "GF_recep_IV",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF21314",
+        "entry_name": "TM_ErbB1",
+        "source": "Pfam"
+      }
+    ],
+    "Q09178": [
+      {
+        "domain_id": "IPR000299",
+        "entry_name": "FERM_domain",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR000719",
+        "entry_name": "Prot_kinase_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR000980",
+        "entry_name": "SH2",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR001245",
+        "entry_name": "Ser-Thr/Tyr_kinase_cat_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR008266",
+        "entry_name": "Tyr_kinase_AS",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR011009",
+        "entry_name": "Kinase-like_dom_sf",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR016251",
+        "entry_name": "Tyr_kinase_non-rcpt_Jak/Tyk2",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR017441",
+        "entry_name": "Protein_kinase_ATP_BS",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR019748",
+        "entry_name": "FERM_central",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR019749",
+        "entry_name": "Band_41_domain",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR020635",
+        "entry_name": "Tyr_kinase_cat_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR020776",
+        "entry_name": "Tyr_kinase_non-rcpt_Jak1",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR035963",
+        "entry_name": "FERM_2",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR036860",
+        "entry_name": "SH2_dom_sf",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR041046",
+        "entry_name": "FERM_F2",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR041155",
+        "entry_name": "FERM_F1",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR041381",
+        "entry_name": "JAK1-3/TYK2_PHL_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR051286",
+        "entry_name": "JAK",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "PF07714",
+        "entry_name": "PK_Tyr_Ser-Thr",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF17887",
+        "entry_name": "Jak1_Phl",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF18377",
+        "entry_name": "FERM_F2",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF18379",
+        "entry_name": "FERM_F1",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF21990",
+        "entry_name": "SH2_1",
+        "source": "Pfam"
+      }
+    ],
+    "Q17R13": [
+      {
+        "domain_id": "IPR000719",
+        "entry_name": "Prot_kinase_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR001245",
+        "entry_name": "Ser-Thr/Tyr_kinase_cat_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR001452",
+        "entry_name": "SH3_domain",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR008266",
+        "entry_name": "Tyr_kinase_AS",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR011009",
+        "entry_name": "Kinase-like_dom_sf",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR015116",
+        "entry_name": "Cdc42-bd-like",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR017441",
+        "entry_name": "Protein_kinase_ATP_BS",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR020635",
+        "entry_name": "Tyr_kinase_cat_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR021619",
+        "entry_name": "Mig-6",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR030220",
+        "entry_name": "Ack1_UBA_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR036028",
+        "entry_name": "SH3-like_dom_sf",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR037085",
+        "entry_name": "Cdc42-bd-like_dom_sf",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR049587",
+        "entry_name": "TNK-like_SAM",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR052112",
+        "entry_name": "EGFR_SigReg_Kinase",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR055175",
+        "entry_name": "ACK/TNK-like_SAM",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "PF07714",
+        "entry_name": "PK_Tyr_Ser-Thr",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF09027",
+        "entry_name": "GTPase_binding",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF11555",
+        "entry_name": "Inhibitor_Mig-6",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF14604",
+        "entry_name": "SH3_9",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF22931",
+        "entry_name": "SAM_TNK",
+        "source": "Pfam"
+      }
+    ],
+    "Q5RB23": [
+      {
+        "domain_id": "IPR000299",
+        "entry_name": "FERM_domain",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR000719",
+        "entry_name": "Prot_kinase_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR000980",
+        "entry_name": "SH2",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR001245",
+        "entry_name": "Ser-Thr/Tyr_kinase_cat_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR008266",
+        "entry_name": "Tyr_kinase_AS",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR011009",
+        "entry_name": "Kinase-like_dom_sf",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR011993",
+        "entry_name": "PH-like_dom_sf",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR016251",
+        "entry_name": "Tyr_kinase_non-rcpt_Jak/Tyk2",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR017441",
+        "entry_name": "Protein_kinase_ATP_BS",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR019748",
+        "entry_name": "FERM_central",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR019749",
+        "entry_name": "Band_41_domain",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR020635",
+        "entry_name": "Tyr_kinase_cat_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR020693",
+        "entry_name": "Tyr_kinase_non-rcpt_Jak2",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR035588",
+        "entry_name": "PTK_Jak2_rpt1",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR035589",
+        "entry_name": "PTKc_Jak2_rpt2",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR035860",
+        "entry_name": "JAK2_SH2",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR035963",
+        "entry_name": "FERM_2",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR036860",
+        "entry_name": "SH2_dom_sf",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR037838",
+        "entry_name": "JAK2_FERM_C-lobe",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR041046",
+        "entry_name": "FERM_F2",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR041155",
+        "entry_name": "FERM_F1",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR041381",
+        "entry_name": "JAK1-3/TYK2_PHL_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR051286",
+        "entry_name": "JAK",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "PF07714",
+        "entry_name": "PK_Tyr_Ser-Thr",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF17887",
+        "entry_name": "Jak1_Phl",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF18377",
+        "entry_name": "FERM_F2",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF18379",
+        "entry_name": "FERM_F1",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF21990",
+        "entry_name": "SH2_1",
+        "source": "Pfam"
+      }
+    ],
+    "Q60553": [
+      {
+        "domain_id": "IPR000494",
+        "entry_name": "Rcpt_L-dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR000719",
+        "entry_name": "Prot_kinase_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR001245",
+        "entry_name": "Ser-Thr/Tyr_kinase_cat_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR006211",
+        "entry_name": "Furin-like_Cys-rich_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR006212",
+        "entry_name": "Furin_repeat",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR008266",
+        "entry_name": "Tyr_kinase_AS",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR009030",
+        "entry_name": "Growth_fac_rcpt_cys_sf",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR011009",
+        "entry_name": "Kinase-like_dom_sf",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR016245",
+        "entry_name": "Tyr_kinase_EGF/ERB/XmrK_rcpt",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR017441",
+        "entry_name": "Protein_kinase_ATP_BS",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR020635",
+        "entry_name": "Tyr_kinase_cat_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR032778",
+        "entry_name": "GF_recep_IV",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR036941",
+        "entry_name": "Rcpt_L-dom_sf",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR049328",
+        "entry_name": "TM_ErbB1",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR050122",
+        "entry_name": "RTK",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "PF00757",
+        "entry_name": "Furin-like",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF01030",
+        "entry_name": "Recep_L_domain",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF07714",
+        "entry_name": "PK_Tyr_Ser-Thr",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF14843",
+        "entry_name": "GF_recep_IV",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF21314",
+        "entry_name": "TM_ErbB1",
+        "source": "Pfam"
+      }
+    ],
+    "Q75R65": [
+      {
+        "domain_id": "IPR000299",
+        "entry_name": "FERM_domain",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR000719",
+        "entry_name": "Prot_kinase_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR000980",
+        "entry_name": "SH2",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR001245",
+        "entry_name": "Ser-Thr/Tyr_kinase_cat_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR008266",
+        "entry_name": "Tyr_kinase_AS",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR011009",
+        "entry_name": "Kinase-like_dom_sf",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR011993",
+        "entry_name": "PH-like_dom_sf",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR016251",
+        "entry_name": "Tyr_kinase_non-rcpt_Jak/Tyk2",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR017441",
+        "entry_name": "Protein_kinase_ATP_BS",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR019748",
+        "entry_name": "FERM_central",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR019749",
+        "entry_name": "Band_41_domain",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR020635",
+        "entry_name": "Tyr_kinase_cat_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR020693",
+        "entry_name": "Tyr_kinase_non-rcpt_Jak2",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR035588",
+        "entry_name": "PTK_Jak2_rpt1",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR035589",
+        "entry_name": "PTKc_Jak2_rpt2",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR035860",
+        "entry_name": "JAK2_SH2",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR035963",
+        "entry_name": "FERM_2",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR036860",
+        "entry_name": "SH2_dom_sf",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR037838",
+        "entry_name": "JAK2_FERM_C-lobe",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR041046",
+        "entry_name": "FERM_F2",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR041155",
+        "entry_name": "FERM_F1",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR041381",
+        "entry_name": "JAK1-3/TYK2_PHL_dom",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "IPR051286",
+        "entry_name": "JAK",
+        "source": "InterPro"
+      },
+      {
+        "domain_id": "PF07714",
+        "entry_name": "PK_Tyr_Ser-Thr",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF17887",
+        "entry_name": "Jak1_Phl",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF18377",
+        "entry_name": "FERM_F2",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF18379",
+        "entry_name": "FERM_F1",
+        "source": "Pfam"
+      },
+      {
+        "domain_id": "PF21990",
+        "entry_name": "SH2_1",
+        "source": "Pfam"
+      }
+    ]
+  },
+  "domains": {
+    "O18735": [
+      "IPR000494",
+      "IPR000719",
+      "IPR001245",
+      "IPR006211",
+      "IPR006212",
+      "IPR008266",
+      "IPR009030",
+      "IPR011009",
+      "IPR016245",
+      "IPR017441",
+      "IPR020635",
+      "IPR032778",
+      "IPR036941",
+      "IPR049328",
+      "IPR050122",
+      "PF00757",
+      "PF01030",
+      "PF07714",
+      "PF14843",
+      "PF21314"
+    ],
+    "O19064": [
+      "IPR000299",
+      "IPR000719",
+      "IPR000980",
+      "IPR001245",
+      "IPR008266",
+      "IPR011009",
+      "IPR011993",
+      "IPR016251",
+      "IPR017441",
+      "IPR019748",
+      "IPR019749",
+      "IPR020635",
+      "IPR020693",
+      "IPR035588",
+      "IPR035589",
+      "IPR035860",
+      "IPR035963",
+      "IPR036860",
+      "IPR037838",
+      "IPR041046",
+      "IPR041155",
+      "IPR041381",
+      "IPR051286",
+      "PF07714",
+      "PF17887",
+      "PF18377",
+      "PF18379",
+      "PF21990"
+    ],
+    "O60674": [
+      "IPR000299",
+      "IPR000719",
+      "IPR000980",
+      "IPR001245",
+      "IPR008266",
+      "IPR011009",
+      "IPR011993",
+      "IPR016251",
+      "IPR017441",
+      "IPR019748",
+      "IPR019749",
+      "IPR020635",
+      "IPR020693",
+      "IPR035588",
+      "IPR035589",
+      "IPR035860",
+      "IPR035963",
+      "IPR036860",
+      "IPR037838",
+      "IPR041046",
+      "IPR041155",
+      "IPR041381",
+      "IPR051286",
+      "PF07714",
+      "PF17887",
+      "PF18377",
+      "PF18379",
+      "PF21990"
+    ],
+    "P0CY46": [
+      "IPR000494",
+      "IPR000719",
+      "IPR001245",
+      "IPR006211",
+      "IPR006212",
+      "IPR008266",
+      "IPR009030",
+      "IPR011009",
+      "IPR016245",
+      "IPR017441",
+      "IPR020635",
+      "IPR032778",
+      "IPR036941",
+      "IPR050122",
+      "PF00757",
+      "PF01030",
+      "PF07714",
+      "PF14843"
+    ],
+    "P13388": [
+      "IPR000494",
+      "IPR000719",
+      "IPR001245",
+      "IPR006211",
+      "IPR006212",
+      "IPR008266",
+      "IPR009030",
+      "IPR011009",
+      "IPR016245",
+      "IPR017441",
+      "IPR020635",
+      "IPR032778",
+      "IPR036941",
+      "IPR044912",
+      "IPR049328",
+      "IPR050122",
+      "PF00757",
+      "PF01030",
+      "PF07714",
+      "PF14843",
+      "PF21314"
+    ],
+    "P55245": [
+      "IPR000494",
+      "IPR000719",
+      "IPR001245",
+      "IPR006211",
+      "IPR006212",
+      "IPR008266",
+      "IPR009030",
+      "IPR011009",
+      "IPR016245",
+      "IPR017441",
+      "IPR020635",
+      "IPR032778",
+      "IPR036941",
+      "IPR049328",
+      "IPR050122",
+      "PF00757",
+      "PF01030",
+      "PF07714",
+      "PF14843",
+      "PF21314"
+    ],
+    "Q09178": [
+      "IPR000299",
+      "IPR000719",
+      "IPR000980",
+      "IPR001245",
+      "IPR008266",
+      "IPR011009",
+      "IPR016251",
+      "IPR017441",
+      "IPR019748",
+      "IPR019749",
+      "IPR020635",
+      "IPR020776",
+      "IPR035963",
+      "IPR036860",
+      "IPR041046",
+      "IPR041155",
+      "IPR041381",
+      "IPR051286",
+      "PF07714",
+      "PF17887",
+      "PF18377",
+      "PF18379",
+      "PF21990"
+    ],
+    "Q17R13": [
+      "IPR000719",
+      "IPR001245",
+      "IPR001452",
+      "IPR008266",
+      "IPR011009",
+      "IPR015116",
+      "IPR017441",
+      "IPR020635",
+      "IPR021619",
+      "IPR030220",
+      "IPR036028",
+      "IPR037085",
+      "IPR049587",
+      "IPR052112",
+      "IPR055175",
+      "PF07714",
+      "PF09027",
+      "PF11555",
+      "PF14604",
+      "PF22931"
+    ],
+    "Q5RB23": [
+      "IPR000299",
+      "IPR000719",
+      "IPR000980",
+      "IPR001245",
+      "IPR008266",
+      "IPR011009",
+      "IPR011993",
+      "IPR016251",
+      "IPR017441",
+      "IPR019748",
+      "IPR019749",
+      "IPR020635",
+      "IPR020693",
+      "IPR035588",
+      "IPR035589",
+      "IPR035860",
+      "IPR035963",
+      "IPR036860",
+      "IPR037838",
+      "IPR041046",
+      "IPR041155",
+      "IPR041381",
+      "IPR051286",
+      "PF07714",
+      "PF17887",
+      "PF18377",
+      "PF18379",
+      "PF21990"
+    ],
+    "Q60553": [
+      "IPR000494",
+      "IPR000719",
+      "IPR001245",
+      "IPR006211",
+      "IPR006212",
+      "IPR008266",
+      "IPR009030",
+      "IPR011009",
+      "IPR016245",
+      "IPR017441",
+      "IPR020635",
+      "IPR032778",
+      "IPR036941",
+      "IPR049328",
+      "IPR050122",
+      "PF00757",
+      "PF01030",
+      "PF07714",
+      "PF14843",
+      "PF21314"
+    ],
+    "Q75R65": [
+      "IPR000299",
+      "IPR000719",
+      "IPR000980",
+      "IPR001245",
+      "IPR008266",
+      "IPR011009",
+      "IPR011993",
+      "IPR016251",
+      "IPR017441",
+      "IPR019748",
+      "IPR019749",
+      "IPR020635",
+      "IPR020693",
+      "IPR035588",
+      "IPR035589",
+      "IPR035860",
+      "IPR035963",
+      "IPR036860",
+      "IPR037838",
+      "IPR041046",
+      "IPR041155",
+      "IPR041381",
+      "IPR051286",
+      "PF07714",
+      "PF17887",
+      "PF18377",
+      "PF18379",
+      "PF21990"
+    ]
+  },
+  "entry_metadata": {
+    "O18735": {
+      "entry_version": "179",
+      "last_annotation_update_date": "2026-06-10",
+      "source_url": "https://rest.uniprot.org/uniprotkb/O18735.json"
+    },
+    "O19064": {
+      "entry_version": "167",
+      "last_annotation_update_date": "2026-06-10",
+      "source_url": "https://rest.uniprot.org/uniprotkb/O19064.json"
+    },
+    "O60674": {
+      "entry_version": "250",
+      "last_annotation_update_date": "2026-06-10",
+      "source_url": "https://rest.uniprot.org/uniprotkb/O60674.json"
+    },
+    "P0CY46": {
+      "entry_version": "67",
+      "last_annotation_update_date": "2026-06-10",
+      "source_url": "https://rest.uniprot.org/uniprotkb/P0CY46.json"
+    },
+    "P13388": {
+      "entry_version": "148",
+      "last_annotation_update_date": "2025-06-18",
+      "source_url": "https://rest.uniprot.org/uniprotkb/P13388.json"
+    },
+    "P55245": {
+      "entry_version": "184",
+      "last_annotation_update_date": "2026-06-10",
+      "source_url": "https://rest.uniprot.org/uniprotkb/P55245.json"
+    },
+    "Q09178": {
+      "entry_version": "147",
+      "last_annotation_update_date": "2026-06-10",
+      "source_url": "https://rest.uniprot.org/uniprotkb/Q09178.json"
+    },
+    "Q17R13": {
+      "entry_version": "137",
+      "last_annotation_update_date": "2026-06-10",
+      "source_url": "https://rest.uniprot.org/uniprotkb/Q17R13.json"
+    },
+    "Q5RB23": {
+      "entry_version": "137",
+      "last_annotation_update_date": "2026-06-10",
+      "source_url": "https://rest.uniprot.org/uniprotkb/Q5RB23.json"
+    },
+    "Q60553": {
+      "entry_version": "178",
+      "last_annotation_update_date": "2026-06-10",
+      "source_url": "https://rest.uniprot.org/uniprotkb/Q60553.json"
+    },
+    "Q75R65": {
+      "entry_version": "141",
+      "last_annotation_update_date": "2026-06-10",
+      "source_url": "https://rest.uniprot.org/uniprotkb/Q75R65.json"
+    }
+  },
+  "retrieved_at": "2026-07-11T20:30:10.201775+00:00",
+  "schema_version": "1.0",
+  "source": {
+    "accession_count": 11,
+    "cross_reference_databases": [
+      "InterPro",
+      "Pfam"
+    ],
+    "name": "UniProtKB REST"
+  }
+}

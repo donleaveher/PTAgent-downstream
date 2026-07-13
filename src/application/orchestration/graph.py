@@ -4,7 +4,8 @@
 log），但节点语义换成**真实下游服务**、状态是**新定义**（非旧 `ExecutionResults`）、无 Mock：
 
     import → base_annotation → ctd_disease → differential → enrichment
-          → hypothesis → kg_projection → deep_search → human_approval
+          → neighbor_search → hypothesis → deep_search → kg_projection
+          → human_approval
             ─approve→ freeze → report → END
             ─modify─→ END   （打回，人改后重跑）
             ─reject─→ END
@@ -42,9 +43,10 @@ _PRE_GATE = (
     "ctd_disease",
     "differential",
     "enrichment",
+    "neighbor_search",
     "hypothesis",
-    "kg_projection",
     "deep_search",
+    "kg_projection",
 )
 _POST_GATE = ("freeze", "report")
 

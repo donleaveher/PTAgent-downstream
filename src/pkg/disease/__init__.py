@@ -6,7 +6,13 @@ from pkg.disease.ctd import (
     iter_direct_evidence_rows,
     parse_ctd_genes_diseases,
 )
-from pkg.disease.gene_resolver import GeneResolver, InMemoryGeneResolver, get_gene_resolver
+from pkg.disease.gene_resolver import (
+    GeneResolver,
+    InMemoryGeneResolver,
+    StaticGeneResolver,
+    get_gene_resolver,
+    parse_static_gene_mapping,
+)
 from pkg.disease.types import GeneDiseaseFact, GeneDiseaseSource
 
 __all__ = [
@@ -15,8 +21,10 @@ __all__ = [
     "GeneDiseaseSource",
     "GeneResolver",
     "InMemoryGeneResolver",
+    "StaticGeneResolver",
     "get_disease_source",
     "get_gene_resolver",
     "iter_direct_evidence_rows",
+    "parse_static_gene_mapping",
     "parse_ctd_genes_diseases",
 ]

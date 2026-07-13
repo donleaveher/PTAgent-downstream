@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -23,6 +25,15 @@ class AnnotationSettings(BaseModel):
         "MCP-current",
         min_length=1,
         description="工具未返回数据库版本时使用的 provenance 版本。",
+    )
+    gene_resolver_provider: Literal["uniprot_mcp", "static"] = Field(
+        "uniprot_mcp",
+        description="accession→gene 解析器：默认 UniProt MCP；本地联调可用 static TSV。",
+    )
+    static_gene_mapping_file: str = Field(
+        "data/structure/static_gene_mapping.tsv",
+        min_length=1,
+        description="gene_resolver_provider=static 时读取的 accession→gene TSV。",
     )
 
 

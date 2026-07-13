@@ -3,7 +3,8 @@
 把已落地的下游服务按依赖序串成端到端流程：
 
     import → base_annotation → ctd_disease → differential → enrichment
-          → hypothesis → kg_projection → deep_search → freeze → report
+          → neighbor_search → hypothesis → deep_search → kg_projection
+          → freeze → report
 
 特性：
 - **独立状态**：用本模块的 `StepResult`/`PipelineResult`，不复用旧上游 `ExecutionResults`。
@@ -30,8 +31,11 @@ from application.experiment.freeze import freeze_experiment
 from application.graph.project_kg import project_experiment_kg
 from application.knowledge import (
     annotate_experiment_diseases,
+    build_neighbor_providers,
     enrich_experiment_proteins,
     generate_experiment_hypotheses,
+    run_neighbor_search,
+    run_structure_search,
     verify_experiment_hypotheses,
 )
 from application.report import (
@@ -70,6 +74,9 @@ class StepOutcome:
     report: "ExperimentReport | None" = None
 
 
+DEFAULT_NEIGHBOR_PROVIDER_NAMES: tuple[str, ...] = ("structure.foldseek",)
+
+
 @dataclass(frozen=True)
 class PipelineResult:
     experiment_id: str
@@ -106,6 +113,13 @@ class DownstreamPipelineConfig:
     annotation_source: Any = None
     disease_source: Any = None
     structure_provider: Any = None
+    # Ordered provider ids; multiple channels can be enabled together, e.g.
+    # ("structure.foldseek", "sequence.kmer", "domain.interpro").
+    neighbor_provider_names: Sequence[str] = DEFAULT_NEIGHBOR_PROVIDER_NAMES
+    neighbor_provider_options: dict[str, dict[str, Any]] = field(default_factory=dict)
+    neighbor_provider_registry: Any = None
+    neighbor_providers: Sequence[Any] = ()
+    neighbor_persistence_adapters: Sequence[Any] | None = None
     gene_resolver: Any = None
     literature_source: Any = None
     graph_store: Any = None
@@ -158,19 +172,52 @@ def _step_enrichment(experiment_id, repo, cfg):
     )
 
 
-def _step_hypothesis(experiment_id, repo, cfg):
-    # Q2：仅对差异蛋白做结构类比假说（M2/M3）；deep_search(L4) 只验证 HYPOTHESIS 注释，
-    # 故自动随之收窄。无差异（如未提交定量）→ 空集 → 不出假说。依赖 differential 步先落库。
-    protein_ids = None
+def _selected_protein_ids(experiment_id, repo, cfg):
+    # Q2：结构检索、近邻融合、假说生成和 deep_search 均可收窄到差异蛋白。
     if cfg.restrict_to_differential:
-        protein_ids = sorted(
+        return sorted(
             {d.protein_id for d in repo.list_differentials(experiment_id) if d.is_differential}
         )
+    return None
+
+
+def _step_structure_search(experiment_id, repo, cfg):
+    return run_structure_search(
+        experiment_id,
+        repository=repo,
+        protein_ids=_selected_protein_ids(experiment_id, repo, cfg),
+        structure_provider=cfg.structure_provider,
+        top_k=cfg.top_k,
+    )
+
+
+def _step_neighbor_search(experiment_id, repo, cfg):
+    providers = [
+        *build_neighbor_providers(
+            cfg.neighbor_provider_names,
+            repository=repo,
+            experiment_id=experiment_id,
+            structure_provider=cfg.structure_provider,
+            provider_options=cfg.neighbor_provider_options,
+            registry=cfg.neighbor_provider_registry,
+        ),
+        *tuple(cfg.neighbor_providers or ()),
+    ]
+    return run_neighbor_search(
+        experiment_id,
+        repository=repo,
+        providers=providers,
+        persistence_adapters=cfg.neighbor_persistence_adapters,
+        protein_ids=_selected_protein_ids(experiment_id, repo, cfg),
+        top_k=cfg.top_k or 20,
+    )
+
+
+def _step_hypothesis(experiment_id, repo, cfg):
     return generate_experiment_hypotheses(
         experiment_id,
         repository=repo,
-        protein_ids=protein_ids,
-        structure_provider=cfg.structure_provider,
+        protein_ids=_selected_protein_ids(experiment_id, repo, cfg),
         gene_resolver=cfg.gene_resolver,
         disease_source=cfg.disease_source,
         top_k=cfg.top_k,
@@ -230,9 +277,10 @@ STEP_ORDER: tuple[str, ...] = (
     "ctd_disease",
     "differential",
     "enrichment",
+    "neighbor_search",
     "hypothesis",
-    "kg_projection",
     "deep_search",
+    "kg_projection",
     "freeze",
     "report",
 )
@@ -243,12 +291,29 @@ _REGISTRY: dict[str, _StepFn] = {
     "ctd_disease": _step_ctd_disease,
     "differential": _step_differential,
     "enrichment": _step_enrichment,
+    "structure_search": _step_structure_search,
+    "neighbor_search": _step_neighbor_search,
     "hypothesis": _step_hypothesis,
     "kg_projection": _step_kg_projection,
     "deep_search": _step_deep_search,
     "freeze": _step_freeze,
     "report": _step_report,
 }
+
+_EXECUTION_ORDER: tuple[str, ...] = (
+    "import",
+    "base_annotation",
+    "ctd_disease",
+    "differential",
+    "enrichment",
+    "structure_search",
+    "neighbor_search",
+    "hypothesis",
+    "deep_search",
+    "kg_projection",
+    "freeze",
+    "report",
+)
 
 
 def execute_step(
@@ -304,10 +369,10 @@ def run_downstream_pipeline(
         raise ValueError(f"unknown experiment_id: {experiment_id}")
 
     selected = set(steps) if steps is not None else set(STEP_ORDER)
-    unknown = selected - set(STEP_ORDER)
+    unknown = selected - set(_REGISTRY)
     if unknown:
         raise ValueError(f"unknown pipeline steps: {sorted(unknown)}")
-    ordered = [name for name in STEP_ORDER if name in selected]
+    ordered = [name for name in _EXECUTION_ORDER if name in selected]
 
     results: list[StepResult] = []
     report: ExperimentReport | None = None
@@ -357,6 +422,7 @@ def pipeline_status(
         "differentials": len(repo.list_differentials(experiment_id)),
         "enrichments": len(repo.list_enrichments(experiment_id)),
         "annotation_history": len(repo.list_annotation_history(experiment_id)),
+        "deep_search_evidence": len(repo.list_deep_search_evidence(experiment_id)),
         "snapshots": [s.snapshot_version for s in repo.list_snapshots(experiment_id)],
     }
 

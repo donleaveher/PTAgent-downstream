@@ -1,0 +1,212 @@
+<svg viewBox="0 0 1180 760" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="npa-title npa-desc">
+<title id="npa-title">Neighbor Search Provider 架构</title>
+<desc id="npa-desc">Protein set 进入 NeighborSearchService，按 provider_names 调度多个 NeighborProvider，统一产出 NeighborCandidate，持久化 evidence 后经 RRF fusion 得到 FusedCandidate；HypothesisGeneration 只消费 FusedCandidate，KG ProjectionPolicy 只读取持久化结果并投影高信号轻量关系。</desc>
+<style>
+text{font-family:'Helvetica Neue',Arial,'PingFang SC','Hiragino Sans GB',sans-serif}
+.title{font-size:17px;font-weight:600;fill:#1c1c1a}
+.sub{font-size:11px;fill:#5f5e5a}
+.stage{font-size:11px;font-weight:600;fill:#7a766c;letter-spacing:.3px}
+.h{font-size:12.5px;font-weight:600;fill:#1c1c1a}
+.t{font-size:11.5px;font-weight:500;fill:#1c1c1a}
+.ts{font-size:9.5px;fill:#5f5e5a}
+.lab{font-size:9.5px;font-weight:600;fill:#7a766c}
+.tiny{font-size:8.8px;fill:#5f5e5a}
+.gray&gt;rect{fill:#f1efe8;stroke:#a8a49a;stroke-width:1.4}
+.blue&gt;rect{fill:#e6f1fb;stroke:#3b82c4;stroke-width:1.4}
+.teal&gt;rect{fill:#e1f5ee;stroke:#1d9e75;stroke-width:1.6}
+.amber&gt;rect{fill:#faeeda;stroke:#ba7517;stroke-width:1.6}
+.coral&gt;rect{fill:#faece7;stroke:#d85a30;stroke-width:1.5}
+.purple&gt;rect{fill:#eeedfe;stroke:#534ab7;stroke-width:1.4}
+.box&gt;rect{fill:#fbfbf9;stroke:#cfcabd;stroke-width:1.3}
+.line{stroke:#8a8f95;stroke-width:1.7;fill:none;marker-end:url(#arr)}
+.thin{stroke:#8a8f95;stroke-width:1.25;fill:none;marker-end:url(#arr)}
+.dash{stroke:#8a8f95;stroke-width:1.35;fill:none;stroke-dasharray:5 4;marker-end:url(#arr)}
+.pdash{stroke:#534ab7;stroke-width:1.35;fill:none;stroke-dasharray:5 4;marker-end:url(#arrp)}
+</style>
+<defs>
+<marker id="arr" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#8a8f95"/></marker>
+<marker id="arrp" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#534ab7"/></marker>
+</defs>
+<rect x="0" y="0" width="1180" height="760" fill="#ffffff"/>
+
+<text class="title" x="36" y="34">Neighbor Search Provider 架构 · search / fusion 统一层</text>
+<text class="sub" x="36" y="54">核心边界：Provider 只检索并产出 NeighborCandidate；Fusion 只做多 channel 排名融合；Hypothesis 只读 FusedCandidate，不直接调用任何 provider。</text>
+
+<text class="stage" x="38" y="84">① 输入蛋白集合</text>
+<text class="stage" x="218" y="84">② 调度与配置</text>
+<text class="stage" x="438" y="84">③ Provider 检索层</text>
+<text class="stage" x="760" y="84">④ Evidence 持久化</text>
+<text class="stage" x="956" y="84">⑤ Fusion → Hypothesis → KG</text>
+
+<!-- input -->
+<g class="gray"><rect fill="#f1efe8" stroke="#a8a49a" stroke-width="1.4" x="36" y="118" width="154" height="74" rx="10"/>
+<text class="h" x="113" y="144" text-anchor="middle">Protein set</text>
+<text class="ts" x="113" y="164" text-anchor="middle">protein_ids / differential</text>
+<text class="ts" x="113" y="180" text-anchor="middle">或实验蛋白全集</text></g>
+<text class="ts" x="40" y="218">只负责选蛋白范围</text>
+<text class="ts" x="40" y="234">不关心 provider 类型</text>
+
+<!-- service -->
+<g class="amber"><rect fill="#faeeda" stroke="#ba7517" stroke-width="1.6" x="220" y="108" width="178" height="92" rx="11"/>
+<text class="h" x="309" y="133" text-anchor="middle">NeighborSearchService</text>
+<text class="ts" x="237" y="154">run_neighbor_search(...)</text>
+<text class="ts" x="237" y="171">select proteins → run providers</text>
+<text class="ts" x="237" y="188">persist evidence → fusion</text></g>
+
+<g class="gray"><rect fill="#f1efe8" stroke="#a8a49a" stroke-width="1.4" x="220" y="236" width="178" height="72" rx="10"/>
+<text class="t" x="309" y="259" text-anchor="middle">provider_names</text>
+<text class="ts" x="235" y="279">('structure.foldseek',</text>
+<text class="ts" x="235" y="295"> 'sequence.kmer', ...)</text></g>
+
+<!-- provider layer -->
+<g class="box"><rect fill="#fbfbf9" stroke="#cfcabd" stroke-width="1.3" x="430" y="100" width="300" height="356" rx="12"/></g>
+<text class="h" x="580" y="124" text-anchor="middle">pkg.retrieval · 可复用 Provider 层</text>
+
+<g class="purple"><rect fill="#eeedfe" stroke="#534ab7" stroke-width="1.4" x="448" y="144" width="264" height="48" rx="9"/>
+<text class="t" x="580" y="165" text-anchor="middle">NeighborProviderRegistry</text>
+<text class="ts" x="580" y="181" text-anchor="middle">provider name → factory</text></g>
+
+<g class="blue"><rect fill="#e6f1fb" stroke="#3b82c4" stroke-width="1.4" x="448" y="212" width="264" height="52" rx="9"/>
+<text class="t" x="580" y="234" text-anchor="middle">NeighborProvider Protocol</text>
+<text class="ts" x="580" y="251" text-anchor="middle">search(accessions, top_k) → result</text></g>
+
+<g class="blue"><rect fill="#e6f1fb" stroke="#3b82c4" stroke-width="1.4" x="448" y="292" width="82" height="62" rx="8"/>
+<text class="tiny" x="489" y="314" text-anchor="middle">structure</text>
+<text class="tiny" x="489" y="329" text-anchor="middle">.foldseek</text>
+<text class="tiny" x="489" y="344" text-anchor="middle">channel=structure</text></g>
+
+<g class="blue"><rect fill="#e6f1fb" stroke="#3b82c4" stroke-width="1.4" x="539" y="292" width="82" height="62" rx="8"/>
+<text class="tiny" x="580" y="314" text-anchor="middle">structure</text>
+<text class="tiny" x="580" y="329" text-anchor="middle">.evidence</text>
+<text class="tiny" x="580" y="344" text-anchor="middle">reads stored hits</text></g>
+
+<g class="blue"><rect fill="#e6f1fb" stroke="#3b82c4" stroke-width="1.4" x="630" y="292" width="82" height="62" rx="8"/>
+<text class="tiny" x="671" y="314" text-anchor="middle">sequence</text>
+<text class="tiny" x="671" y="329" text-anchor="middle">.kmer</text>
+<text class="tiny" x="671" y="344" text-anchor="middle">replaceable</text></g>
+
+<g class="teal"><rect fill="#e1f5ee" stroke="#1d9e75" stroke-width="1.6" x="448" y="382" width="264" height="52" rx="9"/>
+<text class="t" x="580" y="404" text-anchor="middle">NeighborCandidate[]</text>
+<text class="ts" x="580" y="421" text-anchor="middle">query / target / channel / rank / score / evidence_id</text></g>
+
+<!-- persistence -->
+<g class="box"><rect fill="#fbfbf9" stroke="#cfcabd" stroke-width="1.3" x="756" y="100" width="170" height="356" rx="12"/></g>
+<text class="h" x="841" y="124" text-anchor="middle">持久化边界</text>
+
+<g class="teal"><rect fill="#e1f5ee" stroke="#1d9e75" stroke-width="1.6" x="774" y="146" width="134" height="64" rx="9"/>
+<text class="t" x="841" y="169" text-anchor="middle">ProviderPersistence</text>
+<text class="t" x="841" y="184" text-anchor="middle">Adapter</text>
+<text class="ts" x="841" y="201" text-anchor="middle">persist(result, context)</text></g>
+
+<g class="teal"><rect fill="#e1f5ee" stroke="#1d9e75" stroke-width="1.6" x="774" y="236" width="134" height="60" rx="9"/>
+<text class="t" x="841" y="259" text-anchor="middle">NeighborEvidence</text>
+<text class="ts" x="841" y="277" text-anchor="middle">generic run/evidence/status</text></g>
+
+<g class="gray"><rect fill="#f1efe8" stroke="#a8a49a" stroke-width="1.4" x="774" y="320" width="134" height="60" rx="9"/>
+<text class="t" x="841" y="343" text-anchor="middle">StructureEvidence</text>
+<text class="ts" x="841" y="361" text-anchor="middle">legacy compatibility</text></g>
+
+<g class="gray"><rect fill="#f1efe8" stroke="#a8a49a" stroke-width="1.4" x="774" y="402" width="134" height="34" rx="8"/>
+<text class="ts" x="841" y="423" text-anchor="middle">MySQL = 完整事实源</text></g>
+
+<!-- fusion and consumers -->
+<g class="box"><rect fill="#fbfbf9" stroke="#cfcabd" stroke-width="1.3" x="952" y="100" width="192" height="590" rx="12"/></g>
+<text class="h" x="1048" y="124" text-anchor="middle">下游消费层</text>
+
+<g class="amber"><rect fill="#faeeda" stroke="#ba7517" stroke-width="1.6" x="972" y="148" width="152" height="64" rx="10"/>
+<text class="t" x="1048" y="172" text-anchor="middle">FusionEngine / RRF</text>
+<text class="ts" x="1048" y="190" text-anchor="middle">只做多 channel 排名融合</text></g>
+
+<g class="amber"><rect fill="#faeeda" stroke="#ba7517" stroke-width="1.6" x="972" y="244" width="152" height="64" rx="10"/>
+<text class="t" x="1048" y="268" text-anchor="middle">FusedCandidate[]</text>
+<text class="ts" x="1048" y="286" text-anchor="middle">fused_score / support_channels</text></g>
+
+<g class="amber"><rect fill="#faeeda" stroke="#ba7517" stroke-width="1.6" x="972" y="340" width="152" height="74" rx="10"/>
+<text class="t" x="1048" y="364" text-anchor="middle">HypothesisGeneration</text>
+<text class="ts" x="1048" y="382" text-anchor="middle">只读 FusedCandidate</text>
+<text class="ts" x="1048" y="398" text-anchor="middle">target → gene → CTD</text></g>
+
+<g class="teal"><rect fill="#e1f5ee" stroke="#1d9e75" stroke-width="1.6" x="972" y="446" width="152" height="58" rx="10"/>
+<text class="t" x="1048" y="470" text-anchor="middle">MetaAnnotation</text>
+<text class="ts" x="1048" y="486" text-anchor="middle">evidence_level</text>
+<text class="ts" x="1048" y="499" text-anchor="middle">HYPOTHESIS</text></g>
+
+<g class="purple"><rect fill="#eeedfe" stroke="#534ab7" stroke-width="1.4" x="972" y="536" width="152" height="58" rx="10"/>
+<text class="t" x="1048" y="560" text-anchor="middle">KG ProjectionPolicy</text>
+<text class="ts" x="1048" y="578" text-anchor="middle">按 policy 投影理由</text></g>
+
+<g class="purple"><rect fill="#eeedfe" stroke="#534ab7" stroke-width="1.4" x="972" y="624" width="152" height="44" rx="10"/>
+<text class="t" x="1048" y="649" text-anchor="middle">Neo4j 轻量关系</text>
+<text class="tiny" x="1048" y="663" text-anchor="middle">CANDIDATE / STRUCTURAL</text></g>
+
+<!-- storage band -->
+<g class="box"><rect fill="#fbfbf9" stroke="#cfcabd" stroke-width="1.3" x="36" y="506" width="890" height="184" rx="12"/></g>
+<text class="h" x="52" y="530">MySQL 持久化结果</text>
+<text class="ts" x="164" y="530">完整 evidence、run、status、fused candidate 和 projection reason 留在关系库；Neo4j 只放高信号关系。</text>
+
+<g class="gray"><rect fill="#f1efe8" stroke="#a8a49a" stroke-width="1.4" x="56" y="554" width="198" height="90" rx="9"/>
+<text class="t" x="155" y="578" text-anchor="middle">neighbor_search_run</text>
+<text class="ts" x="155" y="597" text-anchor="middle">provider_id / channel / params</text>
+<text class="ts" x="155" y="614" text-anchor="middle">started_at / finished_at</text>
+<text class="ts" x="155" y="631" text-anchor="middle">status / error</text></g>
+
+<g class="gray"><rect fill="#f1efe8" stroke="#a8a49a" stroke-width="1.4" x="274" y="554" width="198" height="90" rx="9"/>
+<text class="t" x="373" y="578" text-anchor="middle">neighbor_evidence</text>
+<text class="ts" x="373" y="597" text-anchor="middle">query / target / score / rank</text>
+<text class="ts" x="373" y="614" text-anchor="middle">channel-specific metrics</text>
+<text class="ts" x="373" y="631" text-anchor="middle">raw_payload / provenance</text></g>
+
+<g class="gray"><rect fill="#f1efe8" stroke="#a8a49a" stroke-width="1.4" x="492" y="554" width="198" height="90" rx="9"/>
+<text class="t" x="591" y="578" text-anchor="middle">fused_candidate</text>
+<text class="ts" x="591" y="597" text-anchor="middle">RRF rank / fused_score</text>
+<text class="ts" x="591" y="614" text-anchor="middle">support_channels</text>
+<text class="ts" x="591" y="631" text-anchor="middle">support_evidence_ids</text></g>
+
+<g class="purple"><rect fill="#eeedfe" stroke="#534ab7" stroke-width="1.4" x="710" y="554" width="198" height="90" rx="9"/>
+<text class="t" x="809" y="578" text-anchor="middle">projection decision</text>
+<text class="ts" x="809" y="597" text-anchor="middle">policy / reason / edge_type</text>
+<text class="ts" x="809" y="614" text-anchor="middle">只投影高信号轻量边</text>
+<text class="ts" x="809" y="631" text-anchor="middle">重 evidence 不进图</text></g>
+
+<!-- extension strip -->
+<g class="box"><rect fill="#fbfbf9" stroke="#cfcabd" stroke-width="1.3" x="430" y="462" width="496" height="40" rx="10"/></g>
+<text class="ts" x="446" y="480">扩展点：新增 MMseqs2 / BLAST / Domain / Ortholog provider，只实现 NeighborProvider 并注册 provider name。</text>
+<text class="ts" x="446" y="494">adapter 只有在通用 evidence 不够表达某类细节时才新增；Hypothesis / KG 主流程不随 provider 增加而修改。</text>
+
+<!-- no direct calls note -->
+<g class="coral"><rect fill="#faece7" stroke="#d85a30" stroke-width="1.5" x="220" y="346" width="178" height="58" rx="10"/>
+<text class="t" x="309" y="370" text-anchor="middle">禁止职责回流</text>
+<text class="ts" x="309" y="388" text-anchor="middle">Hypothesis 不直接调用</text>
+<text class="ts" x="309" y="402" text-anchor="middle">Foldseek / MMseqs / BLAST</text></g>
+
+<!-- main edges -->
+<line class="line" x1="190" y1="155" x2="218" y2="155"/>
+<line class="line" x1="398" y1="154" x2="428" y2="168"/>
+<line class="thin" x1="398" y1="272" x2="446" y2="168"/>
+<line class="thin" x1="580" y1="192" x2="580" y2="210"/>
+<path class="thin" d="M580 264 L489 290"/>
+<path class="thin" d="M580 264 L580 290"/>
+<path class="thin" d="M580 264 L671 290"/>
+<path class="line" d="M489 354 L489 372"/>
+<path class="line" d="M580 354 L580 372"/>
+<path class="line" d="M671 354 L671 372"/>
+<path class="line" d="M712 408 L742 408 L742 178 L772 178"/>
+<path class="line" d="M712 408 L742 408 L742 452 L936 452 L936 180 L970 180"/>
+<line class="line" x1="1048" y1="212" x2="1048" y2="242"/>
+<line class="line" x1="1048" y1="308" x2="1048" y2="338"/>
+<line class="line" x1="1048" y1="414" x2="1048" y2="444"/>
+<line class="line" x1="1048" y1="504" x2="1048" y2="534"/>
+<line class="line" x1="1048" y1="594" x2="1048" y2="622"/>
+
+<!-- persistence edges -->
+<line class="thin" x1="841" y1="210" x2="841" y2="234"/>
+<line class="thin" x1="841" y1="296" x2="841" y2="318"/>
+<line class="thin" x1="841" y1="380" x2="841" y2="400"/>
+<path class="dash" d="M841 436 L841 482 L373 482 L373 552"/>
+<path class="dash" d="M1048 308 L1048 488 L591 488 L591 552"/>
+<path class="pdash" d="M1048 594 L1048 690 L809 690 L809 646"/>
+
+<!-- extension and boundary edges -->
+<path class="pdash" d="M678 462 L678 434"/>
+<line class="dash" x1="309" y1="346" x2="309" y2="310"/>
+</svg>

@@ -1,7 +1,7 @@
 """§11.2 下游管线编排端到端测试（全程假源，离线）。
 
-串起：base_annotation → ctd_disease → differential → enrichment → hypothesis
-→ kg_projection → deep_search → freeze → report，并覆盖幂等重跑、失败隔离、
+串起：base_annotation → ctd_disease → differential → enrichment → neighbor_search
+→ hypothesis → kg_projection → deep_search → freeze → report，并覆盖幂等重跑、失败隔离、
 子集执行、状态查询。
 """
 from __future__ import annotations
@@ -13,7 +13,12 @@ from application.orchestration import (
     run_downstream_pipeline,
 )
 from pkg.annotation import ProteinAnnotationFact
-from pkg.deep_search import EvidenceRecord, EvidenceStance, InMemoryLiteratureSource
+from pkg.deep_search import (
+    DeepSearchTask,
+    EvidenceRecord,
+    EvidenceStance,
+    InMemoryLiteratureSource,
+)
 from pkg.disease import GeneDiseaseFact, InMemoryGeneResolver
 from pkg.experiment import (
     EvidenceLevel,
@@ -67,6 +72,14 @@ class _FakeStructure:
             "Q_NOVEL": [StructuralNeighbor("Q_NOVEL", "P_HUMAN", score=0.93, coverage=0.9, taxon_id=9606)]
         }
         return {acc: mapping.get(acc, []) for acc in accessions}
+
+
+class _FailingLiteratureSource:
+    name = "failing-literature"
+    version = "test"
+
+    def search(self, task: DeepSearchTask) -> list[EvidenceRecord]:
+        raise RuntimeError(f"simulated literature failure for {task.annotation_id}")
 
 
 def _quants(protein_id: str, case_hi: float, ctrl_lo: float) -> list[ProteinQuantification]:
@@ -125,19 +138,25 @@ def _full_config(**overrides) -> DownstreamPipelineConfig:
 
 def test_full_pipeline_runs_end_to_end() -> None:
     repo = _seed()
-    result = run_downstream_pipeline(EXP, repository=repo, config=_full_config())
+    graph = InMemoryGraphStore()
+    result = run_downstream_pipeline(
+        EXP,
+        repository=repo,
+        config=_full_config(graph_store=graph),
+    )
 
     assert result.completed is True
     assert result.failed_step is None
     statuses = result.step_statuses()
     assert statuses["import"] == "skipped"  # 已预先导入
     for step in ("base_annotation", "ctd_disease", "differential", "enrichment",
-                 "hypothesis", "kg_projection", "deep_search", "freeze", "report"):
+                 "neighbor_search", "hypothesis", "kg_projection",
+                 "deep_search", "freeze", "report"):
         assert statuses[step] == "ok", f"{step} not ok: {statuses}"
 
     # 报告产出 + 快照落库
     assert result.report is not None
-    assert len(result.report.sections) == 8
+    assert len(result.report.sections) == 9
     assert result.snapshot_version == "1.0"
     assert [s.snapshot_version for s in repo.list_snapshots(EXP)] == ["1.0"]
 
@@ -155,7 +174,14 @@ def test_full_pipeline_runs_end_to_end() -> None:
     assert status["differentials"] == 2
     assert status["enrichments"] >= 1
     assert status["annotation_history"] >= 1
+    assert status["deep_search_evidence"] >= 1
     assert status["snapshots"] == ["1.0"]
+    links = graph.protein_diseases("Q_NOVEL", experiment_id=EXP)
+    assert any(
+        link.disease_key == "MESH:D007249"
+        and link.evidence_level == "CONCLUSION"
+        for link in links
+    )
 
 
 def test_pipeline_rerun_is_idempotent() -> None:
@@ -173,7 +199,7 @@ def test_pipeline_rerun_is_idempotent() -> None:
 
 def test_failure_is_isolated_and_stops_chain() -> None:
     repo = _seed()
-    cfg = _full_config(literature_source=None)  # deep_search 无源 → 该步报错
+    cfg = _full_config(literature_source=_FailingLiteratureSource())
     result = run_downstream_pipeline(EXP, repository=repo, config=cfg)
 
     assert result.completed is False
@@ -194,6 +220,62 @@ def test_pipeline_runs_step_subset() -> None:
     assert [s.name for s in result.steps] == ["base_annotation", "ctd_disease"]
     assert result.completed is True
     assert repo.list_snapshots(EXP) == []  # 没跑到 freeze
+
+
+def test_pipeline_neighbor_providers_are_selected_by_name() -> None:
+    repo = _repo_prot2(100, 10)
+    cfg = _full_config(
+        neighbor_provider_names=("sequence.kmer",),
+        neighbor_provider_options={
+            "sequence.kmer": {
+                "sequences": {
+                    "Q_NOVEL": "MPEPTIDEKAAAA",
+                    "P_SEQ": "MPEPTIDERAAAA",
+                },
+                "version": "seq-pipe",
+            }
+        },
+    )
+    result = run_downstream_pipeline(
+        EXP,
+        repository=repo,
+        config=cfg,
+        steps=["differential", "neighbor_search"],
+    )
+
+    assert result.completed is True
+    neighbor_step = result.steps[-1]
+    assert neighbor_step.summary["providers"] == ["sequence.kmer"]
+    assert neighbor_step.summary["channels"] == {"sequence": 1}
+    assert len(repo.list_fused_candidates(EXP)) == 1
+
+
+def test_pipeline_neighbor_provider_names_accept_multiple_channels() -> None:
+    repo = _repo_prot2(100, 10)
+    cfg = _full_config(
+        neighbor_provider_names=("structure.foldseek", "sequence.kmer"),
+        neighbor_provider_options={
+            "sequence.kmer": {
+                "sequences": {
+                    "Q_NOVEL": "MPEPTIDEKAAAA",
+                    "P_SEQ": "MPEPTIDERAAAA",
+                },
+                "version": "seq-pipe",
+            }
+        },
+    )
+    result = run_downstream_pipeline(
+        EXP,
+        repository=repo,
+        config=cfg,
+        steps=["differential", "neighbor_search"],
+    )
+
+    assert result.completed is True
+    neighbor_step = result.steps[-1]
+    assert neighbor_step.summary["providers"] == ["structure.foldseek", "sequence.kmer"]
+    assert neighbor_step.summary["channels"] == {"sequence": 1, "structure": 1}
+    assert {row.target_id for row in repo.list_fused_candidates(EXP)} == {"P_HUMAN", "P_SEQ"}
 
 
 def test_import_step_ingests_bundle() -> None:
@@ -241,7 +323,7 @@ def _repo_prot2(case_hi: float, ctrl_lo: float) -> InMemoryExperimentRepository:
 
 def test_hypotheses_restricted_to_differential_proteins() -> None:
     """Q2：非差异蛋白即便有结构近邻也不出假说；关掉开关退回全蛋白；差异蛋白照常出。"""
-    steps = ["differential", "hypothesis"]
+    steps = ["differential", "neighbor_search", "hypothesis"]
 
     # 非差异（case≈control）+ restrict 默认开 → 0 假说
     repo_flat = _repo_prot2(10, 10)

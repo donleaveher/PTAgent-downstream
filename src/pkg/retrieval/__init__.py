@@ -1,6 +1,24 @@
 """混合检索包：召回(k-mer/属性重叠) + RRF 融合 + rerank。纯函数，不依赖图/网络。"""
 from pkg.retrieval.fusion import rrf
 from pkg.retrieval.hybrid import HybridRetriever
+from pkg.retrieval.neighbors import (
+    NeighborCandidate,
+    NeighborProvider,
+    NeighborProviderRegistry,
+    NeighborProviderResult,
+)
+from pkg.retrieval.persistence import (
+    NeighborEvidencePersistenceAdapter,
+    NeighborPersistenceContext,
+    ProviderPersistenceAdapter,
+)
+from pkg.retrieval.providers import (
+    DomainNeighborProvider,
+    SequenceNeighborProvider,
+    StructureEvidencePersistenceAdapter,
+    StructureEvidenceNeighborProvider,
+    StructureSearchNeighborProvider,
+)
 from pkg.retrieval.recall import KmerIndex, jaccard, kmers, overlap_recall
 from pkg.retrieval.rerank import Scorer, rerank, seq_identity
 
@@ -14,4 +32,16 @@ __all__ = [
     "rerank",
     "Scorer",
     "HybridRetriever",
+    "NeighborCandidate",
+    "NeighborProvider",
+    "NeighborProviderRegistry",
+    "NeighborProviderResult",
+    "NeighborEvidencePersistenceAdapter",
+    "NeighborPersistenceContext",
+    "ProviderPersistenceAdapter",
+    "DomainNeighborProvider",
+    "SequenceNeighborProvider",
+    "StructureEvidencePersistenceAdapter",
+    "StructureEvidenceNeighborProvider",
+    "StructureSearchNeighborProvider",
 ]

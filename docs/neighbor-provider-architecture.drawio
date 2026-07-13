@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="drawio" version="26.0.0">
+  <diagram name="Neighbor Provider Architecture">
+    <mxGraphModel dx="1420" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1180" pageHeight="760" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="Neighbor Search Provider 架构 · search / fusion 统一层" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=17;fontStyle=1;fontColor=#1c1c1a;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="36" y="18" width="520" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="核心边界：Provider 只检索并产出 NeighborCandidate；Fusion 只做多 channel 排名融合；Hypothesis 只读 FusedCandidate，不直接调用任何 provider。" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#5f5e5a;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="36" y="42" width="860" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="s1" value="① 输入蛋白集合" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontStyle=1;fontColor=#7a766c;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="38" y="72" width="140" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="s2" value="② 调度与配置" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontStyle=1;fontColor=#7a766c;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="218" y="72" width="130" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="s3" value="③ Provider 检索层" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontStyle=1;fontColor=#7a766c;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="438" y="72" width="150" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="s4" value="④ Evidence 持久化" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontStyle=1;fontColor=#7a766c;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="760" y="72" width="150" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="s5" value="⑤ Fusion → Hypothesis → KG" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontStyle=1;fontColor=#7a766c;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="956" y="72" width="190" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="provider_box" value="pkg.retrieval · 可复用 Provider 层" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fbfbf9;strokeColor=#cfcabd;fontSize=12;fontStyle=1;fontColor=#1c1c1a;verticalAlign=top;spacingTop=12;" vertex="1" parent="1">
+          <mxGeometry x="430" y="100" width="300" height="356" as="geometry" />
+        </mxCell>
+        <mxCell id="persist_box" value="持久化边界" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fbfbf9;strokeColor=#cfcabd;fontSize=12;fontStyle=1;fontColor=#1c1c1a;verticalAlign=top;spacingTop=12;" vertex="1" parent="1">
+          <mxGeometry x="756" y="100" width="170" height="356" as="geometry" />
+        </mxCell>
+        <mxCell id="consumer_box" value="下游消费层" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fbfbf9;strokeColor=#cfcabd;fontSize=12;fontStyle=1;fontColor=#1c1c1a;verticalAlign=top;spacingTop=12;" vertex="1" parent="1">
+          <mxGeometry x="952" y="100" width="192" height="590" as="geometry" />
+        </mxCell>
+        <mxCell id="storage_box" value="MySQL 持久化结果&#xa;完整 evidence、run、status、fused candidate 和 projection reason 留在关系库；Neo4j 只放高信号关系。" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fbfbf9;strokeColor=#cfcabd;fontSize=12;fontStyle=1;fontColor=#1c1c1a;align=left;verticalAlign=top;spacing=14;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="36" y="506" width="890" height="184" as="geometry" />
+        </mxCell>
+
+        <mxCell id="protein" value="Protein set&#xa;protein_ids / differential&#xa;或实验蛋白全集" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1efe8;strokeColor=#a8a49a;fontSize=10;fontColor=#1c1c1a;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="36" y="118" width="154" height="74" as="geometry" />
+        </mxCell>
+        <mxCell id="protein_note" value="只负责选蛋白范围&#xa;不关心 provider 类型" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=9;fontColor=#5f5e5a;" vertex="1" parent="1">
+          <mxGeometry x="40" y="210" width="120" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="service" value="NeighborSearchService&#xa;run_neighbor_search(...)&#xa;select proteins → run providers&#xa;persist evidence → fusion" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#faeeda;strokeColor=#ba7517;fontSize=10;fontColor=#1c1c1a;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="220" y="108" width="178" height="92" as="geometry" />
+        </mxCell>
+        <mxCell id="provider_names" value="provider_names&#xa;('structure.foldseek',&#xa;'sequence.kmer', ...)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1efe8;strokeColor=#a8a49a;fontSize=10;fontColor=#1c1c1a;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="220" y="236" width="178" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="no_direct" value="禁止职责回流&#xa;Hypothesis 不直接调用&#xa;Foldseek / MMseqs / BLAST" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#faece7;strokeColor=#d85a30;fontSize=10;fontColor=#1c1c1a;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="220" y="346" width="178" height="58" as="geometry" />
+        </mxCell>
+
+        <mxCell id="registry" value="NeighborProviderRegistry&#xa;provider name → factory" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eeedfe;strokeColor=#534ab7;fontSize=10;fontColor=#1c1c1a;fontStyle=1;" vertex="1" parent="provider_box">
+          <mxGeometry x="18" y="44" width="264" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="protocol" value="NeighborProvider Protocol&#xa;search(accessions, top_k) → result" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6f1fb;strokeColor=#3b82c4;fontSize=10;fontColor=#1c1c1a;fontStyle=1;" vertex="1" parent="provider_box">
+          <mxGeometry x="18" y="112" width="264" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="p_struct" value="structure&#xa;.foldseek&#xa;channel=structure" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6f1fb;strokeColor=#3b82c4;fontSize=9;fontColor=#1c1c1a;" vertex="1" parent="provider_box">
+          <mxGeometry x="18" y="192" width="82" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="p_structure_evidence" value="structure&#xa;.evidence&#xa;reads stored hits" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6f1fb;strokeColor=#3b82c4;fontSize=9;fontColor=#1c1c1a;" vertex="1" parent="provider_box">
+          <mxGeometry x="109" y="192" width="82" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="p_sequence" value="sequence&#xa;.kmer&#xa;replaceable" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6f1fb;strokeColor=#3b82c4;fontSize=9;fontColor=#1c1c1a;" vertex="1" parent="provider_box">
+          <mxGeometry x="200" y="192" width="82" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="candidate" value="NeighborCandidate[]&#xa;query / target / channel / rank / score / evidence_id" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5ee;strokeColor=#1d9e75;fontSize=10;fontColor=#1c1c1a;fontStyle=1;" vertex="1" parent="provider_box">
+          <mxGeometry x="18" y="282" width="264" height="52" as="geometry" />
+        </mxCell>
+
+        <mxCell id="adapter" value="ProviderPersistence&#xa;Adapter&#xa;persist(result, context)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5ee;strokeColor=#1d9e75;fontSize=10;fontColor=#1c1c1a;fontStyle=1;" vertex="1" parent="persist_box">
+          <mxGeometry x="18" y="46" width="134" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="neighbor_evidence" value="NeighborEvidence&#xa;generic run/evidence/status" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5ee;strokeColor=#1d9e75;fontSize=10;fontColor=#1c1c1a;fontStyle=1;" vertex="1" parent="persist_box">
+          <mxGeometry x="18" y="136" width="134" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="structure_evidence" value="StructureEvidence&#xa;legacy compatibility" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1efe8;strokeColor=#a8a49a;fontSize=10;fontColor=#1c1c1a;fontStyle=1;" vertex="1" parent="persist_box">
+          <mxGeometry x="18" y="220" width="134" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="mysql_note" value="MySQL = 完整事实源" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1efe8;strokeColor=#a8a49a;fontSize=10;fontColor=#1c1c1a;" vertex="1" parent="persist_box">
+          <mxGeometry x="18" y="302" width="134" height="34" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fusion" value="FusionEngine / RRF&#xa;只做多 channel 排名融合" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#faeeda;strokeColor=#ba7517;fontSize=10;fontColor=#1c1c1a;fontStyle=1;" vertex="1" parent="consumer_box">
+          <mxGeometry x="20" y="48" width="152" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="fused" value="FusedCandidate[]&#xa;fused_score / support_channels" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#faeeda;strokeColor=#ba7517;fontSize=10;fontColor=#1c1c1a;fontStyle=1;" vertex="1" parent="consumer_box">
+          <mxGeometry x="20" y="144" width="152" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="hypothesis" value="HypothesisGeneration&#xa;只读 FusedCandidate&#xa;target → gene → CTD" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#faeeda;strokeColor=#ba7517;fontSize=10;fontColor=#1c1c1a;fontStyle=1;" vertex="1" parent="consumer_box">
+          <mxGeometry x="20" y="240" width="152" height="74" as="geometry" />
+        </mxCell>
+        <mxCell id="meta" value="MetaAnnotation&#xa;evidence_level&#xa;HYPOTHESIS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5ee;strokeColor=#1d9e75;fontSize=10;fontColor=#1c1c1a;fontStyle=1;" vertex="1" parent="consumer_box">
+          <mxGeometry x="20" y="346" width="152" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="projection" value="KG ProjectionPolicy&#xa;按 policy 投影理由" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eeedfe;strokeColor=#534ab7;fontSize=10;fontColor=#1c1c1a;fontStyle=1;" vertex="1" parent="consumer_box">
+          <mxGeometry x="20" y="436" width="152" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="neo4j" value="Neo4j 轻量关系&#xa;CANDIDATE / STRUCTURAL" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eeedfe;strokeColor=#534ab7;fontSize=10;fontColor=#1c1c1a;fontStyle=1;" vertex="1" parent="consumer_box">
+          <mxGeometry x="20" y="524" width="152" height="44" as="geometry" />
+        </mxCell>
+
+        <mxCell id="storage_run" value="neighbor_search_run&#xa;provider_id / channel / params&#xa;started_at / finished_at&#xa;status / error" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1efe8;strokeColor=#a8a49a;fontSize=10;fontColor=#1c1c1a;fontStyle=1;" vertex="1" parent="storage_box">
+          <mxGeometry x="20" y="48" width="198" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="storage_evidence" value="neighbor_evidence&#xa;query / target / score / rank&#xa;channel-specific metrics&#xa;raw_payload / provenance" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1efe8;strokeColor=#a8a49a;fontSize=10;fontColor=#1c1c1a;fontStyle=1;" vertex="1" parent="storage_box">
+          <mxGeometry x="238" y="48" width="198" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="storage_fused" value="fused_candidate&#xa;RRF rank / fused_score&#xa;support_channels&#xa;support_evidence_ids" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1efe8;strokeColor=#a8a49a;fontSize=10;fontColor=#1c1c1a;fontStyle=1;" vertex="1" parent="storage_box">
+          <mxGeometry x="456" y="48" width="198" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="storage_projection" value="projection decision&#xa;policy / reason / edge_type&#xa;只投影高信号轻量边&#xa;重 evidence 不进图" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eeedfe;strokeColor=#534ab7;fontSize=10;fontColor=#1c1c1a;fontStyle=1;" vertex="1" parent="storage_box">
+          <mxGeometry x="674" y="48" width="198" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="extension" value="扩展点：新增 MMseqs2 / BLAST / Domain / Ortholog provider，只实现 NeighborProvider 并注册 provider name。&#xa;adapter 只有在通用 evidence 不够表达某类细节时才新增；Hypothesis / KG 主流程不随 provider 增加而修改。" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fbfbf9;strokeColor=#cfcabd;fontSize=9;fontColor=#5f5e5a;align=left;spacing=10;" vertex="1" parent="1">
+          <mxGeometry x="430" y="462" width="496" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8a8f95;endArrow=block;endFill=1;" edge="1" parent="1" source="protein" target="service">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8a8f95;endArrow=block;endFill=1;" edge="1" parent="1" source="service" target="registry">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8a8f95;endArrow=block;endFill=1;" edge="1" parent="1" source="provider_names" target="registry">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8a8f95;endArrow=block;endFill=1;" edge="1" parent="1" source="registry" target="protocol">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8a8f95;endArrow=block;endFill=1;" edge="1" parent="1" source="protocol" target="p_struct">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8a8f95;endArrow=block;endFill=1;" edge="1" parent="1" source="protocol" target="p_structure_evidence">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8a8f95;endArrow=block;endFill=1;" edge="1" parent="1" source="protocol" target="p_sequence">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8a8f95;endArrow=block;endFill=1;" edge="1" parent="1" source="p_struct" target="candidate">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8a8f95;endArrow=block;endFill=1;" edge="1" parent="1" source="p_structure_evidence" target="candidate">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8a8f95;endArrow=block;endFill=1;" edge="1" parent="1" source="p_sequence" target="candidate">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8a8f95;endArrow=block;endFill=1;" edge="1" parent="1" source="candidate" target="adapter">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="742" y="408" /><mxPoint x="742" y="178" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e12" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8a8f95;endArrow=block;endFill=1;" edge="1" parent="1" source="candidate" target="fusion">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="742" y="408" /><mxPoint x="742" y="452" /><mxPoint x="936" y="452" /><mxPoint x="936" y="180" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e13" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8a8f95;endArrow=block;endFill=1;" edge="1" parent="1" source="adapter" target="neighbor_evidence">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e14" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8a8f95;endArrow=block;endFill=1;" edge="1" parent="1" source="neighbor_evidence" target="structure_evidence">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e15" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8a8f95;endArrow=block;endFill=1;" edge="1" parent="1" source="structure_evidence" target="mysql_note">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e16" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8a8f95;endArrow=block;endFill=1;" edge="1" parent="1" source="fusion" target="fused">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e17" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8a8f95;endArrow=block;endFill=1;" edge="1" parent="1" source="fused" target="hypothesis">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e18" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8a8f95;endArrow=block;endFill=1;" edge="1" parent="1" source="hypothesis" target="meta">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e19" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8a8f95;endArrow=block;endFill=1;" edge="1" parent="1" source="meta" target="projection">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e20" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#534ab7;dashed=1;endArrow=block;endFill=1;" edge="1" parent="1" source="projection" target="neo4j">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e21" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8a8f95;dashed=1;endArrow=block;endFill=1;" edge="1" parent="1" source="neighbor_evidence" target="storage_evidence">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e22" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8a8f95;dashed=1;endArrow=block;endFill=1;" edge="1" parent="1" source="fused" target="storage_fused">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e23" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#534ab7;dashed=1;endArrow=block;endFill=1;" edge="1" parent="1" source="projection" target="storage_projection">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

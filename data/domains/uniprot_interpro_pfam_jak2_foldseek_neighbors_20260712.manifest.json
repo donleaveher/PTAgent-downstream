@@ -1,0 +1,53 @@
+{
+  "accessions": [
+    "O60674",
+    "O19064",
+    "Q5RB23",
+    "Q75R65",
+    "Q09178",
+    "P55245",
+    "P13388",
+    "Q60553",
+    "O18735",
+    "P0CY46",
+    "Q17R13"
+  ],
+  "dataset_bytes": 37773,
+  "dataset_file": "uniprot_interpro_pfam_jak2_foldseek_neighbors_20260712.json",
+  "dataset_sha256": "1a17331d151615b7dbc7b021eb98d9116de0c8fc2818556e044ed0404a93127b",
+  "domain_counts": {
+    "O18735": 20,
+    "O19064": 28,
+    "O60674": 28,
+    "P0CY46": 18,
+    "P13388": 21,
+    "P55245": 20,
+    "Q09178": 23,
+    "Q17R13": 20,
+    "Q5RB23": 28,
+    "Q60553": 20,
+    "Q75R65": 28
+  },
+  "raw_response_sha256": {
+    "O18735": "6661732931ca8815bd1e26af53883eb1b6cf7225b62a807929f9c884026958ae",
+    "O19064": "435d67f69dbe190b93ddc350963b5d7ef6225990c61c1268e323ab1eaac42fb3",
+    "O60674": "001747b6f936097b444faeb5f25952ca4ee993defc9108a966057b448a04c690",
+    "P0CY46": "e23fd5224c57ff5d0ddbe520add0d40428259321d7b8baf4a4808bf5564c5b8a",
+    "P13388": "25e845b8e75efbed60f73b0c5ec99f144f0061638dcb86b990d49c89dfcf46d0",
+    "P55245": "30067e723df8c0ff8d5b70b362d1b10333999ff4ab6a0e88182322245a826d26",
+    "Q09178": "256c6606ab83fa36af5ba7a478cd932738e26716b8f47fcc8f2289503457a0da",
+    "Q17R13": "0e58283008c6f752f69119319926aa766a36541259c212480637a56fbe808fac",
+    "Q5RB23": "87957e070c1c2e9da84adb18003e04a233931261d0d9c68ecaecb95e8ace9ed9",
+    "Q60553": "0a0e82e78b35ad53ff43dfbea6c7dfada586f53fc5f5b90f48530d72fdb43d2f",
+    "Q75R65": "52b8a9511ea6de02c7c57c8278eaded9240b5fb67f25e12d1903874ca7b877cf"
+  },
+  "retrieved_at": "2026-07-11T20:30:10.201775+00:00",
+  "source": {
+    "accession_count": 11,
+    "cross_reference_databases": [
+      "InterPro",
+      "Pfam"
+    ],
+    "name": "UniProtKB REST"
+  }
+}

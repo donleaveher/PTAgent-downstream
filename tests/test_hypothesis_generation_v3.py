@@ -1,10 +1,13 @@
-"""M3：结构近邻借 CTD 疾病 → 蛋白级假说。"""
+"""M3：融合近邻借 CTD 疾病 → 蛋白级假说。"""
 
 from __future__ import annotations
 
 import pytest
 
-from application.knowledge import generate_experiment_hypotheses
+from application.knowledge import (
+    generate_experiment_hypotheses,
+    run_neighbor_search,
+)
 from pkg.disease import GeneDiseaseFact, InMemoryGeneResolver
 from pkg.experiment import (
     AnnotationTargetType,
@@ -15,6 +18,7 @@ from pkg.experiment import (
 )
 from pkg.structure import StructuralNeighbor
 from pkg.structure.catalog import StructureCatalogRecord, StructureStatus
+from pkg.retrieval.providers import StructureSearchNeighborProvider
 from tests.pkg.test_experiment_models import valid_payload
 
 
@@ -68,6 +72,14 @@ def _deps():
     return structure, resolver, ctd
 
 
+def _run_neighbor_prereqs(repo: InMemoryExperimentRepository, structure) -> None:
+    run_neighbor_search(
+        "exp_1",
+        repository=repo,
+        providers=[StructureSearchNeighborProvider(repo, "exp_1", structure)],
+    )
+
+
 class _MissingStructure:
     name = "Foldseek-AlphaFold"
     version = "afdb-2024_01"
@@ -91,15 +103,15 @@ class _MissingStructure:
         return {acc: [] for acc in accessions}
 
 
-def test_structural_neighbor_borrows_ctd_disease_as_protein_hypothesis() -> None:
+def test_fused_neighbor_borrows_ctd_disease_as_protein_hypothesis() -> None:
     repo = InMemoryExperimentRepository()
     ingest_experiment_payload(_payload_with_novel_protein(), repo)
     structure, resolver, ctd = _deps()
+    _run_neighbor_prereqs(repo, structure)
 
     result = generate_experiment_hypotheses(
         "exp_1",
         repository=repo,
-        structure_provider=structure,
         gene_resolver=resolver,
         disease_source=ctd,
     )
@@ -114,10 +126,12 @@ def test_structural_neighbor_borrows_ctd_disease_as_protein_hypothesis() -> None
     assert hyp.target == "prot_2"  # 假说挂在大鼠蛋白上
     assert hyp.target_type is AnnotationTargetType.PROTEIN
     assert hyp.evidence_level is EvidenceLevel.HYPOTHESIS
-    assert hyp.source == "Foldseek-KNN"
+    assert hyp.source == "NeighborFusion"
     assert hyp.attribute == "disease:MESH:D007249"
     assert hyp.derivation["via_genes"] == ["HUMANG"]
     assert hyp.derivation["confidence"] == 0.9
+    assert hyp.derivation["fused_confidence"] > 0
+    assert hyp.derivation["neighbors"][0]["support_channels"] == ["structure"]
     assert hyp.derivation["neighbors"][0]["accession"] == "P_HUMAN"
     assert hyp.derivation["neighbors"][0]["taxon_id"] == 9606  # 跨物种：大鼠→人
 
@@ -138,6 +152,7 @@ def test_no_hypothesis_when_protein_gene_already_concluded() -> None:
     repo = InMemoryExperimentRepository()
     ingest_experiment_payload(_payload_with_novel_protein(), repo)
     structure, resolver, ctd = _deps()
+    _run_neighbor_prereqs(repo, structure)
     # prot_2 的基因 Novelx 已对同一疾病有 CTD 直接结论 → 不应再出假说
     repo.add_annotations(
         [
@@ -156,27 +171,33 @@ def test_no_hypothesis_when_protein_gene_already_concluded() -> None:
     result = generate_experiment_hypotheses(
         "exp_1",
         repository=repo,
-        structure_provider=structure,
         gene_resolver=resolver,
         disease_source=ctd,
     )
     assert result["hypotheses"] == 0
 
 
-def test_missing_structure_status_is_persisted_without_hypothesis() -> None:
+def test_structure_search_persists_missing_status_without_hypothesis() -> None:
     repo = InMemoryExperimentRepository()
     ingest_experiment_payload(_payload_with_novel_protein(), repo)
     structure = _MissingStructure()
 
+    fusion = run_neighbor_search(
+        "exp_1",
+        repository=repo,
+        providers=[StructureSearchNeighborProvider(repo, "exp_1", structure)],
+    )
     result = generate_experiment_hypotheses(
         "exp_1",
         repository=repo,
-        structure_provider=structure,
         gene_resolver=InMemoryGeneResolver({}),
         disease_source=_FakeCTD({}),
     )
 
+    assert fusion["fused_candidates"] == 0
+    assert fusion["channels"] == {}
     assert result["hypotheses"] == 0
+    assert result["unresolved_reasons"] == {"no_candidate_neighbors": 2}
     statuses = repo.list_structure_statuses("exp_1")
     by_protein = {row.protein_id: row for row in statuses}
     assert set(by_protein) == {"prot_1", "prot_2"}
@@ -194,18 +215,19 @@ def test_hypotheses_are_idempotent() -> None:
     repo = InMemoryExperimentRepository()
     ingest_experiment_payload(_payload_with_novel_protein(), repo)
     structure, resolver, ctd = _deps()
+    _run_neighbor_prereqs(repo, structure)
     generate_experiment_hypotheses(
-        "exp_1", repository=repo, structure_provider=structure, gene_resolver=resolver, disease_source=ctd
+        "exp_1", repository=repo, gene_resolver=resolver, disease_source=ctd
     )
     first = [a.annotation_id for a in repo.list_annotations("exp_1")]
     generate_experiment_hypotheses(
-        "exp_1", repository=repo, structure_provider=structure, gene_resolver=resolver, disease_source=ctd
+        "exp_1", repository=repo, gene_resolver=resolver, disease_source=ctd
     )
     second = [a.annotation_id for a in repo.list_annotations("exp_1")]
     assert first == second and len(second) == 1
 
 
-def test_supporting_neighbors_are_reranked_by_rrf_fusion() -> None:
+def test_supporting_neighbors_follow_persisted_fusion_rank() -> None:
     repo = InMemoryExperimentRepository()
     ingest_experiment_payload(_payload_with_novel_protein(), repo)
     # 一个蛋白的 3 个结构近邻经 3 个基因都指向同一疾病；纯 score 序 N_A 居首，
@@ -228,26 +250,15 @@ def test_supporting_neighbors_are_reranked_by_rrf_fusion() -> None:
         }
     )
 
+    _run_neighbor_prereqs(repo, structure)
     generate_experiment_hypotheses(
-        "exp_1", repository=repo, structure_provider=structure, gene_resolver=resolver, disease_source=ctd
+        "exp_1", repository=repo, gene_resolver=resolver, disease_source=ctd
     )
     der = repo.list_annotations("exp_1")[0].derivation
-    assert der["neighbors"][0]["accession"] == "N_B"      # 重排把高覆盖近邻顶上来
-    assert der["neighbors"][0]["coverage"] == 0.99
+    assert der["neighbors"][0]["accession"] == "N_A"
     assert der["confidence"] == 0.9                         # 最高结构分(N_A)，与顺序无关
-    assert der["ranking"] == "rrf(score,coverage)"
-    assert der["rerank_confidence"] == max(n["fused_score"] for n in der["neighbors"])
-
-    # 关掉重排 → 回到纯 score 序（N_A 居首）
-    repo2 = InMemoryExperimentRepository()
-    ingest_experiment_payload(_payload_with_novel_protein(), repo2)
-    generate_experiment_hypotheses(
-        "exp_1", repository=repo2, structure_provider=structure, gene_resolver=resolver,
-        disease_source=ctd, rerank=False,
-    )
-    der2 = repo2.list_annotations("exp_1")[0].derivation
-    assert der2["neighbors"][0]["accession"] == "N_A"
-    assert der2["ranking"] == "score"
+    assert der["ranking"] == "fused_candidate"
+    assert der["fused_confidence"] == max(n["fused_score"] for n in der["neighbors"])
 
 
 def test_unknown_experiment_rejected() -> None:
@@ -256,7 +267,6 @@ def test_unknown_experiment_rejected() -> None:
         generate_experiment_hypotheses(
             "missing",
             repository=InMemoryExperimentRepository(),
-            structure_provider=structure,
             gene_resolver=resolver,
             disease_source=ctd,
         )
