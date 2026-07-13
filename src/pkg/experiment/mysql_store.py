@@ -11,6 +11,7 @@ from .schema import MYSQL_EXPERIMENT_SCHEMA
 from .repository import RequestVersionConflict
 from .types import (
     AnnotationHistory,
+    DeepSearchEvidence,
     DifferentialResult,
     EnrichmentRecord,
     ExperimentBundle,
@@ -23,6 +24,9 @@ from .types import (
     ExperimentStatus,
     FusedCandidate,
     MetaAnnotation,
+    NeighborEvidence,
+    NeighborEvidenceStatus,
+    NeighborSearchRun,
     PeptideRecord,
     ProteinQuantification,
     ProteinRecord,
@@ -177,6 +181,61 @@ def _structure_neighbor_from_row(row: dict[str, Any]) -> StructureNeighborEviden
     )
 
 
+def _neighbor_run_from_row(row: dict[str, Any]) -> NeighborSearchRun:
+    return NeighborSearchRun(
+        run_id=row["run_id"],
+        experiment_id=row["experiment_id"],
+        provider_id=row["provider_id"],
+        provider=row["provider"],
+        provider_version=row["provider_version"],
+        channel=row["channel"],
+        db_version=row["db_version"],
+        params_hash=row["params_hash"],
+        params=_json_load(row["params_json"], {}),
+        status=row["status"],
+        started_at=_from_db_datetime(row["started_at"]),
+        finished_at=_from_db_datetime(row["finished_at"]),
+        meta=_json_load(row["meta_json"], {}),
+    )
+
+
+def _neighbor_evidence_from_row(row: dict[str, Any]) -> NeighborEvidence:
+    return NeighborEvidence(
+        evidence_id=row["evidence_id"],
+        run_id=row["run_id"],
+        experiment_id=row["experiment_id"],
+        query_protein_id=row["query_protein_id"],
+        query_accession=row["query_accession"],
+        target_type=row["target_type"],
+        target_id=row["target_id"],
+        relation_type=row["relation_type"],
+        channel=row["channel"],
+        provider=row["provider"],
+        provider_version=row["provider_version"],
+        rank=int(row["neighbor_rank"]),
+        score=float(row["score"]),
+        meta=_json_load(row["meta_json"], {}),
+        created_at=_from_db_datetime(row["created_at"]),
+    )
+
+
+def _neighbor_status_from_row(row: dict[str, Any]) -> NeighborEvidenceStatus:
+    return NeighborEvidenceStatus(
+        status_id=row["status_id"],
+        run_id=row["run_id"],
+        experiment_id=row["experiment_id"],
+        query_protein_id=row["query_protein_id"],
+        query_accession=row["query_accession"],
+        channel=row["channel"],
+        provider=row["provider"],
+        provider_version=row["provider_version"],
+        status=row["status"],
+        reason=row["reason"],
+        meta=_json_load(row["meta_json"], {}),
+        checked_at=_from_db_datetime(row["checked_at"]),
+    )
+
+
 def _fused_candidate_from_row(row: dict[str, Any]) -> FusedCandidate:
     return FusedCandidate(
         candidate_id=row["candidate_id"],
@@ -237,6 +296,23 @@ def _enrichment_from_row(row: dict[str, Any]) -> EnrichmentRecord:
         study_checksum=row["study_checksum"],
         background_checksum=row["background_checksum"],
         meta=_json_load(row["meta_json"], {}),
+    )
+
+
+def _deep_search_evidence_from_row(row: dict[str, Any]) -> DeepSearchEvidence:
+    return DeepSearchEvidence(
+        evidence_id=row["evidence_id"],
+        experiment_id=row["experiment_id"],
+        annotation_id=row["annotation_id"],
+        stance=row["stance"],
+        title=row["title"],
+        reference=row["reference_text"],
+        source=row["source"],
+        source_version=row["source_version"],
+        snippet=row["snippet"],
+        query=row["query_text"],
+        provenance=_json_load(row["provenance_json"], {}),
+        retrieved_at=_from_db_datetime(row["retrieved_at"]),
     )
 
 
@@ -918,6 +994,67 @@ class MySQLExperimentStore:
 
         return self._read(fetch)
 
+    def add_deep_search_evidence(self, rows: list[DeepSearchEvidence]) -> int:
+        if not rows:
+            return 0
+
+        def save(cursor: Any) -> None:
+            cursor.executemany(
+                """
+                INSERT INTO deep_search_evidence
+                  (evidence_id, experiment_id, annotation_id, stance, title,
+                   reference_text, source, source_version, snippet, query_text,
+                   provenance_json, retrieved_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE evidence_id=evidence_id
+                """,
+                [
+                    (
+                        row.evidence_id,
+                        row.experiment_id,
+                        row.annotation_id,
+                        row.stance,
+                        row.title,
+                        row.reference,
+                        row.source,
+                        row.source_version,
+                        row.snippet,
+                        row.query,
+                        _json_dump(row.provenance),
+                        _db_datetime(row.retrieved_at),
+                    )
+                    for row in rows
+                ],
+            )
+
+        self._write(save)
+        return len(rows)
+
+    def list_deep_search_evidence(
+        self, experiment_id: str, *, annotation_id: str | None = None
+    ) -> list[DeepSearchEvidence]:
+        def fetch(cursor: Any) -> list[DeepSearchEvidence]:
+            if annotation_id is None:
+                cursor.execute(
+                    """
+                    SELECT * FROM deep_search_evidence
+                    WHERE experiment_id=%s ORDER BY annotation_id, evidence_id
+                    """,
+                    (experiment_id,),
+                )
+            else:
+                cursor.execute(
+                    """
+                    SELECT * FROM deep_search_evidence
+                    WHERE experiment_id=%s AND annotation_id=%s
+                    ORDER BY annotation_id, evidence_id
+                    """,
+                    (experiment_id, annotation_id),
+                )
+            return [_deep_search_evidence_from_row(row) for row in cursor.fetchall()]
+
+        return self._read(fetch)
+
     def add_quantifications(self, rows: list[ProteinQuantification]) -> int:
         if not rows:
             return 0
@@ -1135,6 +1272,181 @@ class MySQLExperimentStore:
                 (experiment_id,),
             )
             return [_structure_neighbor_from_row(row) for row in cursor.fetchall()]
+
+        return self._read(fetch)
+
+    def save_neighbor_search_run(self, row: NeighborSearchRun) -> None:
+        def save(cursor: Any) -> None:
+            cursor.execute(
+                """
+                INSERT INTO neighbor_search_run
+                  (run_id, experiment_id, provider_id, provider, provider_version,
+                   channel, db_version, params_hash, params_json, status,
+                   started_at, finished_at, meta_json)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                  provider_id=VALUES(provider_id),
+                  provider=VALUES(provider),
+                  provider_version=VALUES(provider_version),
+                  channel=VALUES(channel),
+                  db_version=VALUES(db_version),
+                  params_hash=VALUES(params_hash),
+                  params_json=VALUES(params_json),
+                  status=VALUES(status),
+                  started_at=VALUES(started_at),
+                  finished_at=VALUES(finished_at),
+                  meta_json=VALUES(meta_json)
+                """,
+                (
+                    row.run_id,
+                    row.experiment_id,
+                    row.provider_id,
+                    row.provider,
+                    row.provider_version,
+                    row.channel,
+                    row.db_version,
+                    row.params_hash,
+                    _json_dump(row.params),
+                    row.status,
+                    _db_datetime(row.started_at),
+                    _db_datetime(row.finished_at),
+                    _json_dump(row.meta),
+                ),
+            )
+
+        self._write(save)
+
+    def list_neighbor_search_runs(self, experiment_id: str) -> list[NeighborSearchRun]:
+        def fetch(cursor: Any) -> list[NeighborSearchRun]:
+            cursor.execute(
+                """
+                SELECT * FROM neighbor_search_run
+                WHERE experiment_id=%s ORDER BY started_at, run_id
+                """,
+                (experiment_id,),
+            )
+            return [_neighbor_run_from_row(row) for row in cursor.fetchall()]
+
+        return self._read(fetch)
+
+    def add_neighbor_evidence(self, rows: list[NeighborEvidence]) -> int:
+        if not rows:
+            return 0
+
+        def save(cursor: Any) -> None:
+            cursor.executemany(
+                """
+                INSERT INTO neighbor_evidence
+                  (evidence_id, run_id, experiment_id, query_protein_id,
+                   query_accession, target_type, target_id, relation_type,
+                   channel, provider, provider_version, neighbor_rank, score,
+                   meta_json, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                  query_accession=VALUES(query_accession),
+                  target_type=VALUES(target_type),
+                  target_id=VALUES(target_id),
+                  relation_type=VALUES(relation_type),
+                  channel=VALUES(channel),
+                  provider=VALUES(provider),
+                  provider_version=VALUES(provider_version),
+                  neighbor_rank=VALUES(neighbor_rank),
+                  score=VALUES(score),
+                  meta_json=VALUES(meta_json),
+                  created_at=VALUES(created_at)
+                """,
+                [
+                    (
+                        row.evidence_id,
+                        row.run_id,
+                        row.experiment_id,
+                        row.query_protein_id,
+                        row.query_accession,
+                        row.target_type,
+                        row.target_id,
+                        row.relation_type,
+                        row.channel,
+                        row.provider,
+                        row.provider_version,
+                        row.rank,
+                        row.score,
+                        _json_dump(row.meta),
+                        _db_datetime(row.created_at),
+                    )
+                    for row in rows
+                ],
+            )
+
+        self._write(save)
+        return len(rows)
+
+    def list_neighbor_evidence(self, experiment_id: str) -> list[NeighborEvidence]:
+        def fetch(cursor: Any) -> list[NeighborEvidence]:
+            cursor.execute(
+                """
+                SELECT * FROM neighbor_evidence
+                WHERE experiment_id=%s ORDER BY query_protein_id, neighbor_rank, evidence_id
+                """,
+                (experiment_id,),
+            )
+            return [_neighbor_evidence_from_row(row) for row in cursor.fetchall()]
+
+        return self._read(fetch)
+
+    def add_neighbor_statuses(self, rows: list[NeighborEvidenceStatus]) -> int:
+        if not rows:
+            return 0
+
+        def save(cursor: Any) -> None:
+            cursor.executemany(
+                """
+                INSERT INTO neighbor_evidence_status
+                  (status_id, run_id, experiment_id, query_protein_id,
+                   query_accession, channel, provider, provider_version,
+                   status, reason, meta_json, checked_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                  query_accession=VALUES(query_accession),
+                  channel=VALUES(channel),
+                  provider=VALUES(provider),
+                  provider_version=VALUES(provider_version),
+                  status=VALUES(status),
+                  reason=VALUES(reason),
+                  meta_json=VALUES(meta_json),
+                  checked_at=VALUES(checked_at)
+                """,
+                [
+                    (
+                        row.status_id,
+                        row.run_id,
+                        row.experiment_id,
+                        row.query_protein_id,
+                        row.query_accession,
+                        row.channel,
+                        row.provider,
+                        row.provider_version,
+                        row.status,
+                        row.reason,
+                        _json_dump(row.meta),
+                        _db_datetime(row.checked_at),
+                    )
+                    for row in rows
+                ],
+            )
+
+        self._write(save)
+        return len(rows)
+
+    def list_neighbor_statuses(self, experiment_id: str) -> list[NeighborEvidenceStatus]:
+        def fetch(cursor: Any) -> list[NeighborEvidenceStatus]:
+            cursor.execute(
+                """
+                SELECT * FROM neighbor_evidence_status
+                WHERE experiment_id=%s ORDER BY query_protein_id, channel, status_id
+                """,
+                (experiment_id,),
+            )
+            return [_neighbor_status_from_row(row) for row in cursor.fetchall()]
 
         return self._read(fetch)
 

@@ -13,6 +13,7 @@ from pkg.experiment import (
     ContextConfirmationStatus,
     DifferentialDirection,
     DifferentialResult,
+    DeepSearchEvidence,
     EnrichmentRecord,
     EvidenceLevel,
     ExperimentBundle,
@@ -22,6 +23,9 @@ from pkg.experiment import (
     ExperimentSnapshot,
     FusedCandidate,
     MetaAnnotation,
+    NeighborEvidence,
+    NeighborEvidenceStatus,
+    NeighborSearchRun,
     ProteinQuantification,
     StructureEvidenceStatus,
     StructureNeighborEvidence,
@@ -110,6 +114,7 @@ _PK: dict[str, tuple[str, ...]] = {
     "peptide": ("experiment_id", "peptide_id"),
     "meta_annotation": ("annotation_id",),
     "annotation_history": ("history_id",),
+    "deep_search_evidence": ("evidence_id",),
     "experiment_request": ("request_id",),
     "experiment_input_artifact": ("input_artifact_id",),
     "experiment_context_revision": ("revision_id",),
@@ -118,6 +123,9 @@ _PK: dict[str, tuple[str, ...]] = {
     "structure_evidence_status": ("experiment_id", "protein_id", "channel"),
     "structure_search_run": ("run_id",),
     "structure_neighbor_evidence": ("evidence_id",),
+    "neighbor_search_run": ("run_id",),
+    "neighbor_evidence": ("evidence_id",),
+    "neighbor_evidence_status": ("status_id",),
     "fused_candidate": ("candidate_id",),
     "differential_result": ("differential_id",),
     "enrichment_result": ("enrichment_id",),
@@ -254,6 +262,43 @@ def test_mysql_store_round_trips_annotations() -> None:
     loaded = store.list_annotations("exp_1")
     assert loaded == [annotation]
     assert loaded[0].created_at.tzinfo == timezone.utc
+
+
+def test_mysql_store_round_trips_deep_search_evidence() -> None:
+    store = _round_trip_store()
+    store.save_bundle(ExperimentBundle.model_validate(valid_payload()))
+    store.add_annotations(
+        [
+            MetaAnnotation(
+                annotation_id="ann_deep",
+                experiment_id="exp_1",
+                target="prot_1",
+                target_type=AnnotationTargetType.PROTEIN,
+                attribute="disease:CIRI",
+                value={"disease_id": "MESH:D002545"},
+                evidence_level=EvidenceLevel.HYPOTHESIS,
+                source="Foldseek-KNN",
+            )
+        ]
+    )
+    evidence = DeepSearchEvidence(
+        evidence_id="dse_1",
+        experiment_id="exp_1",
+        annotation_id="ann_deep",
+        stance="support",
+        title="Evidence title",
+        reference="PMID:1",
+        source="PubMed",
+        source_version="2026-07",
+        snippet="Short supporting abstract fragment.",
+        query="STAT3 | CIRI",
+        provenance={"search_source": "literature-mcp"},
+    )
+
+    assert store.add_deep_search_evidence([evidence]) == 1
+    assert store.list_deep_search_evidence("exp_1") == [evidence]
+    assert store.list_deep_search_evidence("exp_1", annotation_id="ann_deep") == [evidence]
+    assert store.list_deep_search_evidence("exp_1")[0].retrieved_at.tzinfo == timezone.utc
 
 
 def test_mysql_store_appends_and_round_trips_request_version() -> None:
@@ -401,6 +446,65 @@ def test_mysql_store_round_trips_structure_run_and_neighbor_evidence() -> None:
     loaded = store.list_structure_neighbor_evidence("exp_1")
     assert loaded == [evidence]
     assert loaded[0].created_at.tzinfo == timezone.utc
+
+
+def test_mysql_store_round_trips_generic_neighbor_evidence_schema() -> None:
+    store = _round_trip_store()
+    store.save_bundle(ExperimentBundle.model_validate(valid_payload()))
+    run = NeighborSearchRun(
+        run_id="nrun_1",
+        experiment_id="exp_1",
+        provider_id="sequence.kmer",
+        provider="Sequence-Kmer",
+        provider_version="seq-v1",
+        channel="sequence",
+        db_version="seq-v1",
+        params_hash="c" * 64,
+        params={"top_k": 20},
+        status="completed",
+        meta={"candidate_count": 1},
+    )
+    evidence = NeighborEvidence(
+        evidence_id="seq_1",
+        run_id="nrun_1",
+        experiment_id="exp_1",
+        query_protein_id="prot_1",
+        query_accession="P12345",
+        target_type="protein",
+        target_id="P40763",
+        relation_type="SEQUENCE_NEIGHBOR",
+        channel="sequence",
+        provider="Sequence-Kmer",
+        provider_version="seq-v1",
+        rank=1,
+        score=0.88,
+        meta={"identity": 0.88},
+    )
+    status = NeighborEvidenceStatus(
+        status_id="nes_1",
+        run_id="nrun_1",
+        experiment_id="exp_1",
+        query_protein_id="prot_1",
+        query_accession="P12345",
+        channel="sequence",
+        provider="Sequence-Kmer",
+        provider_version="seq-v1",
+        status="no_neighbors",
+        reason="provider_returned_no_candidates",
+        meta={"note": "round-trip"},
+    )
+
+    store.save_neighbor_search_run(run)
+    assert store.add_neighbor_evidence([evidence]) == 1
+    assert store.add_neighbor_statuses([status]) == 1
+
+    assert store.list_neighbor_search_runs("exp_1") == [run]
+    loaded_evidence = store.list_neighbor_evidence("exp_1")
+    assert loaded_evidence == [evidence]
+    assert loaded_evidence[0].created_at.tzinfo == timezone.utc
+    loaded_statuses = store.list_neighbor_statuses("exp_1")
+    assert loaded_statuses == [status]
+    assert loaded_statuses[0].checked_at.tzinfo == timezone.utc
 
 
 def test_mysql_store_round_trips_fused_candidates() -> None:

@@ -10,6 +10,7 @@ from typing import Protocol, runtime_checkable
 
 from .types import (
     AnnotationHistory,
+    DeepSearchEvidence,
     DifferentialResult,
     EnrichmentRecord,
     ExperimentBundle,
@@ -22,6 +23,9 @@ from .types import (
     ExperimentStatus,
     FusedCandidate,
     MetaAnnotation,
+    NeighborEvidence,
+    NeighborEvidenceStatus,
+    NeighborSearchRun,
     PeptideRecord,
     ProteinQuantification,
     ProteinRecord,
@@ -81,6 +85,12 @@ class ExperimentRepository(Protocol):
 
     def list_annotation_history(self, experiment_id: str) -> list[AnnotationHistory]: ...
 
+    def add_deep_search_evidence(self, rows: list[DeepSearchEvidence]) -> int: ...
+
+    def list_deep_search_evidence(
+        self, experiment_id: str, *, annotation_id: str | None = None
+    ) -> list[DeepSearchEvidence]: ...
+
     def add_quantifications(self, rows: list[ProteinQuantification]) -> int: ...
 
     def list_quantifications(self, experiment_id: str) -> list[ProteinQuantification]: ...
@@ -98,6 +108,18 @@ class ExperimentRepository(Protocol):
     def list_structure_neighbor_evidence(
         self, experiment_id: str
     ) -> list[StructureNeighborEvidence]: ...
+
+    def save_neighbor_search_run(self, row: NeighborSearchRun) -> None: ...
+
+    def list_neighbor_search_runs(self, experiment_id: str) -> list[NeighborSearchRun]: ...
+
+    def add_neighbor_evidence(self, rows: list[NeighborEvidence]) -> int: ...
+
+    def list_neighbor_evidence(self, experiment_id: str) -> list[NeighborEvidence]: ...
+
+    def add_neighbor_statuses(self, rows: list[NeighborEvidenceStatus]) -> int: ...
+
+    def list_neighbor_statuses(self, experiment_id: str) -> list[NeighborEvidenceStatus]: ...
 
     def add_fused_candidates(self, rows: list[FusedCandidate]) -> int: ...
 
@@ -136,6 +158,7 @@ class InMemoryExperimentRepository:
         self._contexts: dict[str, ExperimentContext] = {}
         self._annotations: dict[str, dict[str, MetaAnnotation]] = {}
         self._history: list[AnnotationHistory] = []
+        self._deep_search_evidence: dict[str, dict[str, DeepSearchEvidence]] = {}
         self._requests: dict[str, ExperimentRequest] = {}
         self._request_ids: dict[str, list[str]] = {}
         self._artifacts: dict[str, list[ExperimentInputArtifact]] = {}
@@ -144,6 +167,9 @@ class InMemoryExperimentRepository:
         self._structure_statuses: dict[str, dict[str, StructureEvidenceStatus]] = {}
         self._structure_runs: dict[str, StructureSearchRun] = {}
         self._structure_neighbors: dict[str, dict[str, StructureNeighborEvidence]] = {}
+        self._neighbor_runs: dict[str, NeighborSearchRun] = {}
+        self._neighbor_evidence: dict[str, dict[str, NeighborEvidence]] = {}
+        self._neighbor_statuses: dict[str, dict[str, NeighborEvidenceStatus]] = {}
         self._fused_candidates: dict[str, dict[str, FusedCandidate]] = {}
         self._differentials: dict[str, dict[str, DifferentialResult]] = {}
         self._enrichments: dict[str, dict[str, EnrichmentRecord]] = {}
@@ -302,6 +328,26 @@ class InMemoryExperimentRepository:
             key=lambda h: (h.changed_at, h.history_id),
         )
 
+    def add_deep_search_evidence(self, rows: list[DeepSearchEvidence]) -> int:
+        for row in rows:
+            bucket = self._deep_search_evidence.setdefault(row.experiment_id, {})
+            if row.evidence_id not in bucket:
+                bucket[row.evidence_id] = row.model_copy(deep=True)
+        return len(rows)
+
+    def list_deep_search_evidence(
+        self, experiment_id: str, *, annotation_id: str | None = None
+    ) -> list[DeepSearchEvidence]:
+        rows = self._deep_search_evidence.get(experiment_id, {})
+        return sorted(
+            (
+                row.model_copy(deep=True)
+                for row in rows.values()
+                if annotation_id is None or row.annotation_id == annotation_id
+            ),
+            key=lambda row: (row.annotation_id, row.evidence_id),
+        )
+
     def add_quantifications(self, rows: list[ProteinQuantification]) -> int:
         for row in rows:
             bucket = self._quantifications.setdefault(row.experiment_id, {})
@@ -346,6 +392,43 @@ class InMemoryExperimentRepository:
     ) -> list[StructureNeighborEvidence]:
         rows = self._structure_neighbors.get(experiment_id, {})
         return [rows[key].model_copy(deep=True) for key in sorted(rows)]
+
+    def save_neighbor_search_run(self, row: NeighborSearchRun) -> None:
+        self._neighbor_runs[row.run_id] = row.model_copy(deep=True)
+
+    def list_neighbor_search_runs(self, experiment_id: str) -> list[NeighborSearchRun]:
+        rows = [
+            row.model_copy(deep=True)
+            for row in self._neighbor_runs.values()
+            if row.experiment_id == experiment_id
+        ]
+        return sorted(rows, key=lambda row: (row.started_at, row.run_id))
+
+    def add_neighbor_evidence(self, rows: list[NeighborEvidence]) -> int:
+        for row in rows:
+            bucket = self._neighbor_evidence.setdefault(row.experiment_id, {})
+            bucket[row.evidence_id] = row.model_copy(deep=True)
+        return len(rows)
+
+    def list_neighbor_evidence(self, experiment_id: str) -> list[NeighborEvidence]:
+        rows = self._neighbor_evidence.get(experiment_id, {})
+        return sorted(
+            (rows[key].model_copy(deep=True) for key in rows),
+            key=lambda row: (row.query_protein_id, row.rank, row.evidence_id),
+        )
+
+    def add_neighbor_statuses(self, rows: list[NeighborEvidenceStatus]) -> int:
+        for row in rows:
+            bucket = self._neighbor_statuses.setdefault(row.experiment_id, {})
+            bucket[row.status_id] = row.model_copy(deep=True)
+        return len(rows)
+
+    def list_neighbor_statuses(self, experiment_id: str) -> list[NeighborEvidenceStatus]:
+        rows = self._neighbor_statuses.get(experiment_id, {})
+        return sorted(
+            (rows[key].model_copy(deep=True) for key in rows),
+            key=lambda row: (row.query_protein_id, row.channel, row.status_id),
+        )
 
     def add_fused_candidates(self, rows: list[FusedCandidate]) -> int:
         for row in rows:

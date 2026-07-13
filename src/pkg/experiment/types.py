@@ -263,6 +263,61 @@ class StructureNeighborEvidence(StrictModel):
     created_at: datetime = Field(default_factory=_utcnow)
 
 
+class NeighborSearchRun(StrictModel):
+    """一次通用 neighbor provider 检索运行的可复现摘要。"""
+
+    run_id: str = Field(default_factory=lambda: _new_id("nrun"), min_length=1)
+    experiment_id: str = Field(min_length=1)
+    provider_id: str = Field(min_length=1)
+    provider: str = Field(min_length=1)
+    provider_version: str = ""
+    channel: str = Field(min_length=1)
+    db_version: str = ""
+    params_hash: str = Field(min_length=1)
+    params: dict[str, Any] = Field(default_factory=dict)
+    status: str = Field(min_length=1)
+    started_at: datetime = Field(default_factory=_utcnow)
+    finished_at: datetime = Field(default_factory=_utcnow)
+    meta: dict[str, Any] = Field(default_factory=dict)
+
+
+class NeighborEvidence(StrictModel):
+    """一条 provider 输出的通用 neighbor evidence。"""
+
+    evidence_id: str = Field(default_factory=lambda: _new_id("ne"), min_length=1)
+    run_id: str = Field(min_length=1)
+    experiment_id: str = Field(min_length=1)
+    query_protein_id: str = Field(min_length=1)
+    query_accession: str = Field(min_length=1)
+    target_type: str = Field(default="protein", min_length=1)
+    target_id: str = Field(min_length=1)
+    relation_type: str = Field(min_length=1)
+    channel: str = Field(min_length=1)
+    provider: str = Field(min_length=1)
+    provider_version: str = ""
+    rank: int = Field(ge=0)
+    score: float
+    meta: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=_utcnow)
+
+
+class NeighborEvidenceStatus(StrictModel):
+    """通用 neighbor provider 对某个 query 蛋白的解析/检索状态。"""
+
+    status_id: str = Field(default_factory=lambda: _new_id("nes"), min_length=1)
+    run_id: str = Field(min_length=1)
+    experiment_id: str = Field(min_length=1)
+    query_protein_id: str = Field(min_length=1)
+    query_accession: str = Field(min_length=1)
+    channel: str = Field(min_length=1)
+    provider: str = Field(min_length=1)
+    provider_version: str = ""
+    status: str = Field(min_length=1)
+    reason: str = ""
+    meta: dict[str, Any] = Field(default_factory=dict)
+    checked_at: datetime = Field(default_factory=_utcnow)
+
+
 class FusedCandidate(StrictModel):
     """多 channel evidence 融合后的候选关系。
 
@@ -351,6 +406,23 @@ class AnnotationHistory(StrictModel):
     verdict: str = Field(min_length=1)
     evidence_ref: dict[str, Any] = Field(default_factory=dict)
     changed_at: datetime = Field(default_factory=_utcnow)
+
+
+class DeepSearchEvidence(StrictModel):
+    """Deep-search 返回的一条可引用文献证据，不保存全文。"""
+
+    evidence_id: str = Field(default_factory=lambda: _new_id("dse"))
+    experiment_id: str = Field(min_length=1)
+    annotation_id: str = Field(min_length=1)
+    stance: str = Field(pattern="^(support|refute|neutral)$")
+    title: str = Field(min_length=1)
+    reference: str = Field(min_length=1)
+    source: str = Field(min_length=1)
+    source_version: str = Field(min_length=1)
+    snippet: str = ""
+    query: str = Field(min_length=1)
+    provenance: dict[str, Any] = Field(default_factory=dict)
+    retrieved_at: datetime = Field(default_factory=_utcnow)
 
 
 class ExperimentSnapshot(StrictModel):
@@ -474,6 +546,7 @@ __all__ = [
     "ContextConfirmationStatus",
     "DifferentialDirection",
     "DifferentialResult",
+    "DeepSearchEvidence",
     "EnrichmentRecord",
     "EvidenceLevel",
     "ExperimentBundle",
@@ -487,6 +560,9 @@ __all__ = [
     "FusedCandidate",
     "GroupRole",
     "MetaAnnotation",
+    "NeighborEvidence",
+    "NeighborEvidenceStatus",
+    "NeighborSearchRun",
     "PeptideRecord",
     "ProteinQuantification",
     "ProteinRecord",

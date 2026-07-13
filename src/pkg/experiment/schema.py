@@ -183,6 +183,77 @@ MYSQL_EXPERIMENT_SCHEMA: tuple[str, ...] = (
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     """,
     """
+    CREATE TABLE IF NOT EXISTS neighbor_search_run (
+      run_id VARCHAR(64) PRIMARY KEY,
+      experiment_id VARCHAR(64) NOT NULL,
+      provider_id VARCHAR(128) NOT NULL,
+      provider VARCHAR(128) NOT NULL,
+      provider_version VARCHAR(128) NOT NULL,
+      channel VARCHAR(64) NOT NULL,
+      db_version VARCHAR(128) NOT NULL,
+      params_hash CHAR(64) NOT NULL,
+      params_json JSON NOT NULL,
+      status VARCHAR(32) NOT NULL,
+      started_at DATETIME(6) NOT NULL,
+      finished_at DATETIME(6) NOT NULL,
+      meta_json JSON NOT NULL,
+      INDEX idx_neighbor_run_experiment (experiment_id, started_at),
+      INDEX idx_neighbor_run_hash (experiment_id, provider_id, channel, params_hash),
+      CONSTRAINT fk_neighbor_run_experiment FOREIGN KEY (experiment_id)
+        REFERENCES experiment_context(experiment_id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS neighbor_evidence (
+      evidence_id VARCHAR(128) PRIMARY KEY,
+      run_id VARCHAR(64) NOT NULL,
+      experiment_id VARCHAR(64) NOT NULL,
+      query_protein_id VARCHAR(128) NOT NULL,
+      query_accession VARCHAR(128) NOT NULL,
+      target_type VARCHAR(64) NOT NULL,
+      target_id VARCHAR(255) NOT NULL,
+      relation_type VARCHAR(64) NOT NULL,
+      channel VARCHAR(64) NOT NULL,
+      provider VARCHAR(128) NOT NULL,
+      provider_version VARCHAR(128) NOT NULL,
+      neighbor_rank INT NOT NULL,
+      score DOUBLE NOT NULL,
+      meta_json JSON NOT NULL,
+      created_at DATETIME(6) NOT NULL,
+      UNIQUE KEY uq_neighbor_evidence_run_target
+        (run_id, query_protein_id, target_type, target_id, channel),
+      INDEX idx_neighbor_evidence_query
+        (experiment_id, query_protein_id, channel, neighbor_rank),
+      INDEX idx_neighbor_evidence_target (target_type, target_id),
+      CONSTRAINT fk_neighbor_evidence_run FOREIGN KEY (run_id)
+        REFERENCES neighbor_search_run(run_id) ON DELETE CASCADE,
+      CONSTRAINT fk_neighbor_evidence_protein FOREIGN KEY (experiment_id, query_protein_id)
+        REFERENCES protein(experiment_id, protein_id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS neighbor_evidence_status (
+      status_id VARCHAR(128) PRIMARY KEY,
+      run_id VARCHAR(64) NOT NULL,
+      experiment_id VARCHAR(64) NOT NULL,
+      query_protein_id VARCHAR(128) NOT NULL,
+      query_accession VARCHAR(128) NOT NULL,
+      channel VARCHAR(64) NOT NULL,
+      provider VARCHAR(128) NOT NULL,
+      provider_version VARCHAR(128) NOT NULL,
+      status VARCHAR(32) NOT NULL,
+      reason VARCHAR(255) NOT NULL,
+      meta_json JSON NOT NULL,
+      checked_at DATETIME(6) NOT NULL,
+      INDEX idx_neighbor_status_query
+        (experiment_id, query_protein_id, channel, status),
+      CONSTRAINT fk_neighbor_status_run FOREIGN KEY (run_id)
+        REFERENCES neighbor_search_run(run_id) ON DELETE CASCADE,
+      CONSTRAINT fk_neighbor_status_protein FOREIGN KEY (experiment_id, query_protein_id)
+        REFERENCES protein(experiment_id, protein_id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    """,
+    """
     CREATE TABLE IF NOT EXISTS fused_candidate (
       candidate_id VARCHAR(64) PRIMARY KEY,
       experiment_id VARCHAR(64) NOT NULL,
@@ -328,6 +399,28 @@ MYSQL_EXPERIMENT_SCHEMA: tuple[str, ...] = (
       CONSTRAINT fk_history_annotation FOREIGN KEY (annotation_id)
         REFERENCES meta_annotation(annotation_id) ON DELETE CASCADE,
       CONSTRAINT fk_history_experiment FOREIGN KEY (experiment_id)
+        REFERENCES experiment_context(experiment_id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS deep_search_evidence (
+      evidence_id VARCHAR(64) PRIMARY KEY,
+      experiment_id VARCHAR(64) NOT NULL,
+      annotation_id VARCHAR(64) NOT NULL,
+      stance VARCHAR(16) NOT NULL,
+      title TEXT NOT NULL,
+      reference_text VARCHAR(1024) NOT NULL,
+      source VARCHAR(128) NOT NULL,
+      source_version VARCHAR(128) NOT NULL,
+      snippet TEXT NOT NULL,
+      query_text TEXT NOT NULL,
+      provenance_json JSON NOT NULL,
+      retrieved_at DATETIME(6) NOT NULL,
+      INDEX idx_deep_search_evidence_annotation
+        (experiment_id, annotation_id, retrieved_at),
+      CONSTRAINT fk_deep_search_evidence_annotation FOREIGN KEY (annotation_id)
+        REFERENCES meta_annotation(annotation_id) ON DELETE CASCADE,
+      CONSTRAINT fk_deep_search_evidence_experiment FOREIGN KEY (experiment_id)
         REFERENCES experiment_context(experiment_id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     """,
