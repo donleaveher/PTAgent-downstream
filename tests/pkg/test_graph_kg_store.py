@@ -147,7 +147,7 @@ def test_protein_diseases_crosses_gene_seam_and_separates_hypothesis() -> None:
     store = InMemoryGraphStore()
     _seed_protein_disease(store)
 
-    links = store.protein_diseases("P1")
+    links = store.protein_diseases("P1", experiment_id="exp1")
     by_disease = {link.disease_key: link for link in links}
     assert set(by_disease) == {"D1", "D2"}
     assert by_disease["D1"].evidence_level == "CONCLUSION"
@@ -171,7 +171,73 @@ def test_drop_experiment_only_clears_workspace() -> None:
     assert removed == 1  # 仅 1 条实验作用域边
     assert store.count_nodes(scope=GraphScope.GENERAL) == 4  # 通用 KG 不动
     assert store.count_edges(scope=GraphScope.EXPERIMENT) == 0
-    assert {link.disease_key for link in store.protein_diseases("P1")} == {"D1"}
+    assert {
+        link.disease_key for link in store.protein_diseases("P1", experiment_id="exp1")
+    } == {"D1"}
+
+
+def test_experiment_edges_require_matching_query_context() -> None:
+    store = InMemoryGraphStore()
+    _seed_protein_disease(store)
+    protein = NodeRef(NodeLabel.PROTEIN, "P1")
+
+    assert store.neighbors(protein, EdgeType.ASSOCIATED_WITH) == []
+    assert store.neighbors(
+        protein, EdgeType.ASSOCIATED_WITH, experiment_id="other"
+    ) == []
+    assert len(
+        store.neighbors(protein, EdgeType.ASSOCIATED_WITH, experiment_id="exp1")
+    ) == 1
+
+
+def test_replace_projection_removes_stale_experiment_relationships() -> None:
+    store = InMemoryGraphStore()
+    _seed_protein_disease(store)
+    nodes = [
+        GraphNode(NodeLabel.PROTEIN, "P1"),
+        GraphNode(NodeLabel.GENE, "G1"),
+        GraphNode(NodeLabel.DISEASE, "D1", properties={"name": "DiseaseOne"}),
+    ]
+    edges = [
+        GraphEdge(
+            EdgeType.ENCODED_BY,
+            NodeRef(NodeLabel.PROTEIN, "P1"),
+            NodeRef(NodeLabel.GENE, "G1"),
+            key="P1|ENCODED_BY|G1",
+        ),
+        GraphEdge(
+            EdgeType.ASSOCIATED_WITH,
+            NodeRef(NodeLabel.GENE, "G1"),
+            NodeRef(NodeLabel.DISEASE, "D1"),
+            key="a1",
+            properties={"evidence_level": "CONCLUSION"},
+        ),
+    ]
+
+    result = store.replace_experiment_projection("exp1", nodes, edges)
+
+    assert result["removed"] == 1
+    assert store.count_edges(scope=GraphScope.EXPERIMENT, experiment_id="exp1") == 0
+    assert {
+        link.disease_key for link in store.protein_diseases("P1", experiment_id="exp1")
+    } == {"D1"}
+
+
+def test_replace_projection_rejects_missing_edge_endpoint() -> None:
+    store = InMemoryGraphStore()
+    with pytest.raises(ValueError, match="missing nodes"):
+        store.replace_experiment_projection(
+            "exp1",
+            [GraphNode(NodeLabel.PROTEIN, "P1")],
+            [
+                GraphEdge(
+                    EdgeType.ENCODED_BY,
+                    NodeRef(NodeLabel.PROTEIN, "P1"),
+                    NodeRef(NodeLabel.GENE, "G1"),
+                    key="bad",
+                )
+            ],
+        )
 
 
 # ---------------- Neo4j 实现：Cypher 形状（不连库）----------------
@@ -181,10 +247,55 @@ class _RecordingNeo4j(Neo4jGraphStore):
     def __init__(self) -> None:  # 故意不调 super().__init__（不连库、不导入 neo4j driver）
         self.calls: list[tuple[str, dict[str, Any]]] = []
         self._database = "neo4j"
+        self._driver = _RecordingDriver(self.calls)
 
     def run(self, query: str, **params: Any) -> list[dict[str, Any]]:
         self.calls.append((query, params))
+        if "RETURN count(r) AS n" in query:
+            return [{"n": len(params.get("rows", []))}]
         return []
+
+
+class _RecordingResult:
+    def __init__(self, count: int = 0) -> None:
+        self.count = count
+
+    def single(self) -> dict[str, int]:
+        return {"n": self.count}
+
+    def consume(self) -> None:
+        return None
+
+
+class _RecordingTransaction:
+    def __init__(self, calls: list[tuple[str, dict[str, Any]]]) -> None:
+        self.calls = calls
+
+    def run(self, query: str, **params: Any) -> _RecordingResult:
+        self.calls.append((query, params))
+        return _RecordingResult(len(params.get("rows", [])))
+
+
+class _RecordingSession:
+    def __init__(self, calls: list[tuple[str, dict[str, Any]]]) -> None:
+        self.calls = calls
+
+    def __enter__(self) -> "_RecordingSession":
+        return self
+
+    def __exit__(self, *_args: Any) -> None:
+        return None
+
+    def execute_write(self, fn: Any) -> Any:
+        return fn(_RecordingTransaction(self.calls))
+
+
+class _RecordingDriver:
+    def __init__(self, calls: list[tuple[str, dict[str, Any]]]) -> None:
+        self.calls = calls
+
+    def session(self, **_kwargs: Any) -> _RecordingSession:
+        return _RecordingSession(self.calls)
 
 
 def test_neo4j_initialize_schema_creates_constraint_per_label() -> None:
@@ -231,3 +342,24 @@ def test_neo4j_drop_experiment_deletes_scoped_edges_and_nodes() -> None:
     assert any("DELETE r" in q and "EXPERIMENT" in q for q in queries)
     assert any("DETACH DELETE n" in q and "EXPERIMENT" in q for q in queries)
     assert all(p.get("exp") == "exp1" for _, p in store.calls)
+
+
+def test_neo4j_replace_projection_uses_one_write_transaction() -> None:
+    store = _RecordingNeo4j()
+    nodes = [GraphNode(NodeLabel.PROTEIN, "P1"), GraphNode(NodeLabel.GENE, "G1")]
+    edges = [
+        GraphEdge(
+            EdgeType.ENCODED_BY,
+            NodeRef(NodeLabel.PROTEIN, "P1"),
+            NodeRef(NodeLabel.GENE, "G1"),
+            key="P1|ENCODED_BY|G1",
+        )
+    ]
+
+    result = store.replace_experiment_projection("exp1", nodes, edges)
+
+    assert result == {"removed": 0, "nodes": 2, "edges": 1}
+    queries = [query for query, _ in store.calls]
+    assert any("DELETE r" in query for query in queries)
+    assert any("DETACH DELETE n" in query for query in queries)
+    assert any("MERGE (a)-[r:ENCODED_BY" in query for query in queries)

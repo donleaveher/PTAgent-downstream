@@ -20,6 +20,8 @@ from pkg.experiment import (
     GroupRole,
     InMemoryExperimentRepository,
     MetaAnnotation,
+    NeighborEvidence,
+    NeighborSearchRun,
     ProteinRecord,
     StructureNeighborEvidence,
     StructureSearchRun,
@@ -150,16 +152,20 @@ def test_projection_builds_two_layer_graph() -> None:
         "Gene": 2,
         "Disease": 2,
         "Group": 2,
+        "Comparison": 1,
     }
     assert summary["edges_by_type"] == {
         "ENCODED_BY": 2,
         "ASSOCIATED_WITH": 2,  # 1 基因结论 + 1 蛋白假说
         "STRUCTURAL_NEIGHBOR": 1,
         "CANDIDATE_NEIGHBOR": 0,
-        "DIFFERENTIAL": 2,
+        "DIFFERENTIAL": 0,
+        "DIFFERENTIAL_IN": 2,
+        "CASE_GROUP": 1,
+        "CONTROL_GROUP": 1,
     }
     assert summary["general_nodes"] == 7
-    assert summary["experiment_nodes"] == 2
+    assert summary["experiment_nodes"] == 3
     assert summary["structural_neighbors"] == 1
     assert summary["structure_neighbor_evidence"] == 1
     assert summary["fused_candidates"] == 0
@@ -167,8 +173,8 @@ def test_projection_builds_two_layer_graph() -> None:
     assert summary["projection_skipped"] == {}
 
     # 两层分离：分组节点 + 差异/假说边在实验工作区；其余在通用 KG
-    assert store.count_nodes(scope=GraphScope.EXPERIMENT, experiment_id=EXP) == 2
-    assert store.count_edges(scope=GraphScope.EXPERIMENT, experiment_id=EXP) == 3
+    assert store.count_nodes(scope=GraphScope.EXPERIMENT, experiment_id=EXP) == 3
+    assert store.count_edges(scope=GraphScope.EXPERIMENT, experiment_id=EXP) == 5
     assert store.count_edges(scope=GraphScope.GENERAL) == 4
 
     # 节点回指 MySQL + 轻量属性
@@ -185,9 +191,9 @@ def test_traversal_protein_to_disease_structure_and_group() -> None:
     project_experiment_kg(EXP, repository=repo, store=store)
 
     # P1 → 基因 Stat3 结论 → 疾病（跨 ENCODED_BY 缝合）
-    p1_diseases = store.protein_diseases("P1")
+    p1_diseases = store.protein_diseases("P1", experiment_id=EXP)
     assert [(d.disease_key, d.evidence_level, d.via) for d in p1_diseases] == [
-        ("MESH:D001", "CONCLUSION", "gene:Stat3")
+        ("MESH:D001", "CONCLUSION", "gene:STAT3")
     ]
 
     # P2 → 蛋白级假说 → 疾病（实验工作区）
@@ -200,13 +206,32 @@ def test_traversal_protein_to_disease_structure_and_group() -> None:
     sn = store.neighbors(NodeRef(NodeLabel.PROTEIN, "P2"), EdgeType.STRUCTURAL_NEIGHBOR)
     assert len(sn) == 1
     assert sn[0].end.key == "P9" and sn[0].properties["score"] == 0.95
-    assert sn[0].properties["evidence_id"] == "sne_high"
+    assert sn[0].properties["source_relation_id"] == "P2->P9"
+    assert "evidence_id" not in sn[0].properties
     assert sn[0].properties["projection_reason"] == "rank<=5"
 
-    # P1 → 差异组（带 log2fc）
-    diff = store.neighbors(NodeRef(NodeLabel.PROTEIN, "P1"), EdgeType.DIFFERENTIAL)
+    # P1 → 显式比较 → case/control 组（带 log2fc）
+    diff = store.neighbors(
+        NodeRef(NodeLabel.PROTEIN, "P1"),
+        EdgeType.DIFFERENTIAL_IN,
+        experiment_id=EXP,
+    )
     assert len(diff) == 1
-    assert diff[0].end.key == f"{EXP}:case" and diff[0].properties["log2fc"] == 2.0
+    assert diff[0].end.key == f"{EXP}:comparison:case:vs:ctrl"
+    assert diff[0].properties["log2fc"] == 2.0
+    comparison = diff[0].end
+    assert [
+        edge.end.key
+        for edge in store.neighbors(
+            comparison, EdgeType.CASE_GROUP, experiment_id=EXP
+        )
+    ] == [f"{EXP}:case"]
+    assert [
+        edge.end.key
+        for edge in store.neighbors(
+            comparison, EdgeType.CONTROL_GROUP, experiment_id=EXP
+        )
+    ] == [f"{EXP}:ctrl"]
 
 
 def test_projection_is_idempotent() -> None:
@@ -214,8 +239,8 @@ def test_projection_is_idempotent() -> None:
     store = InMemoryGraphStore()
     first = project_experiment_kg(EXP, repository=repo, store=store)
     project_experiment_kg(EXP, repository=repo, store=store)
-    assert store.count_nodes() == first["nodes"] == 9
-    assert store.count_edges() == first["edges"] == 7
+    assert store.count_nodes() == first["nodes"] == 10
+    assert store.count_edges() == first["edges"] == 9
 
 
 def test_drop_experiment_keeps_general_kg() -> None:
@@ -224,7 +249,7 @@ def test_drop_experiment_keeps_general_kg() -> None:
     project_experiment_kg(EXP, repository=repo, store=store)
 
     removed = store.drop_experiment(EXP)
-    assert removed == 5  # 2 分组节点 + 3 实验边（1 假说 + 2 差异）
+    assert removed == 8  # 3 工作区节点 + 5 实验边
 
     assert store.count_nodes(scope=GraphScope.EXPERIMENT) == 0
     assert store.count_edges(scope=GraphScope.EXPERIMENT) == 0
@@ -232,7 +257,9 @@ def test_drop_experiment_keeps_general_kg() -> None:
     assert store.count_edges(scope=GraphScope.GENERAL) == 4
 
     # 通用基因结论仍可达；本实验蛋白假说已随工作区清除
-    assert {d.disease_key for d in store.protein_diseases("P1")} == {"MESH:D001"}
+    assert {
+        d.disease_key for d in store.protein_diseases("P1", experiment_id=EXP)
+    } == {"MESH:D001"}
     assert store.protein_diseases("P2", experiment_id=EXP) == []
 
 
@@ -267,6 +294,49 @@ def test_projection_policy_skips_low_rank_structure_evidence() -> None:
 
 def test_fused_candidate_projects_only_when_policy_significant() -> None:
     repo = _seed_repo()
+    repo.save_neighbor_search_run(
+        NeighborSearchRun(
+            run_id="nrun_seq",
+            experiment_id=EXP,
+            provider_id="sequence.kmer",
+            provider="Sequence-Kmer",
+            channel="sequence",
+            params_hash="b" * 64,
+            status="completed",
+        )
+    )
+    repo.add_neighbor_evidence(
+        [
+            NeighborEvidence(
+                evidence_id="ne_seq_1",
+                run_id="nrun_seq",
+                experiment_id=EXP,
+                query_protein_id="prot2",
+                query_accession="P2",
+                target_id="P9",
+                relation_type="SEQUENCE_NEIGHBOR",
+                channel="sequence",
+                provider="Sequence-Kmer",
+                rank=1,
+                score=0.88,
+                meta={"source_evidence_id": "seq_1"},
+            ),
+            NeighborEvidence(
+                evidence_id="ne_seq_2",
+                run_id="nrun_seq",
+                experiment_id=EXP,
+                query_protein_id="prot2",
+                query_accession="P2",
+                target_id="P_WEAK",
+                relation_type="SEQUENCE_NEIGHBOR",
+                channel="sequence",
+                provider="Sequence-Kmer",
+                rank=2,
+                score=0.5,
+                meta={"source_evidence_id": "seq_2"},
+            ),
+        ]
+    )
     repo.add_fused_candidates(
         [
             FusedCandidate(
@@ -275,7 +345,7 @@ def test_fused_candidate_projects_only_when_policy_significant() -> None:
                 query_protein_id="prot2",
                 query_accession="P2",
                 target_type="protein",
-                target_id="P_FUSED",
+                target_id="P9",
                 relation_type="CANDIDATE_NEIGHBOR",
                 fused_score=0.87,
                 fusion_rank=1,
@@ -305,15 +375,43 @@ def test_fused_candidate_projects_only_when_policy_significant() -> None:
     assert summary["projection_skipped"] == {
         "fusion_rank>5;support_channels<2": 1
     }
-    edges = store.neighbors(NodeRef(NodeLabel.PROTEIN, "P2"), EdgeType.CANDIDATE_NEIGHBOR)
+    edges = store.neighbors(
+        NodeRef(NodeLabel.PROTEIN, "P2"),
+        EdgeType.CANDIDATE_NEIGHBOR,
+        experiment_id=EXP,
+    )
     assert len(edges) == 1
     assert edges[0].scope is GraphScope.EXPERIMENT
-    assert edges[0].end.key == "P_FUSED"
+    assert edges[0].end.key == "P9"
     assert edges[0].properties["candidate_id"] == "fc_high"
     assert edges[0].properties["support_channels"] == ["structure", "sequence"]
     assert edges[0].properties["projection_reason"] == (
         "fusion_rank<=5;support_channels>=2"
     )
+
+
+def test_fused_candidate_rejects_missing_or_misaligned_evidence() -> None:
+    repo = _seed_repo()
+    repo.add_fused_candidates(
+        [
+            FusedCandidate(
+                candidate_id="fc_invalid",
+                experiment_id=EXP,
+                query_protein_id="prot2",
+                query_accession="P2",
+                target_type="protein",
+                target_id="P_OTHER",
+                relation_type="CANDIDATE_NEIGHBOR",
+                fused_score=0.8,
+                fusion_rank=1,
+                support_channels=["structure", "sequence"],
+                evidence_ids=["sne_high", "missing_seq"],
+            )
+        ]
+    )
+
+    with pytest.raises(ValueError, match="does not match its query/target"):
+        project_experiment_kg(EXP, repository=repo, store=InMemoryGraphStore())
 
 
 def test_unknown_experiment_raises() -> None:

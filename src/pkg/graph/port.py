@@ -20,6 +20,7 @@ from pkg.graph.model import (
     NodeLabel,
     NodeRef,
 )
+from pkg.graph.identity import canonical_protein_key
 
 
 @runtime_checkable
@@ -38,6 +39,15 @@ class GraphStore(Protocol):
         """按 (type, key) 幂等 upsert，合并 properties；返回处理条数。"""
         ...
 
+    def replace_experiment_projection(
+        self,
+        experiment_id: str,
+        nodes: Sequence[GraphNode],
+        edges: Sequence[GraphEdge],
+    ) -> dict[str, int]:
+        """Atomically replace one experiment workspace and upsert its GENERAL facts."""
+        ...
+
     def get_node(self, label: NodeLabel, key: str) -> GraphNode | None: ...
 
     def neighbors(
@@ -46,12 +56,13 @@ class GraphStore(Protocol):
         edge_type: EdgeType,
         *,
         direction: Direction = Direction.OUT,
+        experiment_id: str | None = None,
     ) -> list[GraphEdge]:
         """一跳遍历：返回与 ``ref`` 相连、类型为 ``edge_type`` 的边（按 key 排序）。"""
         ...
 
     def protein_diseases(
-        self, accession: str, *, experiment_id: str | None = None
+        self, accession: str, *, experiment_id: str
     ) -> list[DiseaseLink]:
         """从蛋白走到疾病：基因结论（ENCODED_BY→ASSOCIATED_WITH）+ 蛋白级假说。
 
@@ -131,6 +142,20 @@ class InMemoryGraphStore:
             )
         return len(edges)
 
+    def replace_experiment_projection(
+        self,
+        experiment_id: str,
+        nodes: Sequence[GraphNode],
+        edges: Sequence[GraphEdge],
+    ) -> dict[str, int]:
+        _validate_projection_payload(experiment_id, nodes, edges)
+        removed = self.drop_experiment(experiment_id)
+        return {
+            "removed": removed,
+            "nodes": self.upsert_nodes(nodes),
+            "edges": self.upsert_edges(edges),
+        }
+
     # ---- 查询 ----
     def get_node(self, label: NodeLabel, key: str) -> GraphNode | None:
         return self._nodes.get((label, key))
@@ -141,10 +166,13 @@ class InMemoryGraphStore:
         edge_type: EdgeType,
         *,
         direction: Direction = Direction.OUT,
+        experiment_id: str | None = None,
     ) -> list[GraphEdge]:
         out: list[GraphEdge] = []
         for edge in self._edges.values():
             if edge.type is not edge_type:
+                continue
+            if edge.scope is GraphScope.EXPERIMENT and edge.experiment_id != experiment_id:
                 continue
             if direction is Direction.OUT and edge.start != ref:
                 continue
@@ -156,14 +184,20 @@ class InMemoryGraphStore:
         return sorted(out, key=lambda e: e.key)
 
     def protein_diseases(
-        self, accession: str, *, experiment_id: str | None = None
+        self, accession: str, *, experiment_id: str
     ) -> list[DiseaseLink]:
-        protein = NodeRef(NodeLabel.PROTEIN, accession)
+        protein = NodeRef(NodeLabel.PROTEIN, canonical_protein_key(accession))
         links: list[DiseaseLink] = []
 
         # 基因结论：Protein -(ENCODED_BY)-> Gene -(ASSOCIATED_WITH)-> Disease（通用 KG）
         for enc in self.neighbors(protein, EdgeType.ENCODED_BY, direction=Direction.OUT):
             gene_ref = enc.end
+            gene = self._nodes.get((gene_ref.label, gene_ref.key))
+            gene_symbol = (
+                str(gene.properties.get("symbol") or gene_ref.key)
+                if gene is not None
+                else gene_ref.key
+            )
             for assoc in self.neighbors(
                 gene_ref, EdgeType.ASSOCIATED_WITH, direction=Direction.OUT
             ):
@@ -173,17 +207,18 @@ class InMemoryGraphStore:
                         disease_key=assoc.end.key,
                         disease_name=str(disease.properties.get("name", "")) if disease else "",
                         evidence_level=str(assoc.properties.get("evidence_level", "")),
-                        via=f"gene:{gene_ref.key}",
+                        via=f"gene:{gene_symbol}",
                         edge_key=assoc.key,
                     )
                 )
 
         # 蛋白级假说：Protein -(ASSOCIATED_WITH)-> Disease（实验工作区）
         for assoc in self.neighbors(
-            protein, EdgeType.ASSOCIATED_WITH, direction=Direction.OUT
+            protein,
+            EdgeType.ASSOCIATED_WITH,
+            direction=Direction.OUT,
+            experiment_id=experiment_id,
         ):
-            if experiment_id is not None and assoc.experiment_id != experiment_id:
-                continue
             disease = self._nodes.get((assoc.end.label, assoc.end.key))
             links.append(
                 DiseaseLink(
@@ -238,6 +273,30 @@ class InMemoryGraphStore:
             and (edge_type is None or edge.type is edge_type)
             and (experiment_id is None or edge.experiment_id == experiment_id)
         )
+
+
+def _validate_projection_payload(
+    experiment_id: str,
+    nodes: Sequence[GraphNode],
+    edges: Sequence[GraphEdge],
+) -> None:
+    node_refs = {node.ref for node in nodes}
+    for node in nodes:
+        if node.scope is GraphScope.EXPERIMENT and node.experiment_id != experiment_id:
+            raise ValueError(
+                f"experiment node {node.label.value}:{node.key} belongs to "
+                f"{node.experiment_id}, expected {experiment_id}"
+            )
+    for edge in edges:
+        if edge.scope is GraphScope.EXPERIMENT and edge.experiment_id != experiment_id:
+            raise ValueError(
+                f"experiment edge {edge.type.value}:{edge.key} belongs to "
+                f"{edge.experiment_id}, expected {experiment_id}"
+            )
+        missing = [ref for ref in (edge.start, edge.end) if ref not in node_refs]
+        if missing:
+            rendered = ", ".join(f"{ref.label.value}:{ref.key}" for ref in missing)
+            raise ValueError(f"edge {edge.type.value}:{edge.key} has missing nodes: {rendered}")
 
 
 __all__ = ["GraphStore", "InMemoryGraphStore"]

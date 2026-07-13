@@ -16,6 +16,13 @@ from pkg.graph.model import (
     NodeLabel,
     NodeRef,
 )
+from pkg.graph.identity import (
+    CanonicalGeneIdentity,
+    canonical_gene_identity,
+    canonical_protein_key,
+    canonical_relation_key,
+    normalize_gene_symbol,
+)
 from pkg.graph.neo4j_store import Neo4jGraphStore, get_kg_store
 from pkg.graph.port import GraphStore, InMemoryGraphStore
 
@@ -32,6 +39,7 @@ from pkg.graph.types import (
 
 __all__ = [
     # 新版 L3
+    "CanonicalGeneIdentity",
     "Direction",
     "DiseaseLink",
     "EdgeType",
@@ -43,7 +51,11 @@ __all__ = [
     "Neo4jGraphStore",
     "NodeLabel",
     "NodeRef",
+    "canonical_gene_identity",
+    "canonical_protein_key",
+    "canonical_relation_key",
     "get_kg_store",
+    "normalize_gene_symbol",
     # 旧版
     "get_graph_store",
     "TrunkRow",

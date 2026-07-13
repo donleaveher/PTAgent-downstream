@@ -110,7 +110,26 @@ def test_freeze_creates_final_snapshot_with_manifest_and_checksum() -> None:
     assert snap.manifest["evidence_levels"]["CONCLUSION"] == 2
     assert snap.manifest["evidence_levels"]["HYPOTHESIS"] == 0
     assert snap.manifest["graph"]["nodes"] >= 1
+    assert snap.manifest["graph"]["schema_version"] == "2"
+    assert len(snap.manifest["graph"]["checksum"]) == 64
+    assert snap.manifest["graph"]["nodes"] == len(
+        snap.manifest["graph"]["node_records"]
+    )
+    assert snap.manifest["graph"]["edges"] == len(
+        snap.manifest["graph"]["edge_records"]
+    )
+    gnn = snap.manifest["graph"]["gnn_export"]
+    assert len(gnn["node_table"]) == snap.manifest["graph"]["nodes"]
+    assert len(gnn["edge_index"]) == snap.manifest["graph"]["edges"]
+    assert len(gnn["checksum"]) == 64
     assert snap.manifest["counts"]["annotation_history"] == 1
+    assert snap.manifest["counts"]["deep_search_evidence"] == 1
+    assert snap.manifest["deep_search"]["evidence_by_stance"] == {
+        "support": 1,
+        "refute": 0,
+        "neutral": 0,
+    }
+    assert snap.manifest["deep_search_evidence"][0]["reference"] == "PMID:1"
     assert verify_snapshot_integrity(snap)
     assert repo.get_snapshot(snap.snapshot_id) == snap  # 读回一致
 

@@ -35,6 +35,7 @@ class NodeLabel(str, Enum):
     GENE = "Gene"
     DISEASE = "Disease"
     GROUP = "Group"
+    COMPARISON = "Comparison"
 
 
 class EdgeType(str, Enum):
@@ -43,6 +44,9 @@ class EdgeType(str, Enum):
     STRUCTURAL_NEIGHBOR = "STRUCTURAL_NEIGHBOR"   # (Protein)->(Protein)，带 score（Foldseek 假说）
     CANDIDATE_NEIGHBOR = "CANDIDATE_NEIGHBOR"     # (Protein)->(Protein)，带融合分（实验候选）
     DIFFERENTIAL = "DIFFERENTIAL"                 # (Protein)->(Group)，带 log2fc（L2 差异）
+    DIFFERENTIAL_IN = "DIFFERENTIAL_IN"           # (Protein)->(Comparison)
+    CASE_GROUP = "CASE_GROUP"                     # (Comparison)->(Group)
+    CONTROL_GROUP = "CONTROL_GROUP"               # (Comparison)->(Group)
 
 
 class Direction(str, Enum):

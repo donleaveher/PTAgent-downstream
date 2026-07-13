@@ -28,6 +28,9 @@ class GraphSettings(BaseModel):
         "neo4j",
         description="Neo4j 数据库名(社区版固定为 neo4j;企业版可分库)。",
     )
+    connection_timeout_seconds: float = Field(10.0, gt=0, le=120)
+    max_connection_lifetime_seconds: float = Field(3600.0, gt=0)
+    max_transaction_retry_seconds: float = Field(15.0, ge=0, le=120)
 
 
 def get_graph_settings() -> GraphSettings:

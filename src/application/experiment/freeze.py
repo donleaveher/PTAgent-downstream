@@ -13,6 +13,7 @@ import json
 from typing import Any
 
 from application.graph.project_kg import project_experiment_kg
+from application.graph.gnn_export import build_gnn_export
 from pkg.experiment import (
     AnnotationTargetType,
     EvidenceLevel,
@@ -126,6 +127,7 @@ def freeze_experiment(
     graph_summary = project_experiment_kg(
         experiment_id, repository=repo, store=InMemoryGraphStore()
     )
+    gnn_export = build_gnn_export(graph_summary["manifest"])
 
     current_request = repo.get_current_request(experiment_id)
     request_id = request_version = request_content_hash = None
@@ -198,8 +200,12 @@ def freeze_experiment(
             for e in sorted(enrichments, key=lambda x: (x.term_type, x.term))
         ],
         "graph": {
-            key: graph_summary[key]
-            for key in ("nodes", "edges", "nodes_by_label", "edges_by_type")
+            "nodes": graph_summary["nodes"],
+            "edges": graph_summary["edges"],
+            "nodes_by_label": graph_summary["nodes_by_label"],
+            "edges_by_type": graph_summary["edges_by_type"],
+            **graph_summary["manifest"],
+            "gnn_export": gnn_export,
         },
         "versions": {
             "pipeline_version": pipeline_version,
