@@ -84,6 +84,7 @@ def freeze_experiment(
     groups = repo.list_groups(experiment_id)
     annotations = repo.list_annotations(experiment_id)
     history = repo.list_annotation_history(experiment_id)
+    deep_search_evidence = repo.list_deep_search_evidence(experiment_id)
     differentials = repo.list_differentials(experiment_id)
     enrichments = repo.list_enrichments(experiment_id)
 
@@ -111,6 +112,15 @@ def freeze_experiment(
         )
         if version and ann.source not in source_versions:
             source_versions[ann.source] = version
+    for evidence in deep_search_evidence:
+        source_versions.setdefault(evidence.source, evidence.source_version)
+
+    deep_search_verdicts: dict[str, int] = {}
+    for event in history:
+        if event.verdict in {"supported", "refuted", "conflicting", "insufficient"}:
+            deep_search_verdicts[event.verdict] = (
+                deep_search_verdicts.get(event.verdict, 0) + 1
+            )
 
     # 图投影摘要：投到临时内存图库，不触碰生产图库
     graph_summary = project_experiment_kg(
@@ -149,6 +159,7 @@ def freeze_experiment(
             "groups": len(groups),
             "annotations": len(annotations),
             "annotation_history": len(history),
+            "deep_search_evidence": len(deep_search_evidence),
             "differentials": len(differentials),
             "enrichments": len(enrichments),
         },
@@ -164,6 +175,20 @@ def freeze_experiment(
             h.model_dump(mode="json")
             for h in sorted(history, key=lambda x: (x.changed_at, x.history_id))
         ],
+        "deep_search_evidence": [
+            row.model_dump(mode="json")
+            for row in sorted(
+                deep_search_evidence,
+                key=lambda row: (row.annotation_id, row.evidence_id),
+            )
+        ],
+        "deep_search": {
+            "evidence_by_stance": {
+                stance: sum(1 for row in deep_search_evidence if row.stance == stance)
+                for stance in ("support", "refute", "neutral")
+            },
+            "verdicts": deep_search_verdicts,
+        },
         "differentials": [
             d.model_dump(mode="json")
             for d in sorted(differentials, key=lambda x: x.differential_id)

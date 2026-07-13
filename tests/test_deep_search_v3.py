@@ -7,7 +7,12 @@ from application.knowledge.deep_search import (
     override_hypothesis_verdict,
     verify_experiment_hypotheses,
 )
-from pkg.deep_search import EvidenceRecord, EvidenceStance, InMemoryLiteratureSource
+from pkg.deep_search import (
+    DeepSearchTask,
+    EvidenceRecord,
+    EvidenceStance,
+    InMemoryLiteratureSource,
+)
 from pkg.experiment import (
     AnnotationTargetType,
     EvidenceLevel,
@@ -38,6 +43,18 @@ def _hyp(annotation_id: str, protein_id: str, disease_id: str) -> MetaAnnotation
 
 def _ev(stance: EvidenceStance, ref: str) -> EvidenceRecord:
     return EvidenceRecord(stance=stance, title="t", reference=ref, source="lit")
+
+
+class _TaskCapturingSource:
+    name = "task-capturing"
+    version = "test"
+
+    def __init__(self) -> None:
+        self.tasks: list[DeepSearchTask] = []
+
+    def search(self, task: DeepSearchTask) -> list[EvidenceRecord]:
+        self.tasks.append(task)
+        return []
 
 
 def _seed() -> tuple[InMemoryExperimentRepository, InMemoryLiteratureSource]:
@@ -102,6 +119,8 @@ def test_state_machine_transitions_and_summary() -> None:
     }
     assert summary["annotations_updated"] == 2
     assert summary["history_appended"] == 4
+    assert summary["evidence_records"] == 4
+    assert summary["evidence_written"] == 4
 
     levels = _levels(repo)
     assert levels["ann_sup"] is EvidenceLevel.CONCLUSION
@@ -121,6 +140,7 @@ def test_history_is_replayable_with_evidence() -> None:
     assert by_ann["ann_sup"].to_level is EvidenceLevel.CONCLUSION
     assert by_ann["ann_sup"].verdict == "supported"
     assert by_ann["ann_sup"].evidence_ref["support_refs"] == ["PMID:1"]
+    assert len(by_ann["ann_sup"].evidence_ref["evidence_ids"]) == 1
     assert by_ann["ann_ref"].to_level is EvidenceLevel.REFUTED
     assert by_ann["ann_con"].verdict == "conflicting"
     assert by_ann["ann_con"].from_level is EvidenceLevel.HYPOTHESIS
@@ -128,6 +148,45 @@ def test_history_is_replayable_with_evidence() -> None:
     assert by_ann["ann_ins"].verdict == "insufficient"
     assert by_ann["ann_ins"].evidence_ref["source"] == "in-memory"  # 检索工具名
     assert by_ann["ann_ins"].evidence_ref["query"]
+    evidence = repo.list_deep_search_evidence(EXP)
+    assert len(evidence) == 4
+    assert {row.stance for row in evidence} == {"support", "refute"}
+    assert {row.reference for row in evidence} == {
+        "PMID:1",
+        "PMID:2",
+        "PMID:3",
+        "PMID:4",
+    }
+    assert all(row.provenance["search_source"] == "in-memory" for row in evidence)
+    assert all(row.query for row in evidence)
+
+
+def test_deep_search_passes_ranked_candidate_genes_to_source() -> None:
+    repo, _ = _seed()
+    candidate_hypothesis = _hyp("ann_candidate", "prot1", "D_SUP").model_copy(
+        update={
+            "derivation": {
+                "neighbors": [
+                    {"gene": "JAK2", "fusion_rank": 2, "fused_score": 0.4},
+                    {"gene": "JAK1", "fusion_rank": 1, "fused_score": 0.3},
+                ],
+                "via_genes": ["JAK2", "JAK3"],
+            }
+        }
+    )
+    repo.add_annotations([candidate_hypothesis])
+    source = _TaskCapturingSource()
+
+    verify_experiment_hypotheses(
+        EXP,
+        repository=repo,
+        source=source,
+        annotation_ids=["ann_candidate"],
+    )
+
+    assert len(source.tasks) == 1
+    assert source.tasks[0].gene == "Stat3"
+    assert source.tasks[0].candidate_genes == ("JAK1", "JAK2", "JAK3")
 
 
 def test_rerun_is_idempotent() -> None:
@@ -139,7 +198,9 @@ def test_rerun_is_idempotent() -> None:
     assert second["hypotheses"] == 2
     assert second["history_appended"] == 0
     assert second["annotations_updated"] == 0
+    assert second["evidence_written"] == 0
     assert len(repo.list_annotation_history(EXP)) == 4
+    assert len(repo.list_deep_search_evidence(EXP)) == 4
 
 
 def test_new_evidence_appends_new_history() -> None:
@@ -150,8 +211,16 @@ def test_new_evidence_appends_new_history() -> None:
     third = verify_experiment_hypotheses(EXP, repository=repo, source=source)
 
     assert third["annotations_updated"] == 1
+    assert third["evidence_written"] == 1
     assert _levels(repo)["ann_ins"] is EvidenceLevel.CONCLUSION
     assert len(repo.list_annotation_history(EXP)) == 5
+    assert {row.reference for row in repo.list_deep_search_evidence(EXP)} == {
+        "PMID:1",
+        "PMID:2",
+        "PMID:3",
+        "PMID:4",
+        "PMID:7",
+    }
 
 
 def test_manual_override_records_operator_and_reason() -> None:

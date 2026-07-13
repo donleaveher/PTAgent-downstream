@@ -128,7 +128,7 @@ def test_full_flow_via_api() -> None:
     ).json()
     assert report["snapshot_version"] == "1.0"
     assert "# 实验报告" in report["markdown"]
-    assert len(report["sections"]) == 8
+    assert len(report["sections"]) == 9
 
     # 报告 artifact 已落库（§10）：GET /report 返回持久化版本，GET /reports 列出
     assert report["persisted"] is True

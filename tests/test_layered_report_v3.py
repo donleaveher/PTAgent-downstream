@@ -15,6 +15,7 @@ from pkg.experiment import (
     DifferentialDirection,
     DifferentialResult,
     EvidenceLevel,
+    DeepSearchEvidence,
     ExperimentBundle,
     ExperimentContext,
     ExperimentGroup,
@@ -118,7 +119,17 @@ def _frozen_repo() -> InMemoryExperimentRepository:
         EXP,
         repository=repo,
         source=InMemoryLiteratureSource(
-            by_disease={"D002": [EvidenceRecord(EvidenceStance.REFUTE, "t", "PMID:9", "lit")]}
+            by_disease={
+                "D002": [
+                    EvidenceRecord(
+                        EvidenceStance.REFUTE,
+                        "Refuting evidence",
+                        "PMID:9",
+                        "lit",
+                        snippet="No disease association was observed.",
+                    )
+                ]
+            }
         ),
     )  # D002 → REFUTED；D003 无证据 → 未决
     freeze_experiment(EXP, snapshot_version="1.0", pipeline_version="pipe-1", repository=repo)
@@ -131,7 +142,7 @@ def test_report_has_layered_sections_and_traceable_statements() -> None:
 
     assert report.snapshot_version == "1.0"
     assert "# 实验报告 — exp_rep" in report.markdown
-    assert len(report.sections) == 8  # 设计/差异/富集/结论/假说/伪理/未决 + 附录
+    assert len(report.sections) == 9  # 设计/差异/富集/结论/假说/伪理/未决/证据 + 附录
 
     md = report.markdown
     # 结论（公共事实）可追溯：疾病 + annotation_id + 来源
@@ -142,6 +153,8 @@ def test_report_has_layered_sections_and_traceable_statements() -> None:
     assert "ann_hypA" in md  # REFUTED
     assert "ann_hypB" in md  # 未决
     assert "PMID:9" in md    # 反证可追溯
+    assert "Refuting evidence" in md
+    assert "8. Deep-search 证据明细（冻结快照）" in md
     # 附录：蛋白基础注释
     assert "ann_base" in md and "function:kinase" in md
 
@@ -172,9 +185,25 @@ def test_report_reads_frozen_snapshot_not_live_state() -> None:
             )
         ]
     )
+    repo.add_deep_search_evidence(
+        [
+            DeepSearchEvidence(
+                evidence_id="dse_late",
+                experiment_id=EXP,
+                annotation_id="ann_hypA",
+                stance="refute",
+                title="Late live evidence",
+                reference="PMID:late",
+                source="lit",
+                source_version="test",
+                query="late query",
+            )
+        ]
+    )
     after = generate_experiment_report(EXP, "1.0", repository=repo)
     assert after.checksum == before.checksum
     assert "ann_late" not in after.markdown
+    assert "Late live evidence" not in after.markdown
 
 
 def test_report_rejects_tampered_snapshot() -> None:

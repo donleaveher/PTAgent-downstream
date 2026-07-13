@@ -36,6 +36,7 @@ class DeepSearchTask:
     tissue: str = ""
     background: str = ""
     query: str = ""  # 规范化查询串（确定性，便于溯源/复跑）
+    candidate_genes: tuple[str, ...] = ()  # 仅在原始基因零命中时用于补充检索
 
 
 @dataclass(frozen=True)

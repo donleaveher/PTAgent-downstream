@@ -56,6 +56,50 @@ def _fmt_num(value: Any) -> str:
     return f"{value:.3g}" if isinstance(value, (int, float)) else "—"
 
 
+def _markdown_cell(value: Any, *, limit: int = 240) -> str:
+    text = str(value or "").replace("|", "\\|").replace("\n", " ")
+    return text if len(text) <= limit else f"{text[: limit - 1]}…"
+
+
+def _history_evidence(
+    event: dict[str, Any] | None, evidence_by_id: dict[str, dict[str, Any]]
+) -> list[dict[str, Any]]:
+    if not event:
+        return []
+    evidence_ids = (event.get("evidence_ref") or {}).get("evidence_ids") or []
+    return [
+        evidence_by_id[evidence_id]
+        for evidence_id in evidence_ids
+        if evidence_id in evidence_by_id
+    ]
+
+
+def _evidence_summary(
+    event: dict[str, Any] | None,
+    evidence_by_id: dict[str, dict[str, Any]],
+    *,
+    stances: set[str],
+) -> str:
+    rows = [
+        row
+        for row in _history_evidence(event, evidence_by_id)
+        if row.get("stance") in stances
+    ]
+    if rows:
+        return "; ".join(
+            f"{_markdown_cell(row.get('title'), limit=100)} "
+            f"({_markdown_cell(row.get('reference'), limit=80)}; "
+            f"{_markdown_cell(row.get('source'), limit=40)} "
+            f"v{_markdown_cell(row.get('source_version'), limit=40)})"
+            for row in rows
+        )
+
+    # Backward compatibility for snapshots created before the evidence ledger.
+    evidence_ref = (event or {}).get("evidence_ref") or {}
+    ref_key = "support_refs" if stances == {"support"} else "refute_refs"
+    return ", ".join(evidence_ref.get(ref_key) or [])
+
+
 def _render_markdown(snapshot: ExperimentSnapshot) -> tuple[str, tuple[str, ...]]:
     m = snapshot.manifest
     ctx = m.get("context", {})
@@ -63,6 +107,12 @@ def _render_markdown(snapshot: ExperimentSnapshot) -> tuple[str, tuple[str, ...]
     versions = m.get("versions", {})
     annotations = m.get("annotations", [])
     history = m.get("annotation_history", [])
+    deep_search_evidence = m.get("deep_search_evidence", [])
+    evidence_by_id = {
+        row["evidence_id"]: row
+        for row in deep_search_evidence
+        if row.get("evidence_id")
+    }
 
     latest_verdict: dict[str, dict[str, Any]] = {}
     for entry in history:  # manifest 中历史已按 changed_at 排序
@@ -144,9 +194,16 @@ def _render_markdown(snapshot: ExperimentSnapshot) -> tuple[str, tuple[str, ...]
     if disease_conclusions:
         for a in disease_conclusions:
             v = a.get("value") or {}
+            evidence = _evidence_summary(
+                latest_verdict.get(a["annotation_id"]),
+                evidence_by_id,
+                stances={"support"},
+            )
+            deep_search_text = f" · deep-search 支持 {evidence}" if evidence else ""
             lines.append(
                 f"- 基因 **{a['target']}** → {v.get('disease_name', '')} "
                 f"(`{v.get('disease_id', '')}`) — {_source_label(a)} · `{a['annotation_id']}`"
+                f"{deep_search_text}"
             )
     else:
         lines.append("_无。_")
@@ -174,7 +231,7 @@ def _render_markdown(snapshot: ExperimentSnapshot) -> tuple[str, tuple[str, ...]
         for a in disease_refuted:
             v = a.get("value") or {}
             verdict = latest_verdict.get(a["annotation_id"], {})
-            refs = ", ".join((verdict.get("evidence_ref") or {}).get("refute_refs") or [])
+            refs = _evidence_summary(verdict, evidence_by_id, stances={"refute"})
             lines.append(
                 f"- 蛋白 **{a['target']}** → {v.get('disease_name', '')} "
                 f"(`{v.get('disease_id', '')}`) — 反证 {refs or '—'} · `{a['annotation_id']}`"
@@ -193,13 +250,41 @@ def _render_markdown(snapshot: ExperimentSnapshot) -> tuple[str, tuple[str, ...]
     if undetermined:
         for a in undetermined:
             v = a.get("value") or {}
-            verdict = latest_verdict.get(a["annotation_id"], {}).get("verdict", "")
+            event = latest_verdict.get(a["annotation_id"], {})
+            verdict = event.get("verdict", "")
+            evidence = _evidence_summary(
+                event,
+                evidence_by_id,
+                stances={"support", "refute", "neutral"},
+            )
+            evidence_text = f" · 证据 {evidence}" if evidence else ""
             lines.append(
                 f"- 蛋白 **{a['target']}** → {v.get('disease_name', '')} "
                 f"(`{v.get('disease_id', '')}`) — deep-search 裁决:{verdict} · `{a['annotation_id']}`"
+                f"{evidence_text}"
             )
     else:
         lines.append("_无。_")
+    lines.append("")
+
+    section("8. Deep-search 证据明细（冻结快照）")
+    if deep_search_evidence:
+        lines.append("| 假说注释 | 立场 | 文献 | 引用 | 来源 | 摘要片段 |")
+        lines.append("|---|---|---|---|---|---|")
+        for row in deep_search_evidence:
+            source = (
+                f"{_markdown_cell(row.get('source'), limit=40)} "
+                f"v{_markdown_cell(row.get('source_version'), limit=40)}"
+            )
+            lines.append(
+                f"| `{_markdown_cell(row.get('annotation_id'), limit=64)}` | "
+                f"{_markdown_cell(row.get('stance'), limit=16)} | "
+                f"{_markdown_cell(row.get('title'), limit=160)} | "
+                f"{_markdown_cell(row.get('reference'), limit=80)} | {source} | "
+                f"{_markdown_cell(row.get('snippet'), limit=240) or '—'} |"
+            )
+    else:
+        lines.append("_本快照没有 deep-search 检索证据。_")
     lines.append("")
 
     section("附录 A. 全部蛋白基础注释")
